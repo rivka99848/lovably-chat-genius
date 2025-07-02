@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Plus, User, Settings, Crown } from 'lucide-react';
+import { Send, Plus, User, Settings, Crown, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -35,10 +35,12 @@ const ChatInterface = () => {
   const [user, setUser] = useState<User | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [showPlanUpgrade, setShowPlanUpgrade] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Webhook URL for n8n integration
+  // Updated webhook URL
   const WEBHOOK_BASE_URL = 'https://n8n.smartbiz.org.il/webhook';
 
   useEffect(() => {
@@ -150,7 +152,7 @@ const ChatInterface = () => {
             id: userData.id || userId,
             email,
             name: userData.name || name,
-            category: userData.category, // הקטגוריה מגיעה מהשרת
+            category: userData.category,
             plan: userData.plan || 'free',
             messagesUsed: userData.messagesUsed || 0,
             messageLimit: userData.messageLimit || 50
@@ -168,12 +170,26 @@ const ChatInterface = () => {
       }
     } catch (error) {
       console.error('Auth error:', error);
-      throw error; // מעביר את השגיאה חזרה לקומפוננטה
+      throw error;
     }
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setUploadedFiles(prev => [...prev, ...files]);
+    
+    toast({
+      title: "קבצים הועלו",
+      description: `הועלו ${files.length} קבצים בהצלחה.`
+    });
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const sendMessage = async () => {
-    if (!inputValue.trim() || !user || isLoading) return;
+    if ((!inputValue.trim() && uploadedFiles.length === 0) || !user || isLoading) return;
 
     // Check message limits
     if (user.messagesUsed >= user.messageLimit) {
@@ -183,7 +199,7 @@ const ChatInterface = () => {
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputValue,
+      content: inputValue || (uploadedFiles.length > 0 ? `הועלו ${uploadedFiles.length} קבצים` : ''),
       isUser: true,
       timestamp: new Date(),
       category: user.category
@@ -192,29 +208,35 @@ const ChatInterface = () => {
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     saveChatHistory(newMessages);
+    
+    // Prepare form data for file upload
+    const formData = new FormData();
+    formData.append('userId', user.id);
+    formData.append('message', inputValue);
+    formData.append('category', user.category);
+    formData.append('chatHistory', JSON.stringify(messages.slice(-10)));
+    formData.append('timestamp', new Date().toISOString());
+    
+    // Add files to form data
+    uploadedFiles.forEach((file, index) => {
+      formData.append(`file_${index}`, file);
+    });
+
     setInputValue('');
+    setUploadedFiles([]);
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${WEBHOOK_BASE_URL}/chat/${user.category.toLowerCase()}`, {
+      const response = await fetch(`${WEBHOOK_BASE_URL}/chatbot`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          message: inputValue,
-          category: user.category,
-          chatHistory: messages.slice(-10),
-          timestamp: new Date().toISOString()
-        })
+        body: formData
       });
 
       if (response.ok) {
         const data = await response.json();
         
-        // Clean the response - strip raw JSON and extract readable content
         let cleanContent = data.message || data.response || data.content || '';
         
-        // If it's a JSON string, try to parse and extract meaningful content
         try {
           const parsed = JSON.parse(cleanContent);
           cleanContent = parsed.message || parsed.text || parsed.content || cleanContent;
@@ -234,7 +256,6 @@ const ChatInterface = () => {
         setMessages(updatedMessages);
         saveChatHistory(updatedMessages);
 
-        // Update message count
         const updatedUser = { ...user, messagesUsed: user.messagesUsed + 1 };
         setUser(updatedUser);
         localStorage.setItem('lovable_user', JSON.stringify(updatedUser));
@@ -397,21 +418,58 @@ const ChatInterface = () => {
 
         {/* Input Area */}
         <div className="border-t border-gray-200 bg-white p-6">
+          {/* File Upload Area */}
+          {uploadedFiles.length > 0 && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <div className="flex flex-wrap gap-2">
+                {uploadedFiles.map((file, index) => (
+                  <div key={index} className="flex items-center gap-2 bg-white px-3 py-1 rounded-full border">
+                    <span className="text-sm text-gray-600">{file.name}</span>
+                    <button
+                      onClick={() => removeFile(index)}
+                      className="text-red-500 hover:text-red-700 text-sm"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
           <div className="flex space-x-4 space-x-reverse">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileUpload}
+              className="hidden"
+              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif"
+            />
+            
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-3 border-gray-300 hover:bg-gray-50"
+              disabled={isLoading}
+            >
+              <Upload className="w-5 h-5" />
+            </Button>
+            
             <div className="flex-1 relative">
               <Input
                 ref={inputRef}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={`שאלו את המומחה שלכם ב${user?.category} כל שאלה...`}
+                placeholder={`שאלו את המומחה שלכם ב${user?.category} כל שאלה או העלו קבצים...`}
                 className="pl-12 py-3 text-base border-gray-300 focus:border-green-500 focus:ring-green-500 text-right"
                 disabled={isLoading}
               />
             </div>
             <Button
               onClick={sendMessage}
-              disabled={!inputValue.trim() || isLoading}
+              disabled={(!inputValue.trim() && uploadedFiles.length === 0) || isLoading}
               className="px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
             >
               <Send className="w-5 h-5" />
