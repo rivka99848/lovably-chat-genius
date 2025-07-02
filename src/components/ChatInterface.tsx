@@ -7,7 +7,6 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import MessageBubble from './MessageBubble';
-import CategorySelector from './CategorySelector';
 import AuthModal from './AuthModal';
 import PlanUpgrade from './PlanUpgrade';
 
@@ -35,7 +34,6 @@ const ChatInterface = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showAuth, setShowAuth] = useState(false);
-  const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [showPlanUpgrade, setShowPlanUpgrade] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,83 +71,104 @@ const ChatInterface = () => {
     localStorage.setItem('lovable_chat_history', JSON.stringify(newMessages));
   };
 
-  const authenticateUser = async (email: string, name: string, isSignUp: boolean) => {
+  const authenticateUser = async (email: string, name: string, category: string, isSignUp: boolean) => {
     try {
       const userId = crypto.randomUUID();
-      const response = await fetch(`${WEBHOOK_BASE_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event: 'login',
-          userId,
-          email,
-          name,
-          action: isSignUp ? 'register' : 'login',
-          timestamp: new Date().toISOString()
-        })
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        const newUser: User = {
-          id: userData.id || userId,
-          email,
-          name,
-          category: userData.category || '',
-          plan: userData.plan || 'free',
-          messagesUsed: userData.messagesUsed || 0,
-          messageLimit: userData.messageLimit || 50
-        };
-        
-        setUser(newUser);
-        localStorage.setItem('lovable_user', JSON.stringify(newUser));
-        setShowAuth(false);
-        
-        // תמיד הצג את בחירת הקטגוריה אחרי ההתחברות אם לא נבחרה עדיין
-        if (!newUser.category) {
-          setShowCategorySelector(true);
-        }
-        
-        toast({
-          title: "ברוכים הבאים!",
-          description: `התחברתם בהצלחה לבוט המסונן שלנו.`
+      
+      if (isSignUp) {
+        // בדיקה אם המשתמש כבר קיים
+        const checkResponse = await fetch(`${WEBHOOK_BASE_URL}/check-user`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            timestamp: new Date().toISOString()
+          })
         });
+
+        if (checkResponse.ok) {
+          const checkData = await checkResponse.json();
+          if (checkData.exists) {
+            throw new Error('משתמש כבר קיים במערכת. אנא התחברו במקום להירשם.');
+          }
+        }
+
+        // רישום משתמש חדש עם קטגוריה
+        const registerResponse = await fetch(`${WEBHOOK_BASE_URL}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'register',
+            userId,
+            email,
+            name,
+            category,
+            timestamp: new Date().toISOString()
+          })
+        });
+
+        if (registerResponse.ok) {
+          const userData = await registerResponse.json();
+          const newUser: User = {
+            id: userData.id || userId,
+            email,
+            name,
+            category,
+            plan: userData.plan || 'free',
+            messagesUsed: userData.messagesUsed || 0,
+            messageLimit: userData.messageLimit || 50
+          };
+          
+          setUser(newUser);
+          localStorage.setItem('lovable_user', JSON.stringify(newUser));
+          setShowAuth(false);
+          
+          toast({
+            title: "ברוכים הבאים!",
+            description: `נרשמתם בהצלחה כמומחה ב${category}.`
+          });
+        }
+      } else {
+        // התחברות משתמש קיים
+        const loginResponse = await fetch(`${WEBHOOK_BASE_URL}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'login',
+            email,
+            timestamp: new Date().toISOString()
+          })
+        });
+
+        if (loginResponse.ok) {
+          const userData = await loginResponse.json();
+          if (!userData.exists) {
+            throw new Error('משתמש לא נמצא במערכת. אנא הירשמו תחילה.');
+          }
+
+          const existingUser: User = {
+            id: userData.id || userId,
+            email,
+            name: userData.name || name,
+            category: userData.category, // הקטגוריה מגיעה מהשרת
+            plan: userData.plan || 'free',
+            messagesUsed: userData.messagesUsed || 0,
+            messageLimit: userData.messageLimit || 50
+          };
+          
+          setUser(existingUser);
+          localStorage.setItem('lovable_user', JSON.stringify(existingUser));
+          setShowAuth(false);
+          
+          toast({
+            title: "ברוכים הבאים!",
+            description: `התחברתם בהצלחה כמומחה ב${existingUser.category}.`
+          });
+        }
       }
     } catch (error) {
       console.error('Auth error:', error);
-      toast({
-        title: "שגיאת אותנטיקציה",
-        description: "נכשל בהתחברות. אנא נסו שוב.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const selectCategory = async (category: string) => {
-    if (!user) return;
-
-    try {
-      await fetch(`${WEBHOOK_BASE_URL}/category`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          category,
-          timestamp: new Date().toISOString()
-        })
-      });
-
-      const updatedUser = { ...user, category };
-      setUser(updatedUser);
-      localStorage.setItem('lovable_user', JSON.stringify(updatedUser));
-      setShowCategorySelector(false);
-      
-      toast({
-        title: "קטגוריה נבחרה",
-        description: `אתם מחוברים למומחה ${category} שלנו.`
-      });
-    } catch (error) {
-      console.error('Category selection error:', error);
+      throw error; // מעביר את השגיאה חזרה לקומפוננטה
     }
   };
 
@@ -252,10 +271,6 @@ const ChatInterface = () => {
     return <AuthModal onAuth={authenticateUser} onClose={() => setShowAuth(false)} />;
   }
 
-  if (showCategorySelector) {
-    return <CategorySelector onSelect={selectCategory} onClose={() => setShowCategorySelector(false)} />;
-  }
-
   if (showPlanUpgrade) {
     return <PlanUpgrade user={user} onClose={() => setShowPlanUpgrade(false)} onUpgrade={(plan) => {
       if (user) {
@@ -338,14 +353,9 @@ const ChatInterface = () => {
 
         {/* Settings */}
         <div className="p-4 border-t border-gray-100">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-gray-600 hover:text-gray-800"
-            onClick={() => setShowCategorySelector(true)}
-          >
-            <Settings className="w-4 h-4 ml-2" />
-            שנה קטגוריה
-          </Button>
+          <div className="text-sm text-gray-500 text-center">
+            הקטגוריה שלכם: <span className="font-semibold text-green-600">{user?.category}</span>
+          </div>
         </div>
       </div>
 

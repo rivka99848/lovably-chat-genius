@@ -5,25 +5,42 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Props {
-  onAuth: (email: string, name: string, isSignUp: boolean) => void;
+  onAuth: (email: string, name: string, category: string, isSignUp: boolean) => void;
   onClose: () => void;
 }
+
+const categories = [
+  { id: 'programming', name: 'תכנות' },
+  { id: 'architecture', name: 'אדריכלות ועיצוב פנים' },
+  { id: 'writing', name: 'כתיבה ותמלול' },
+  { id: 'design', name: 'גרפיקה ועיצוב' }
+];
 
 const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   const [isSignUp, setIsSignUp] = useState(true);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || (isSignUp && !name)) return;
+    if (!email || (isSignUp && (!name || !selectedCategory))) return;
 
     setIsLoading(true);
-    await onAuth(email, name, isSignUp);
-    setIsLoading(false);
+    setError('');
+
+    try {
+      await onAuth(email, name, selectedCategory, isSignUp);
+    } catch (err: any) {
+      setError(err.message || 'שגיאה בהתחברות');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -41,23 +58,50 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           </p>
         </div>
 
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {isSignUp && (
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-gray-700">שם מלא</Label>
-              <div className="relative">
-                <User className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="הכניסו את השם המלא שלכם"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="pr-10 py-3 border-gray-300 focus:border-green-500 focus:ring-green-500 text-right"
-                  required={isSignUp}
-                />
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-gray-700">שם מלא</Label>
+                <div className="relative">
+                  <User className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="הכניסו את השם המלא שלכם"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="pr-10 py-3 border-gray-300 focus:border-green-500 focus:ring-green-500 text-right"
+                    required={isSignUp}
+                  />
+                </div>
               </div>
-            </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category" className="text-gray-700">קטגוריה מקצועית</Label>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory} required>
+                  <SelectTrigger className="text-right">
+                    <SelectValue placeholder="בחרו את הקטגוריה המקצועית שלכם" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.name}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  הקטגוריה הזו תהיה קבועה עבור החשבון שלכם
+                </p>
+              </div>
+            </>
           )}
 
           <div className="space-y-2">
@@ -79,7 +123,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           <Button
             type="submit"
             className="w-full py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium"
-            disabled={isLoading || !email || (isSignUp && !name)}
+            disabled={isLoading || !email || (isSignUp && (!name || !selectedCategory))}
           >
             {isLoading ? (
               <div className="flex items-center justify-center">
@@ -95,7 +139,11 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
         <div className="mt-6 text-center">
           <button
             type="button"
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError('');
+              setSelectedCategory('');
+            }}
             className="text-sm text-gray-600 hover:text-green-600 transition-colors"
           >
             {isSignUp ? 'יש לכם כבר חשבון? התחברו' : 'אין לכם חשבון? הירשמו'}
