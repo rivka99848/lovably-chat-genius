@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Plus, Copy, Eye, User, Settings, Crown } from 'lucide-react';
+import { Send, Plus, User, Settings, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -41,7 +41,7 @@ const ChatInterface = () => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Webhook URL for n8n integration
-  const WEBHOOK_BASE_URL = 'https://your-n8n-instance.com/webhook';
+  const WEBHOOK_BASE_URL = 'https://n8n.smartbiz.org.il/webhook';
 
   useEffect(() => {
     // Check for existing user session
@@ -75,10 +75,13 @@ const ChatInterface = () => {
 
   const authenticateUser = async (email: string, name: string, isSignUp: boolean) => {
     try {
-      const response = await fetch(`${WEBHOOK_BASE_URL}/auth`, {
+      const userId = crypto.randomUUID();
+      const response = await fetch(`${WEBHOOK_BASE_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          event: 'login',
+          userId,
           email,
           name,
           action: isSignUp ? 'register' : 'login',
@@ -89,7 +92,7 @@ const ChatInterface = () => {
       if (response.ok) {
         const userData = await response.json();
         const newUser: User = {
-          id: userData.id || Date.now().toString(),
+          id: userData.id || userId,
           email,
           name,
           category: userData.category || '',
@@ -107,15 +110,15 @@ const ChatInterface = () => {
         }
         
         toast({
-          title: "Welcome!",
-          description: `Successfully ${isSignUp ? 'registered' : 'signed in'} to Lovable AI.`
+          title: "ברוכים הבאים!",
+          description: `התחברתם בהצלחה לבוט המסונן שלנו.`
         });
       }
     } catch (error) {
       console.error('Auth error:', error);
       toast({
-        title: "Authentication Error",
-        description: "Failed to authenticate. Please try again.",
+        title: "שגיאת אותנטיקציה",
+        description: "נכשל בהתחברות. אנא נסו שוב.",
         variant: "destructive"
       });
     }
@@ -141,8 +144,8 @@ const ChatInterface = () => {
       setShowCategorySelector(false);
       
       toast({
-        title: "Category Selected",
-        description: `You're now connected to our ${category} AI assistant.`
+        title: "קטגוריה נבחרה",
+        description: `אתם מחוברים למומחה ${category} שלנו.`
       });
     } catch (error) {
       console.error('Category selection error:', error);
@@ -180,7 +183,7 @@ const ChatInterface = () => {
           userId: user.id,
           message: inputValue,
           category: user.category,
-          chatHistory: messages.slice(-10), // Send last 10 messages for context
+          chatHistory: messages.slice(-10),
           timestamp: new Date().toISOString()
         })
       });
@@ -219,8 +222,8 @@ const ChatInterface = () => {
     } catch (error) {
       console.error('Send message error:', error);
       toast({
-        title: "Message Error",
-        description: "Failed to send message. Please try again.",
+        title: "שגיאת הודעה",
+        description: "נכשל בשליחת ההודעה. אנא נסו שוב.",
         variant: "destructive"
       });
     } finally {
@@ -232,8 +235,8 @@ const ChatInterface = () => {
     setMessages([]);
     localStorage.removeItem('lovable_chat_history');
     toast({
-      title: "New Conversation",
-      description: "Started a fresh conversation."
+      title: "שיחה חדשה",
+      description: "התחלנו שיחה חדשה."
     });
   };
 
@@ -264,14 +267,14 @@ const ChatInterface = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-green-50">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-green-50" dir="rtl">
       {/* Sidebar */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-              Lovable AI
+              בוט מסונן
             </h1>
             <Button
               variant="outline"
@@ -279,14 +282,14 @@ const ChatInterface = () => {
               onClick={() => setShowPlanUpgrade(true)}
               className="border-green-200 hover:bg-green-50"
             >
-              <Crown className="w-4 h-4 mr-1 text-green-600" />
-              {user?.plan === 'free' ? 'Upgrade' : user?.plan.toUpperCase()}
+              <Crown className="w-4 h-4 ml-1 text-green-600" />
+              {user?.plan === 'free' ? 'שדרג' : user?.plan.toUpperCase()}
             </Button>
           </div>
           
           {user && (
             <div className="space-y-2">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600">
                 <User className="w-4 h-4" />
                 <span>{user.name}</span>
               </div>
@@ -294,7 +297,7 @@ const ChatInterface = () => {
                 {user.category}
               </Badge>
               <div className="text-xs text-gray-500">
-                {user.messagesUsed}/{user.messageLimit} messages used
+                {user.messagesUsed}/{user.messageLimit} הודעות נשלחו
               </div>
             </div>
           )}
@@ -306,14 +309,14 @@ const ChatInterface = () => {
             onClick={startNewConversation}
             className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            New Conversation
+            <Plus className="w-4 h-4 ml-2" />
+            שיחה חדשה
           </Button>
         </div>
 
         {/* Chat History Summary */}
         <div className="flex-1 p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Recent Conversations</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">שיחות אחרונות</h3>
           <div className="space-y-2">
             {messages.length > 0 ? (
               <Card className="p-3 cursor-pointer hover:bg-gray-50 transition-colors">
@@ -321,12 +324,12 @@ const ChatInterface = () => {
                   {messages[0]?.content.substring(0, 50)}...
                 </div>
                 <div className="text-xs text-gray-400 mt-1">
-                  {messages.length} messages
+                  {messages.length} הודעות
                 </div>
               </Card>
             ) : (
               <div className="text-sm text-gray-400 text-center py-8">
-                No conversations yet
+                עדיין אין שיחות
               </div>
             )}
           </div>
@@ -339,8 +342,8 @@ const ChatInterface = () => {
             className="w-full justify-start text-gray-600 hover:text-gray-800"
             onClick={() => setShowCategorySelector(true)}
           >
-            <Settings className="w-4 h-4 mr-2" />
-            Change Category
+            <Settings className="w-4 h-4 ml-2" />
+            שנה קטגוריה
           </Button>
         </div>
       </div>
@@ -353,11 +356,11 @@ const ChatInterface = () => {
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🤖</div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                Welcome to Lovable AI
+                ברוכים הבאים לבוט המסונן שלנו – לצרכי עבודה בלבד
               </h2>
               <p className="text-gray-600 max-w-md mx-auto">
-                Your personal {user?.category} assistant is ready to help. 
-                Ask me anything related to {user?.category.toLowerCase()}!
+                המומחה שלכם ב{user?.category} מוכן לעזור. 
+                שאלו אותי כל שאלה הקשורה ל{user?.category.toLowerCase()}!
               </p>
             </div>
           ) : (
@@ -367,7 +370,7 @@ const ChatInterface = () => {
           )}
           
           {isLoading && (
-            <div className="flex justify-start">
+            <div className="flex justify-end">
               <div className="bg-white rounded-lg p-4 shadow-sm border max-w-xs">
                 <div className="flex space-x-2">
                   <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce"></div>
@@ -383,15 +386,15 @@ const ChatInterface = () => {
 
         {/* Input Area */}
         <div className="border-t border-gray-200 bg-white p-6">
-          <div className="flex space-x-4">
+          <div className="flex space-x-4 space-x-reverse">
             <div className="flex-1 relative">
               <Input
                 ref={inputRef}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={`Ask your ${user?.category} assistant anything...`}
-                className="pr-12 py-3 text-base border-gray-300 focus:border-green-500 focus:ring-green-500"
+                placeholder={`שאלו את המומחה שלכם ב${user?.category} כל שאלה...`}
+                className="pl-12 py-3 text-base border-gray-300 focus:border-green-500 focus:ring-green-500 text-right"
                 disabled={isLoading}
               />
             </div>
@@ -407,13 +410,13 @@ const ChatInterface = () => {
           {user && user.messagesUsed >= user.messageLimit * 0.8 && (
             <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800">
-                You're running low on messages ({user.messagesUsed}/{user.messageLimit} used). 
+                נגמרות לכם ההודעות ({user.messagesUsed}/{user.messageLimit} נשלחו). 
                 <Button
                   variant="link"
-                  className="p-0 ml-1 text-yellow-800 underline"
+                  className="p-0 mr-1 text-yellow-800 underline"
                   onClick={() => setShowPlanUpgrade(true)}
                 >
-                  Upgrade for unlimited messages
+                  שדרגו להודעות ללא הגבלה
                 </Button>
               </p>
             </div>

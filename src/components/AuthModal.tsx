@@ -27,33 +27,33 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-green-900 to-blue-900 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-green-900 to-blue-900 flex items-center justify-center p-6" dir="rtl">
       <Card className="w-full max-w-md p-8 bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-full mb-4">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">
-            Welcome to Lovable AI
+            ברוכים הבאים לבוט המסונן שלנו
           </h1>
           <p className="text-gray-600">
-            {isSignUp ? 'Create your account to get started' : 'Sign in to continue'}
+            {isSignUp ? 'צרו את החשבון שלכם כדי להתחיל' : 'התחברו כדי להמשיך'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {isSignUp && (
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-gray-700">Full Name</Label>
+              <Label htmlFor="name" className="text-gray-700">שם מלא</Label>
               <div className="relative">
-                <User className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <User className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Enter your full name"
+                  placeholder="הכניסו את השם המלא שלכם"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="pl-10 py-3 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                  className="pr-10 py-3 border-gray-300 focus:border-green-500 focus:ring-green-500 text-right"
                   required={isSignUp}
                 />
               </div>
@@ -61,16 +61,16 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-gray-700">Email Address</Label>
+            <Label htmlFor="email" className="text-gray-700">כתובת אימייל</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <Mail className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
               <Input
                 id="email"
                 type="email"
-                placeholder="Enter your email"
+                placeholder="הכניסו את האימייל שלכם"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 py-3 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                className="pr-10 py-3 border-gray-300 focus:border-green-500 focus:ring-green-500 text-right"
                 required
               />
             </div>
@@ -83,11 +83,11 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           >
             {isLoading ? (
               <div className="flex items-center justify-center">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2"></div>
+                {isSignUp ? 'יוצר חשבון...' : 'מתחבר...'}
               </div>
             ) : (
-              isSignUp ? 'Create Account' : 'Sign In'
+              isSignUp ? 'צור חשבון' : 'התחבר'
             )}
           </Button>
         </form>
@@ -98,7 +98,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             onClick={() => setIsSignUp(!isSignUp)}
             className="text-sm text-gray-600 hover:text-green-600 transition-colors"
           >
-            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+            {isSignUp ? 'יש לכם כבר חשבון? התחברו' : 'אין לכם חשבון? הירשמו'}
           </button>
         </div>
 
@@ -106,15 +106,15 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-lg font-bold text-green-600">50+</div>
-              <div className="text-xs text-gray-500">Free Messages</div>
+              <div className="text-xs text-gray-500">הודעות חינם</div>
             </div>
             <div>
               <div className="text-lg font-bold text-blue-600">4</div>
-              <div className="text-xs text-gray-500">AI Specialists</div>
+              <div className="text-xs text-gray-500">מומחי AI</div>
             </div>
             <div>
               <div className="text-lg font-bold text-purple-600">24/7</div>
-              <div className="text-xs text-gray-500">Availability</div>
+              <div className="text-xs text-gray-500">זמינות</div>
             </div>
           </div>
         </div>

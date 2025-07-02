@@ -12,50 +12,50 @@ interface Props {
 const categories = [
   {
     id: 'programming',
-    name: 'Programming',
-    description: 'Code, debug, and build applications with AI assistance',
+    name: 'תכנות',
+    description: 'פיתוח קוד, דיבאג ובניית אפליקציות עם סיוע AI',
     icon: Code,
     color: 'from-blue-600 to-purple-600',
-    examples: ['React development', 'Python scripting', 'Database queries', 'API integration']
+    examples: ['פיתוח React', 'סקריפטים Python', 'שאילתות מסד נתונים', 'אינטגרציית API']
   },
   {
     id: 'architecture',
-    name: 'Architecture & Interior Design',
-    description: 'Design spaces, plan layouts, and create architectural solutions',
+    name: 'אדריכלות ועיצוב פנים',
+    description: 'עיצוב חללים, תכנון פריסות ויצירת פתרונות אדריכליים',
     icon: Home,
     color: 'from-green-600 to-teal-600',
-    examples: ['Floor plans', 'Interior design', '3D modeling', 'Material selection']
+    examples: ['תכניות קומה', 'עיצוב פנים', 'מידול תלת מימד', 'בחירת חומרים']
   },
   {
     id: 'writing',
-    name: 'Writing & Transcription',
-    description: 'Create content, edit text, and transcribe audio with precision',
+    name: 'כתיבה ותמלול',
+    description: 'יצירת תוכן, עריכת טקסט ותמלול אודיו בדיוק',
     icon: PenTool,
     color: 'from-orange-600 to-red-600',
-    examples: ['Blog writing', 'Technical docs', 'Creative writing', 'Audio transcription']
+    examples: ['כתיבת בלוגים', 'תיעוד טכני', 'כתיבה יצירתית', 'תמלול אודיו']
   },
   {
     id: 'design',
-    name: 'Graphics & Design',
-    description: 'Create visual content, logos, and digital artwork',
+    name: 'גרפיקה ועיצוב',
+    description: 'יצירת תוכן ויזואלי, לוגואים ואמנות דיגיטלית',
     icon: Palette,
     color: 'from-pink-600 to-purple-600',
-    examples: ['Logo design', 'UI/UX design', 'Brand identity', 'Digital illustrations']
+    examples: ['עיצוב לוגו', 'עיצוב UI/UX', 'זהות מותג', 'איורים דיגיטליים']
   }
 ];
 
 const CategorySelector: React.FC<Props> = ({ onSelect, onClose }) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50 flex items-center justify-center p-6" dir="rtl">
       <div className="max-w-4xl w-full">
         <Card className="p-8 bg-white/90 backdrop-blur-sm border-0 shadow-2xl">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">
-                Choose Your AI Assistant
+                בחרו את המומחה שלכם
               </h1>
               <p className="text-gray-600">
-                Select the professional category that best matches your needs. You can change this anytime in settings.
+                בחרו את הקטגוריה המקצועית המתאימה ביותר לצרכים שלכם. תוכלו לשנות זאת בכל עת בהגדרות.
               </p>
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>
@@ -72,7 +72,7 @@ const CategorySelector: React.FC<Props> = ({ onSelect, onClose }) => {
                   className="p-6 cursor-pointer hover:shadow-lg transition-all duration-300 border-2 hover:border-green-200 group"
                   onClick={() => onSelect(category.name)}
                 >
-                  <div className="flex items-start space-x-4">
+                  <div className="flex items-start space-x-4 space-x-reverse">
                     <div className={`p-3 rounded-xl bg-gradient-to-r ${category.color} text-white group-hover:scale-110 transition-transform`}>
                       <IconComponent className="w-6 h-6" />
                     </div>
@@ -86,7 +86,7 @@ const CategorySelector: React.FC<Props> = ({ onSelect, onClose }) => {
                       </p>
                       
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-gray-700">Perfect for:</p>
+                        <p className="text-sm font-medium text-gray-700">מושלם עבור:</p>
                         <div className="flex flex-wrap gap-2">
                           {category.examples.map((example, index) => (
                             <span
@@ -105,7 +105,7 @@ const CategorySelector: React.FC<Props> = ({ onSelect, onClose }) => {
                     <Button
                       className={`w-full bg-gradient-to-r ${category.color} hover:opacity-90 text-white`}
                     >
-                      Select {category.name}
+                      בחר {category.name}
                     </Button>
                   </div>
                 </Card>
@@ -115,7 +115,7 @@ const CategorySelector: React.FC<Props> = ({ onSelect, onClose }) => {
 
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
-              Not sure which to choose? Start with Programming - it's our most versatile assistant!
+              לא בטוחים מה לבחור? התחילו עם תכנות - זה המומחה הכי רב-תכליתי שלנו!
             </p>
           </div>
         </Card>

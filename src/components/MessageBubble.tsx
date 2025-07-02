@@ -24,8 +24,8 @@ const MessageBubble: React.FC<Props> = ({ message }) => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
-      title: "Copied!",
-      description: "Content copied to clipboard.",
+      title: "הועתק!",
+      description: "התוכן הועתק ללוח הכתיבה.",
     });
   };
 
@@ -72,11 +72,11 @@ const MessageBubble: React.FC<Props> = ({ message }) => {
               <Button
                 size="sm"
                 variant="secondary"
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => copyToClipboard(code)}
               >
-                <Copy className="w-3 h-3 mr-1" />
-                Copy
+                <Copy className="w-3 h-3 ml-1" />
+                העתק
               </Button>
             </div>
           </div>
@@ -92,12 +92,12 @@ const MessageBubble: React.FC<Props> = ({ message }) => {
   };
 
   return (
-    <div className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${message.isUser ? 'justify-start' : 'justify-end'}`} dir="rtl">
       <div className={`max-w-4xl ${message.isUser ? 'w-auto' : 'w-full'}`}>
         <Card className={`p-4 ${
           message.isUser 
-            ? 'bg-gradient-to-r from-green-600 to-blue-600 text-white ml-12' 
-            : 'bg-white border-gray-200 mr-12'
+            ? 'bg-gradient-to-r from-green-600 to-blue-600 text-white mr-12' 
+            : 'bg-white border-gray-200 ml-12'
         }`}>
           <div className="space-y-2">
             {/* Message Content */}
@@ -107,15 +107,15 @@ const MessageBubble: React.FC<Props> = ({ message }) => {
 
             {/* Action Buttons */}
             {!message.isUser && (
-              <div className="flex items-center space-x-2 pt-2 border-t border-gray-100">
+              <div className="flex items-center space-x-2 space-x-reverse pt-2 border-t border-gray-100">
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={copyEntireMessage}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  <Copy className="w-3 h-3 mr-1" />
-                  Copy Reply
+                  <Copy className="w-3 h-3 ml-1" />
+                  העתק תשובה
                 </Button>
 
                 {hasCode && (
@@ -130,8 +130,8 @@ const MessageBubble: React.FC<Props> = ({ message }) => {
                     }}
                     className="text-gray-500 hover:text-gray-700"
                   >
-                    <Code className="w-3 h-3 mr-1" />
-                    Copy Code
+                    <Code className="w-3 h-3 ml-1" />
+                    העתק קוד
                   </Button>
                 )}
 
@@ -142,8 +142,8 @@ const MessageBubble: React.FC<Props> = ({ message }) => {
                     onClick={() => setShowPreview(true)}
                     className="text-gray-500 hover:text-gray-700"
                   >
-                    <Eye className="w-3 h-3 mr-1" />
-                    Preview
+                    <Eye className="w-3 h-3 ml-1" />
+                    תצוגה מקדימה
                   </Button>
                 )}
 
@@ -157,7 +157,7 @@ const MessageBubble: React.FC<Props> = ({ message }) => {
 
             {/* User message timestamp */}
             {message.isUser && (
-              <div className="text-right">
+              <div className="text-left">
                 <span className="text-xs text-green-100 opacity-75">
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
