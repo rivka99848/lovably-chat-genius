@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Code, Palette, PenTool, Home, X } from 'lucide-react';
+import { Code, Palette, PenTool, Home, X, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -41,6 +41,14 @@ const categories = [
     icon: Palette,
     color: 'from-pink-600 to-purple-600',
     examples: ['עיצוב לוגו', 'עיצוב UI/UX', 'זהות מותג', 'איורים דיגיטליים']
+  },
+  {
+    id: 'copywriting',
+    name: 'ניסוח ושכתוב',
+    description: 'שכתוב טקסטים, שיפור ניסוח ויצירת תוכן מרתק',
+    icon: FileText,
+    color: 'from-indigo-600 to-blue-600',
+    examples: ['שכתוב מאמרים', 'ניסוח מכתבים', 'תוכן שיווקי', 'עריכה לשונית']
   }
 ];
 

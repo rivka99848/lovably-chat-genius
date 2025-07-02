@@ -16,7 +16,8 @@ const categories = [
   { id: 'programming', name: 'תכנות' },
   { id: 'architecture', name: 'אדריכלות ועיצוב פנים' },
   { id: 'writing', name: 'כתיבה ותמלול' },
-  { id: 'design', name: 'גרפיקה ועיצוב' }
+  { id: 'design', name: 'גרפיקה ועיצוב' },
+  { id: 'copywriting', name: 'ניסוח ושכתוב' }
 ];
 
 const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
