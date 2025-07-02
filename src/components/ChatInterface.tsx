@@ -105,6 +105,7 @@ const ChatInterface = () => {
         localStorage.setItem('lovable_user', JSON.stringify(newUser));
         setShowAuth(false);
         
+        // תמיד הצג את בחירת הקטגוריה אחרי ההתחברות אם לא נבחרה עדיין
         if (!newUser.category) {
           setShowCategorySelector(true);
         }

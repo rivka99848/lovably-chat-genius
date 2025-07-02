@@ -103,7 +103,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
         </div>
 
         <div className="mt-8 pt-6 border-t border-gray-100">
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-2 gap-4 text-center">
             <div>
               <div className="text-lg font-bold text-green-600">50+</div>
               <div className="text-xs text-gray-500">הודעות חינם</div>
@@ -111,10 +111,6 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             <div>
               <div className="text-lg font-bold text-blue-600">4</div>
               <div className="text-xs text-gray-500">מומחי AI</div>
-            </div>
-            <div>
-              <div className="text-lg font-bold text-purple-600">24/7</div>
-              <div className="text-xs text-gray-500">זמינות</div>
             </div>
           </div>
         </div>
