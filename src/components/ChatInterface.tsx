@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Plus, User, Settings, Crown, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -209,9 +208,15 @@ const ChatInterface = () => {
     setMessages(newMessages);
     saveChatHistory(newMessages);
     
-    // Prepare form data for file upload
+    // Prepare form data for file upload with all user details
     const formData = new FormData();
     formData.append('userId', user.id);
+    formData.append('userEmail', user.email);
+    formData.append('userName', user.name);
+    formData.append('userCategory', user.category);
+    formData.append('userPlan', user.plan);
+    formData.append('userMessagesUsed', user.messagesUsed.toString());
+    formData.append('userMessageLimit', user.messageLimit.toString());
     formData.append('message', inputValue);
     formData.append('category', user.category);
     formData.append('chatHistory', JSON.stringify(messages.slice(-10)));
