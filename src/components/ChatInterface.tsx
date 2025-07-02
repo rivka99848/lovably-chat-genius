@@ -72,29 +72,12 @@ const ChatInterface = () => {
     localStorage.setItem('lovable_chat_history', JSON.stringify(newMessages));
   };
 
-  const authenticateUser = async (email: string, name: string, category: string, isSignUp: boolean) => {
+  const authenticateUser = async (email: string, name: string, category: string, isSignUp: boolean, password?: string) => {
     try {
       const userId = crypto.randomUUID();
       
       if (isSignUp) {
-        // בדיקה אם המשתמש כבר קיים
-        const checkResponse = await fetch(`${WEBHOOK_BASE_URL}/check-user`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email,
-            timestamp: new Date().toISOString()
-          })
-        });
-
-        if (checkResponse.ok) {
-          const checkData = await checkResponse.json();
-          if (checkData.exists) {
-            throw new Error('משתמש כבר קיים במערכת. אנא התחברו במקום להירשם.');
-          }
-        }
-
-        // רישום משתמש חדש עם קטגוריה
+        // רישום משתמש חדש
         const registerResponse = await fetch(`${WEBHOOK_BASE_URL}/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -104,12 +87,18 @@ const ChatInterface = () => {
             email,
             name,
             category,
+            password,
             timestamp: new Date().toISOString()
           })
         });
 
         if (registerResponse.ok) {
           const userData = await registerResponse.json();
+          
+          if (userData === false) {
+            throw new Error('המשתמש כבר קיים במערכת. אנא התחברו במקום להירשם.');
+          }
+          
           const newUser: User = {
             id: userData.id || userId,
             email,
@@ -128,43 +117,59 @@ const ChatInterface = () => {
             title: "ברוכים הבאים!",
             description: `נרשמתם בהצלחה כמומחה ב${category}.`
           });
+        } else {
+          throw new Error('שגיאה ברישום. אנא נסו שוב.');
         }
       } else {
         // התחברות משתמש קיים
-        const loginResponse = await fetch(`${WEBHOOK_BASE_URL}/login`, {
+        const loginResponse = await fetch('https://n8n.smartbiz.org.il/webhook/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             event: 'login',
             email,
+            password,
             timestamp: new Date().toISOString()
           })
         });
 
         if (loginResponse.ok) {
           const userData = await loginResponse.json();
-          if (!userData.exists) {
+          
+          if (userData === false) {
             throw new Error('משתמש לא נמצא במערכת. אנא הירשמו תחילה.');
           }
-
-          const existingUser: User = {
-            id: userData.id || userId,
-            email,
-            name: userData.name || name,
-            category: userData.category,
-            plan: userData.plan || 'free',
-            messagesUsed: userData.messagesUsed || 0,
-            messageLimit: userData.messageLimit || 50
-          };
           
-          setUser(existingUser);
-          localStorage.setItem('lovable_user', JSON.stringify(existingUser));
-          setShowAuth(false);
+          if (userData === 'invalid_password') {
+            throw new Error('סיסמה שגויה. אנא נסו שוב.');
+          }
           
-          toast({
-            title: "ברוכים הבאים!",
-            description: `התחברתם בהצלחה כמומחה ב${existingUser.category}.`
-          });
+          if (userData === true || (typeof userData === 'object' && userData.success)) {
+            // במקרה שהשרת מחזיר רק true, נצטרך לטעון את פרטי המשתמש בקריאה נוספת
+            // או לקבל את הפרטים בתגובה
+            const existingUser: User = {
+              id: userData.id || userId,
+              email,
+              name: userData.name || name,
+              category: userData.category || 'תכנות',
+              plan: userData.plan || 'free',
+              messagesUsed: userData.messagesUsed || 0,
+              messageLimit: userData.messageLimit || 50
+            };
+            
+            setUser(existingUser);
+            localStorage.setItem('lovable_user', JSON.stringify(existingUser));
+            setShowAuth(false);
+            
+            toast({
+              title: "ברוכים הבאים!",
+              description: `התחברתם בהצלחה כמומחה ב${existingUser.category}.`
+            });
+          } else {
+            throw new Error('שגיאה בהתחברות. אנא בדקו את הפרטים ונסו שוב.');
+          }
+        } else {
+          throw new Error('שגיאה בהתחברות. אנא נסו שוב.');
         }
       }
     } catch (error) {
