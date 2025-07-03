@@ -10,7 +10,7 @@ interface Message {
   id: string;
   content: string;
   isUser: boolean;
-  timestamp: Date | string;
+  timestamp: Date;
   category?: string;
 }
 
@@ -69,12 +69,15 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                   <code>{code}</code>
                 </pre>
               </div>
-              <button
-                className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-full hover:bg-gray-700/50"
+              <Button
+                size="sm"
+                variant="secondary"
+                className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => copyToClipboard(code)}
               >
-                <Copy className="w-4 h-4 text-gray-300" />
-              </button>
+                <Copy className="w-3 h-3 ml-1" />
+                העתק
+              </Button>
             </div>
           </div>
         );
@@ -86,13 +89,6 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         </div>
       );
     });
-  };
-
-  const formatTimestamp = (timestamp: Date | string) => {
-    if (typeof timestamp === 'string') {
-      return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-    return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -122,43 +118,49 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
               <div className={`flex items-center space-x-2 space-x-reverse pt-2 border-t ${
                 isDarkMode ? 'border-gray-700' : 'border-gray-100'
               }`}>
-                <button
+                <Button
+                  size="sm"
+                  variant="ghost"
                   onClick={copyEntireMessage}
-                  className="p-2 rounded-full hover:bg-gray-200/20 transition-colors"
-                  title="העתק תשובה"
+                  className={isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}
                 >
-                  <Copy className="w-4 h-4" />
-                </button>
+                  <Copy className="w-3 h-3 ml-1" />
+                  העתק תשובה
+                </Button>
 
                 {hasCode && (
-                  <button
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     onClick={() => {
                       const allCode = codeBlocks.map(block => 
                         block.slice(3, -3).trim().split('\n').slice(1).join('\n')
                       ).join('\n\n');
                       copyToClipboard(allCode);
                     }}
-                    className="p-2 rounded-full hover:bg-gray-200/20 transition-colors"
-                    title="העתק קוד"
+                    className={isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}
                   >
-                    <Code className="w-4 h-4" />
-                  </button>
+                    <Code className="w-3 h-3 ml-1" />
+                    העתק קוד
+                  </Button>
                 )}
 
                 {hasVisualCode && (
-                  <button
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     onClick={() => setShowPreview(true)}
-                    className="p-2 rounded-full hover:bg-gray-200/20 transition-colors"
-                    title="תצוגה מקדימה"
+                    className={isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}
                   >
-                    <Eye className="w-4 h-4" />
-                  </button>
+                    <Eye className="w-3 h-3 ml-1" />
+                    תצוגה מקדימה
+                  </Button>
                 )}
 
                 <div className="flex-1"></div>
                 
                 <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {formatTimestamp(message.timestamp)}
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             )}
@@ -167,7 +169,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
             {message.isUser && (
               <div className="text-left">
                 <span className="text-xs text-green-100 opacity-75">
-                  {formatTimestamp(message.timestamp)}
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             )}
