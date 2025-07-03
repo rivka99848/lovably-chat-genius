@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Mail, User, Sparkles, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -91,16 +90,16 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-green-900 to-blue-900 flex items-center justify-center p-6" dir="rtl">
-      <Card className="w-full max-w-md p-8 bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+    <div className="min-h-screen premium-gradient flex items-center justify-center p-6" dir="rtl">
+      <Card className="w-full max-w-md p-8 premium-dark-surface border-white/10 shadow-2xl backdrop-blur-xl">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-full mb-4">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent mb-2">
             ברוכים הבאים לבוט המסונן שלנו
           </h1>
-          <p className="text-gray-600">
+          <p className="text-white/70">
             {isSignUp 
               ? (currentStep === 1 ? 'הזינו את פרטי ההרשמה שלכם' : 'השלימו את פרטי הפרופיל שלכם')
               : 'התחברו כדי להמשיך'
@@ -109,8 +108,8 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="mb-4 p-3 bg-red-600/20 border border-red-600/30 rounded-lg">
+            <p className="text-sm text-red-300">{error}</p>
           </div>
         )}
 
@@ -119,38 +118,38 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           {(!isSignUp || currentStep === 1) && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700">כתובת אימייל</Label>
+                <Label htmlFor="email" className="text-white/70">כתובת אימייל</Label>
                 <div className="relative">
-                  <Mail className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
+                  <Mail className="absolute right-3 top-3 w-4 h-4 text-white/40" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="הכניסו את האימייל שלכם"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pr-10 py-3 border-gray-300 focus:border-green-500 focus:ring-green-500 text-right"
+                    className="pr-10 py-3 bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-right text-white placeholder-white/50 backdrop-blur-sm"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-700">סיסמה</Label>
+                <Label htmlFor="password" className="text-white/70">סיסמה</Label>
                 <div className="relative">
-                  <Lock className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
+                  <Lock className="absolute right-3 top-3 w-4 h-4 text-white/40" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="הכניסו את הסיסמה שלכם"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pr-10 pl-10 py-3 border-gray-300 focus:border-green-500 focus:ring-green-500 text-right"
+                    className="pr-10 pl-10 py-3 bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-right text-white placeholder-white/50 backdrop-blur-sm"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-3 top-3 text-gray-400 hover:text-gray-600"
+                    className="absolute left-3 top-3 text-white/40 hover:text-white/60"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -163,36 +162,36 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           {isSignUp && currentStep === 2 && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-gray-700">שם מלא</Label>
+                <Label htmlFor="name" className="text-white/70">שם מלא</Label>
                 <div className="relative">
-                  <User className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
+                  <User className="absolute right-3 top-3 w-4 h-4 text-white/40" />
                   <Input
                     id="name"
                     type="text"
                     placeholder="הכניסו את השם המלא שלכם"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="pr-10 py-3 border-gray-300 focus:border-green-500 focus:ring-green-500 text-right"
+                    className="pr-10 py-3 bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-right text-white placeholder-white/50 backdrop-blur-sm"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category" className="text-gray-700">קטגוריה מקצועית</Label>
+                <Label htmlFor="category" className="text-white/70">קטגוריה מקצועית</Label>
                 <Select value={selectedCategory} onValueChange={setSelectedCategory} required>
-                  <SelectTrigger className="text-right">
+                  <SelectTrigger className="text-right bg-white/10 border-white/20 text-white backdrop-blur-sm">
                     <SelectValue placeholder="בחרו את הקטגוריה המקצועית שלכם" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-black/90 border-white/20 text-white backdrop-blur-xl">
                     {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.name}>
+                      <SelectItem key={category.id} value={category.name} className="hover:bg-white/10">
                         {category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-white/50">
                   הקטגוריה הזו תהיה קבועה עבור החשבון שלכם
                 </p>
               </div>
@@ -206,7 +205,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
                 type="button"
                 variant="outline"
                 onClick={goBack}
-                className="w-full py-3"
+                className="w-full py-3 bg-transparent border-white/20 text-white hover:bg-white/10"
                 disabled={isLoading}
               >
                 חזור
@@ -216,7 +215,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             {/* כפתור עיקרי */}
             <Button
               type="submit"
-              className="w-full py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium"
+              className="w-full py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium border-0"
               disabled={isLoading || !email || !password || (isSignUp && currentStep === 2 && (!name || !selectedCategory))}
             >
               {isLoading ? (
@@ -239,10 +238,10 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
               <>
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300" />
+                    <div className="w-full border-t border-white/20" />
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">או</span>
+                    <span className="px-2 bg-black/90 text-white/50">או</span>
                   </div>
                 </div>
 
@@ -250,7 +249,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
                   type="button"
                   variant="outline"
                   onClick={handleGoogleLogin}
-                  className="w-full py-3 border-2 hover:bg-gray-50"
+                  className="w-full py-3 bg-transparent border-white/20 text-white hover:bg-white/10"
                   disabled={isLoading}
                 >
                   <svg className="w-5 h-5 ml-2" viewBox="0 0 24 24">
@@ -270,27 +269,18 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           <button
             type="button"
             onClick={switchMode}
-            className="text-sm text-gray-600 hover:text-green-600 transition-colors"
+            className="text-sm text-white/60 hover:text-green-400 transition-colors"
           >
             {isSignUp ? 'יש לכם כבר חשבון? התחברו' : 'אין לכם חשבון? הירשמו'}
           </button>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-gray-100">
+        <div className="mt-8 pt-6 border-t border-white/10">
           <div className="grid grid-cols-2 gap-4 text-center">
             <div>
-              <div className="text-lg font-bold text-green-600">50+</div>
-              <div className="text-xs text-gray-500">הודעות חינם</div>
+              <div className="text-lg font-bold text-green-400">50+</div>
+              <div className="text-xs text-white/50">הודעות חינם</div>
             </div>
             <div>
-              <div className="text-lg font-bold text-blue-600">4</div>
-              <div className="text-xs text-gray-500">מומחי AI</div>
-            </div>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-};
-
-export default AuthModal;
+              <div className="text-lg font-bold text-blue-400">4</div>
+              <div className="text-xs text-white/50">

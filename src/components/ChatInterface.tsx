@@ -314,36 +314,34 @@ const ChatInterface = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-green-50" dir="rtl">
+    <div className="flex h-screen premium-gradient text-white" dir="rtl">
       {/* Sidebar */}
-      <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
+      <div className="w-80 premium-dark-surface border-l border-white/10 flex flex-col backdrop-blur-xl">
         {/* Header */}
-        <div className="p-6 border-b border-gray-100">
+        <div className="p-6 border-b border-white/10">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
               בוט מסונן
             </h1>
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={() => setShowPlanUpgrade(true)}
-              className="border-green-200 hover:bg-green-50"
+              className="premium-icon-button p-2 rounded-lg"
+              title="שדרוג"
             >
-              <Crown className="w-4 h-4 ml-1 text-green-600" />
-              {user?.plan === 'free' ? 'שדרג' : user?.plan.toUpperCase()}
-            </Button>
+              <Crown className="w-5 h-5 text-yellow-400" />
+            </button>
           </div>
           
           {user && (
             <div className="space-y-2">
-              <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600">
+              <div className="flex items-center space-x-2 space-x-reverse text-sm text-white/70">
                 <User className="w-4 h-4" />
                 <span>{user.name}</span>
               </div>
-              <Badge variant="secondary" className="bg-green-100 text-green-700">
+              <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
                 {user.category}
               </Badge>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-white/50">
                 {user.messagesUsed}/{user.messageLimit} הודעות נשלחו
               </div>
             </div>
@@ -354,7 +352,7 @@ const ChatInterface = () => {
         <div className="p-4">
           <Button
             onClick={startNewConversation}
-            className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+            className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 border-0"
           >
             <Plus className="w-4 h-4 ml-2" />
             שיחה חדשה
@@ -363,19 +361,19 @@ const ChatInterface = () => {
 
         {/* Chat History Summary */}
         <div className="flex-1 p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">שיחות אחרונות</h3>
+          <h3 className="text-sm font-semibold text-white/70 mb-3">שיחות אחרונות</h3>
           <div className="space-y-2">
             {messages.length > 0 ? (
-              <Card className="p-3 cursor-pointer hover:bg-gray-50 transition-colors">
-                <div className="text-sm text-gray-600 truncate">
+              <Card className="p-3 cursor-pointer hover:bg-white/5 transition-colors bg-white/10 border-white/10">
+                <div className="text-sm text-white/70 truncate">
                   {messages[0]?.content.substring(0, 50)}...
                 </div>
-                <div className="text-xs text-gray-400 mt-1">
+                <div className="text-xs text-white/50 mt-1">
                   {messages.length} הודעות
                 </div>
               </Card>
             ) : (
-              <div className="text-sm text-gray-400 text-center py-8">
+              <div className="text-sm text-white/40 text-center py-8">
                 עדיין אין שיחות
               </div>
             )}
@@ -383,9 +381,9 @@ const ChatInterface = () => {
         </div>
 
         {/* Settings */}
-        <div className="p-4 border-t border-gray-100">
-          <div className="text-sm text-gray-500 text-center">
-            הקטגוריה שלכם: <span className="font-semibold text-green-600">{user?.category}</span>
+        <div className="p-4 border-t border-white/10">
+          <div className="text-sm text-white/50 text-center">
+            הקטגוריה שלכם: <span className="font-semibold text-green-400">{user?.category}</span>
           </div>
         </div>
       </div>
@@ -397,10 +395,10 @@ const ChatInterface = () => {
           {messages.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🤖</div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              <h2 className="text-2xl font-bold text-white mb-2">
                 ברוכים הבאים לבוט המסונן שלנו – לצרכי עבודה בלבד
               </h2>
-              <p className="text-gray-600 max-w-md mx-auto">
+              <p className="text-white/70 max-w-md mx-auto">
                 המומחה שלכם ב{user?.category} מוכן לעזור. 
                 שאלו אותי כל שאלה הקשורה ל{user?.category.toLowerCase()}!
               </p>
@@ -413,11 +411,11 @@ const ChatInterface = () => {
           
           {isLoading && (
             <div className="flex justify-end">
-              <div className="bg-white rounded-lg p-4 shadow-sm border max-w-xs">
+              <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm border border-white/10 max-w-xs">
                 <div className="flex space-x-2">
-                  <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                  <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                 </div>
               </div>
             </div>
@@ -427,17 +425,17 @@ const ChatInterface = () => {
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-200 bg-white p-6">
+        <div className="border-t border-white/10 bg-black/20 backdrop-blur-xl p-6">
           {/* File Upload Area */}
           {uploadedFiles.length > 0 && (
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="mb-4 p-3 bg-white/5 rounded-lg border border-white/10">
               <div className="flex flex-wrap gap-2">
                 {uploadedFiles.map((file, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-white px-3 py-1 rounded-full border">
-                    <span className="text-sm text-gray-600">{file.name}</span>
+                  <div key={index} className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full border border-white/20">
+                    <span className="text-sm text-white/70">{file.name}</span>
                     <button
                       onClick={() => removeFile(index)}
-                      className="text-red-500 hover:text-red-700 text-sm"
+                      className="text-red-400 hover:text-red-300 text-sm"
                     >
                       ×
                     </button>
@@ -457,14 +455,14 @@ const ChatInterface = () => {
               accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif"
             />
             
-            <Button
-              variant="outline"
+            <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-3 border-gray-300 hover:bg-gray-50"
+              className="premium-icon-button p-3 rounded-lg"
               disabled={isLoading}
+              title="העלאת קבצים"
             >
               <Upload className="w-5 h-5" />
-            </Button>
+            </button>
             
             <div className="flex-1 relative">
               <Input
@@ -473,26 +471,27 @@ const ChatInterface = () => {
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder={`שאלו את המומחה שלכם ב${user?.category} כל שאלה או העלו קבצים...`}
-                className="pl-12 py-3 text-base border-gray-300 focus:border-green-500 focus:ring-green-500 text-right"
+                className="pl-12 py-3 text-base bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-right text-white placeholder-white/50 backdrop-blur-sm"
                 disabled={isLoading}
               />
             </div>
-            <Button
+            <button
               onClick={sendMessage}
               disabled={(!inputValue.trim() && uploadedFiles.length === 0) || isLoading}
-              className="px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+              className="premium-icon-button p-3 rounded-lg disabled:opacity-50"
+              title="שליחת נתונים"
             >
               <Send className="w-5 h-5" />
-            </Button>
+            </button>
           </div>
           
           {user && user.messagesUsed >= user.messageLimit * 0.8 && (
-            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
+            <div className="mt-3 p-3 bg-yellow-600/20 border border-yellow-600/30 rounded-lg">
+              <p className="text-sm text-yellow-300">
                 נגמרות לכם ההודעות ({user.messagesUsed}/{user.messageLimit} נשלחו). 
                 <Button
                   variant="link"
-                  className="p-0 mr-1 text-yellow-800 underline"
+                  className="p-0 mr-1 text-yellow-300 underline"
                   onClick={() => setShowPlanUpgrade(true)}
                 >
                   שדרגו להודעות ללא הגבלה
