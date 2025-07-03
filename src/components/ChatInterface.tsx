@@ -281,21 +281,54 @@ const ChatInterface = () => {
     setIsLoading(true);
 
     try {
+      console.log('Sending request to webhook...');
       const response = await fetch(`${WEBHOOK_BASE_URL}/chatbot`, {
         method: 'POST',
         body: formData
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
       if (response.ok) {
-        const data = await response.json();
+        const responseText = await response.text();
+        console.log('Raw response text:', responseText);
         
-        let cleanContent = data.message || data.response || data.content || '';
-        
+        let data;
         try {
-          const parsed = JSON.parse(cleanContent);
-          cleanContent = parsed.message || parsed.text || parsed.content || cleanContent;
-        } catch {
-          // Not JSON, use as is
+          data = JSON.parse(responseText);
+          console.log('Parsed response data:', data);
+        } catch (parseError) {
+          console.log('Response is not JSON, using as plain text:', responseText);
+          data = { message: responseText };
+        }
+        
+        // Extract message from various possible response formats
+        let cleanContent = '';
+        if (typeof data === 'string') {
+          cleanContent = data;
+        } else if (data.message) {
+          cleanContent = data.message;
+        } else if (data.response) {
+          cleanContent = data.response;
+        } else if (data.content) {
+          cleanContent = data.content;
+        } else if (data.text) {
+          cleanContent = data.text;
+        } else {
+          cleanContent = responseText || 'קיבלתי תשובה ריקה מהשרת';
+        }
+
+        console.log('Final message content:', cleanContent);
+
+        // Try to parse if it's still JSON string
+        if (typeof cleanContent === 'string' && cleanContent.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(cleanContent);
+            cleanContent = parsed.message || parsed.text || parsed.content || cleanContent;
+          } catch {
+            // Not JSON, use as is
+          }
         }
 
         const botMessage: Message = {
@@ -306,6 +339,8 @@ const ChatInterface = () => {
           category: user.category
         };
 
+        console.log('Creating bot message:', botMessage);
+
         const updatedMessages = [...newMessages, botMessage];
         setMessages(updatedMessages);
         saveChatHistory(updatedMessages);
@@ -313,6 +348,21 @@ const ChatInterface = () => {
         const updatedUser = { ...user, messagesUsed: user.messagesUsed + 1 };
         setUser(updatedUser);
         localStorage.setItem('lovable_user', JSON.stringify(updatedUser));
+
+        toast({
+          title: "תשובה התקבלה",
+          description: "השרת השיב בהצלחה"
+        });
+      } else {
+        console.error('Response not ok:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response text:', errorText);
+        
+        toast({
+          title: "שגיאת שרת",
+          description: `השרת החזיר שגיאה: ${response.status}`,
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Send message error:', error);
