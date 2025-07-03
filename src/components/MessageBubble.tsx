@@ -69,15 +69,13 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                   <code>{code}</code>
                 </pre>
               </div>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              <button
+                className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10"
                 onClick={() => copyToClipboard(code)}
+                title="העתק קוד"
               >
-                <Copy className="w-3 h-3 ml-1" />
-                העתק
-              </Button>
+                <Copy className="w-3 h-3 text-gray-300 hover:text-white" />
+              </button>
             </div>
           </div>
         );
@@ -124,43 +122,49 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
               <div className={`flex items-center space-x-2 space-x-reverse pt-2 border-t ${
                 isDarkMode ? 'border-gray-700' : 'border-gray-100'
               }`}>
-                <Button
-                  size="sm"
-                  variant="ghost"
+                <button
                   onClick={copyEntireMessage}
-                  className={isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}
+                  className={`p-1 rounded transition-colors ${
+                    isDarkMode 
+                      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                  title="העתק תשובה"
                 >
-                  <Copy className="w-3 h-3 ml-1" />
-                  העתק תשובה
-                </Button>
+                  <Copy className="w-4 h-4" />
+                </button>
 
                 {hasCode && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
+                  <button
                     onClick={() => {
                       const allCode = codeBlocks.map(block => 
                         block.slice(3, -3).trim().split('\n').slice(1).join('\n')
                       ).join('\n\n');
                       copyToClipboard(allCode);
                     }}
-                    className={isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}
+                    className={`p-1 rounded transition-colors ${
+                      isDarkMode 
+                        ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    }`}
+                    title="העתק קוד"
                   >
-                    <Code className="w-3 h-3 ml-1" />
-                    העתק קוד
-                  </Button>
+                    <Code className="w-4 h-4" />
+                  </button>
                 )}
 
                 {hasVisualCode && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
+                  <button
                     onClick={() => setShowPreview(true)}
-                    className={isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}
+                    className={`p-1 rounded transition-colors ${
+                      isDarkMode 
+                        ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    }`}
+                    title="תצוגה מקדימה"
                   >
-                    <Eye className="w-3 h-3 ml-1" />
-                    תצוגה מקדימה
-                  </Button>
+                    <Eye className="w-4 h-4" />
+                  </button>
                 )}
 
                 <div className="flex-1"></div>
