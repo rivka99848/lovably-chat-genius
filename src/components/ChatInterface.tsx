@@ -309,6 +309,10 @@ const ChatInterface = () => {
     }
   };
 
+  const handleProfileClick = () => {
+    window.location.href = '/profile';
+  };
+
   if (showAuth) {
     return <AuthModal onAuth={authenticateUser} onClose={() => setShowAuth(false)} />;
   }
@@ -360,6 +364,17 @@ const ChatInterface = () => {
                 title="שדרוג"
               >
                 <Crown className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleProfileClick}
+                className={`p-2 rounded-lg transition-colors ${
+                  isDarkMode 
+                    ? 'hover:bg-white/10 text-blue-400' 
+                    : 'hover:bg-gray-100 text-blue-600'
+                }`}
+                title="חשבון משתמש"
+              >
+                <Settings className="w-5 h-5" />
               </button>
             </div>
           </div>
