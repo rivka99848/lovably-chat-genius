@@ -97,7 +97,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     return values.length > 0 ? values.join('\n\n') : cleanTextContent(JSON.stringify(obj, null, 2));
   };
 
-  // Clean text content from escape characters and formatting
+  // Enhanced text cleaning function to remove unwanted characters
   const cleanTextContent = (text: string): string => {
     return text
       .replace(/^[\[\]"]+|[\[\]"]+$/g, '') // Remove leading/trailing brackets and quotes
@@ -111,8 +111,15 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         return String.fromCharCode(parseInt(match.replace('\\u', ''), 16));
       })
       .replace(/^\s*["'`]|["'`]\s*$/g, '') // Remove outer quotes
+      .replace(/[#]{3,}/g, '') // Remove multiple hash symbols (###, ####, etc)
+      .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '') // Remove bullet points and special symbols
+      .replace(/[\u201C\u201D\u2018\u2019]/g, '"') // Replace smart quotes with regular quotes
+      .replace(/[\u2013\u2014]/g, '-') // Replace em/en dashes with regular dashes
+      .replace(/[\u00A0]/g, ' ') // Replace non-breaking spaces with regular spaces
+      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'-]/g, '') // Keep only letters, numbers, Hebrew, spaces, and basic punctuation
       .replace(/\s+$/gm, '') // Remove trailing whitespace from lines
       .replace(/^\s*[\r\n]+|[\r\n]+\s*$/g, '') // Remove leading/trailing empty lines
+      .replace(/[\r\n]{3,}/g, '\n\n') // Replace multiple line breaks with double line breaks
       .trim();
   };
 
