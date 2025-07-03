@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, Mail, Crown, Settings, Save, ArrowRight, Edit3, Shield, Bell, Palette, Globe } from 'lucide-react';
+import { User, Mail, Crown, Settings, Save, ArrowRight, Edit3, Shield, Bell, Palette, Globe, MessageCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -9,6 +9,22 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
+
+interface Message {
+  id: string;
+  content: string;
+  isUser: boolean;
+  timestamp: Date;
+  category?: string;
+}
+
+interface SavedConversation {
+  id: string;
+  title: string;
+  messages: Message[];
+  date: Date;
+  category: string;
+}
 
 interface User {
   id: string;
@@ -43,12 +59,21 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
   const [notifications, setNotifications] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
+
+  React.useEffect(() => {
+    // Load saved conversations
+    const saved = localStorage.getItem(`lovable_conversations_${user.id}`);
+    if (saved) {
+      setSavedConversations(JSON.parse(saved));
+    }
+  }, [user.id]);
 
   const handleSave = async () => {
     if (!editedName.trim()) {
       toast({
         title: "שגיאה",
-        description: "שם המשתמש לא יכול להיות רק",
+        description: "שם המשתמש לא יכול להיות ריק",
         variant: "destructive"
       });
       return;
@@ -81,6 +106,26 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
     }
   };
 
+  const deleteConversation = (conversationId: string) => {
+    const updatedConversations = savedConversations.filter(conv => conv.id !== conversationId);
+    setSavedConversations(updatedConversations);
+    localStorage.setItem(`lovable_conversations_${user.id}`, JSON.stringify(updatedConversations));
+    
+    toast({
+      title: "השיחה נמחקה",
+      description: "השיחה הוסרה בהצלחה"
+    });
+  };
+
+  const loadConversation = (conversation: SavedConversation) => {
+    localStorage.setItem('lovable_chat_history', JSON.stringify(conversation.messages));
+    onClose();
+    toast({
+      title: "השיחה נטענה",
+      description: "השיחה נטענה בהצלחה"
+    });
+  };
+
   const getPlanColor = (plan: string) => {
     switch (plan) {
       case 'pro': return 'bg-blue-600/20 text-blue-400 border-blue-600/30';
@@ -99,7 +144,7 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
 
   return (
     <div className={`min-h-screen premium-gradient flex items-center justify-center p-6 ${isDarkMode ? 'dark' : ''}`} dir="rtl">
-      <Card className={`w-full max-w-2xl shadow-2xl backdrop-blur-xl ${
+      <Card className={`w-full max-w-4xl shadow-2xl backdrop-blur-xl ${
         isDarkMode 
           ? 'bg-gray-900/90 border-gray-700/50 text-white' 
           : 'bg-white/95 border-gray-200 text-gray-900'
@@ -239,6 +284,48 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                   )}
                   שמור שינויים
                 </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Saved Conversations */}
+          <div>
+            <h2 className="text-xl font-semibold flex items-center mb-4">
+              <MessageCircle className="w-5 h-5 ml-2" />
+              שיחות שמורות
+            </h2>
+
+            {savedConversations.length > 0 ? (
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {savedConversations.map((conversation) => (
+                  <div key={conversation.id} className={`p-4 rounded-lg border flex items-center justify-between ${
+                    isDarkMode 
+                      ? 'bg-gray-800/50 border-gray-700' 
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex-1 cursor-pointer" onClick={() => loadConversation(conversation)}>
+                      <div className="font-medium">{conversation.title}</div>
+                      <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {conversation.messages.length} הודעות • {new Date(conversation.date).toLocaleDateString('he-IL')}
+                      </div>
+                      <Badge className="text-xs mt-1 bg-green-600/20 text-green-400 border-green-600/30">
+                        {conversation.category}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteConversation(conversation.id)}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-600/20"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                אין שיחות שמורות עדיין
               </div>
             )}
           </div>

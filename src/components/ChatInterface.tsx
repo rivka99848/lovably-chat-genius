@@ -203,6 +203,37 @@ const ChatInterface = () => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const saveCurrentConversation = () => {
+    if (messages.length === 0 || !user) return;
+    
+    const conversationId = Date.now().toString();
+    const title = messages[0]?.content.substring(0, 50) + '...' || 'שיחה חדשה';
+    
+    const conversation = {
+      id: conversationId,
+      title,
+      messages,
+      date: new Date(),
+      category: user.category
+    };
+    
+    const existing = localStorage.getItem(`lovable_conversations_${user.id}`);
+    const conversations = existing ? JSON.parse(existing) : [];
+    conversations.unshift(conversation);
+    
+    // Keep only last 10 conversations
+    if (conversations.length > 10) {
+      conversations.splice(10);
+    }
+    
+    localStorage.setItem(`lovable_conversations_${user.id}`, JSON.stringify(conversations));
+    
+    toast({
+      title: "השיחה נשמרה",
+      description: "השיחה נשמרה בחשבון שלכם"
+    });
+  };
+
   const sendMessage = async () => {
     if ((!inputValue.trim() && uploadedFiles.length === 0) || !user || isLoading) return;
 
@@ -294,6 +325,11 @@ const ChatInterface = () => {
   };
 
   const startNewConversation = () => {
+    // Save current conversation before starting new one
+    if (messages.length > 0) {
+      saveCurrentConversation();
+    }
+    
     setMessages([]);
     localStorage.removeItem('lovable_chat_history');
     toast({
@@ -447,7 +483,6 @@ const ChatInterface = () => {
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-6xl mb-4">🤖</div>
               <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 ברוכים הבאים לבוט המסונן שלנו – לצרכי עבודה בלבד
               </h2>
