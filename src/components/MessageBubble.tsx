@@ -34,105 +34,59 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     copyToClipboard(message.content);
   };
 
-  // Enhanced content detection
-  const detectContentType = (content: string) => {
-    const hasCodeBlocks = content.includes('```');
-    const hasSQLKeywords = /\b(CREATE|SELECT|INSERT|UPDATE|DELETE|TABLE|FROM|WHERE|JOIN)\b/i.test(content);
-    const hasHTMLTags = /<[^>]+>/g.test(content);
-    const hasJavaScript = /\b(function|const|let|var|class|import|export)\b/.test(content);
-    
-    return {
-      hasCodeBlocks,
-      hasSQLKeywords,
-      hasHTMLTags,
-      hasJavaScript,
-      hasVisualCode: hasHTMLTags || content.includes('className') || content.includes('style=')
-    };
-  };
-
-  const contentTypes = detectContentType(message.content);
+  const hasCode = message.content.includes('```') || message.content.includes('<') || message.content.includes('function') || message.content.includes('const ') || message.content.includes('let ');
+  const hasVisualCode = message.content.includes('<html') || message.content.includes('<div') || message.content.includes('className') || message.content.includes('style=') || message.content.includes('<component');
+  const codeBlocks = message.content.match(/```[\s\S]*?```/g) || [];
   
   const formatContent = (content: string) => {
-    // Split content by code blocks first
+    if (!hasCode) return content;
+
     const parts = content.split(/(```[\s\S]*?```)/g);
     
     return parts.map((part, index) => {
-      // Handle code blocks
       if (part.startsWith('```') && part.endsWith('```')) {
         const codeContent = part.slice(3, -3).trim();
         const lines = codeContent.split('\n');
-        const language = lines[0] && !lines[0].includes(' ') ? lines[0] : 'text';
-        const code = language !== 'text' ? lines.slice(1).join('\n') : codeContent;
+        const language = lines[0].includes(' ') ? '' : lines[0];
+        const code = language ? lines.slice(1).join('\n') : codeContent;
         
         return (
           <div key={index} className="my-4 relative group">
-            <div className={`rounded-lg overflow-hidden border ${
-              isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
+            <div className={`rounded-lg overflow-hidden ${
+              isDarkMode ? 'bg-gray-900' : 'bg-gray-800'
             }`}>
-              {language !== 'text' && (
-                <div className={`px-4 py-2 text-xs font-medium border-b flex items-center justify-between ${
+              {language && (
+                <div className={`px-4 py-2 text-sm border-b ${
                   isDarkMode 
                     ? 'bg-gray-800 text-gray-300 border-gray-700' 
-                    : 'bg-gray-100 text-gray-600 border-gray-200'
+                    : 'bg-gray-700 text-gray-200 border-gray-600'
                 }`}>
-                  <span>{language.toUpperCase()}</span>
-                  <button
-                    onClick={() => copyToClipboard(code)}
-                    className={`p-1 rounded hover:bg-gray-600/20 transition-colors ${
-                      isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                    title="העתק קוד"
-                  >
-                    <Copy className="w-3 h-3" />
-                  </button>
+                  {language}
                 </div>
               )}
               <div className="p-4 overflow-x-auto">
-                <pre className={`text-sm leading-relaxed ${
-                  isDarkMode ? 'text-gray-100' : 'text-gray-800'
-                } whitespace-pre-wrap`}>
+                <pre className="text-sm text-gray-100">
                   <code>{code}</code>
                 </pre>
               </div>
+              <button
+                className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10"
+                onClick={() => copyToClipboard(code)}
+                title="העתק קוד"
+              >
+                <Copy className="w-3 h-3 text-gray-300 hover:text-white" />
+              </button>
             </div>
           </div>
         );
       }
       
-      // Handle regular text with potential inline code or technical terms
       return (
-        <div key={index} className="leading-relaxed">
-          {formatTextWithInlineCode(part)}
+        <div key={index} className="whitespace-pre-wrap">
+          {part}
         </div>
       );
     });
-  };
-
-  const formatTextWithInlineCode = (text: string) => {
-    // Handle inline code and technical terms
-    const technicalTerms = /\b(SQL|HTML|CSS|JavaScript|React|CREATE TABLE|SELECT|INSERT|UPDATE|DELETE|VARCHAR|INT|PRIMARY KEY|FOREIGN KEY|NOT NULL|UNIQUE|INDEX|DATABASE|SCHEMA)\b/g;
-    
-    return text.split('\n').map((line, lineIndex) => (
-      <div key={lineIndex} className="mb-2">
-        {line.split(technicalTerms).map((segment, segmentIndex) => {
-          if (technicalTerms.test(segment)) {
-            return (
-              <span
-                key={segmentIndex}
-                className={`inline-block px-1.5 py-0.5 rounded text-xs font-mono ${
-                  isDarkMode 
-                    ? 'bg-blue-900/30 text-blue-300 border border-blue-700/50' 
-                    : 'bg-blue-100 text-blue-700 border border-blue-200'
-                }`}
-              >
-                {segment}
-              </span>
-            );
-          }
-          return segment;
-        })}
-      </div>
-    ));
   };
 
   // Handle both Date objects and string dates from localStorage
@@ -144,16 +98,16 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   return (
     <div className={`flex ${message.isUser ? 'justify-start' : 'justify-end'}`} dir="rtl">
       <div className={`max-w-4xl ${message.isUser ? 'w-auto' : 'w-full'}`}>
-        <Card className={`p-6 ${
+        <Card className={`p-4 ${
           message.isUser 
             ? 'bg-gradient-to-r from-green-600 to-blue-600 text-white mr-12' 
             : isDarkMode
               ? 'bg-gray-800 border-gray-700 text-white ml-12'
               : 'bg-white border-gray-200 text-gray-800 ml-12'
         }`}>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {/* Message Content */}
-            <div className={`text-sm ${
+            <div className={`text-sm leading-relaxed ${
               message.isUser 
                 ? 'text-white' 
                 : isDarkMode 
@@ -165,55 +119,51 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
             {/* Action Buttons */}
             {!message.isUser && (
-              <div className={`flex items-center space-x-3 space-x-reverse pt-3 border-t ${
-                isDarkMode ? 'border-gray-700' : 'border-gray-200'
+              <div className={`flex items-center space-x-2 space-x-reverse pt-2 border-t ${
+                isDarkMode ? 'border-gray-700' : 'border-gray-100'
               }`}>
                 <button
                   onClick={copyEntireMessage}
-                  className={`flex items-center space-x-1 space-x-reverse px-3 py-1.5 rounded-md text-xs transition-colors ${
+                  className={`p-1 rounded transition-colors ${
                     isDarkMode 
                       ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
                       : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                   }`}
                   title="העתק תשובה"
                 >
-                  <Copy className="w-3 h-3" />
-                  <span>העתק הכל</span>
+                  <Copy className="w-4 h-4" />
                 </button>
 
-                {(contentTypes.hasCodeBlocks || contentTypes.hasSQLKeywords) && (
+                {hasCode && (
                   <button
                     onClick={() => {
-                      const codeBlocks = message.content.match(/```[\s\S]*?```/g) || [];
                       const allCode = codeBlocks.map(block => 
                         block.slice(3, -3).trim().split('\n').slice(1).join('\n')
                       ).join('\n\n');
-                      copyToClipboard(allCode || message.content);
+                      copyToClipboard(allCode);
                     }}
-                    className={`flex items-center space-x-1 space-x-reverse px-3 py-1.5 rounded-md text-xs transition-colors ${
+                    className={`p-1 rounded transition-colors ${
                       isDarkMode 
                         ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                     }`}
                     title="העתק קוד"
                   >
-                    <Code className="w-3 h-3" />
-                    <span>העתק קוד</span>
+                    <Code className="w-4 h-4" />
                   </button>
                 )}
 
-                {contentTypes.hasVisualCode && (
+                {hasVisualCode && (
                   <button
                     onClick={() => setShowPreview(true)}
-                    className={`flex items-center space-x-1 space-x-reverse px-3 py-1.5 rounded-md text-xs transition-colors ${
+                    className={`p-1 rounded transition-colors ${
                       isDarkMode 
                         ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                     }`}
                     title="תצוגה מקדימה"
                   >
-                    <Eye className="w-3 h-3" />
-                    <span>תצוגה מקדימה</span>
+                    <Eye className="w-4 h-4" />
                   </button>
                 )}
 
@@ -237,7 +187,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         </Card>
 
         {/* Code Preview Modal */}
-        {showPreview && contentTypes.hasVisualCode && (
+        {showPreview && hasVisualCode && (
           <CodePreview
             code={message.content}
             onClose={() => setShowPreview(false)}
