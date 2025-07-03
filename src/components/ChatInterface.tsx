@@ -303,32 +303,37 @@ const ChatInterface = () => {
           data = { message: responseText };
         }
         
-        // Extract message from various possible response formats
+        // Handle empty array or null responses from n8n
         let cleanContent = '';
-        if (typeof data === 'string') {
-          cleanContent = data;
-        } else if (data.message) {
-          cleanContent = data.message;
-        } else if (data.response) {
-          cleanContent = data.response;
-        } else if (data.content) {
-          cleanContent = data.content;
-        } else if (data.text) {
-          cleanContent = data.text;
+        
+        if (Array.isArray(data)) {
+          console.log('Response is an array:', data);
+          if (data.length === 0) {
+            cleanContent = 'השרת החזיר תגובה ריקה. אנא נסו שוב או בדקו את הגדרות n8n.';
+          } else {
+            // Try to extract content from first array element
+            const firstItem = data[0];
+            if (typeof firstItem === 'string') {
+              cleanContent = firstItem;
+            } else if (firstItem && typeof firstItem === 'object') {
+              cleanContent = firstItem.message || firstItem.response || firstItem.content || firstItem.text || JSON.stringify(firstItem);
+            } else {
+              cleanContent = JSON.stringify(data);
+            }
+          }
+        } else if (typeof data === 'string') {
+          cleanContent = data || 'תגובה ריקה מהשרת';
+        } else if (data && typeof data === 'object') {
+          cleanContent = data.message || data.response || data.content || data.text || JSON.stringify(data);
         } else {
-          cleanContent = responseText || 'קיבלתי תשובה ריקה מהשרת';
+          cleanContent = responseText || 'קיבלתי תשובה לא צפויה מהשרת';
         }
 
         console.log('Final message content:', cleanContent);
 
-        // Try to parse if it's still JSON string
-        if (typeof cleanContent === 'string' && cleanContent.startsWith('{')) {
-          try {
-            const parsed = JSON.parse(cleanContent);
-            cleanContent = parsed.message || parsed.text || parsed.content || cleanContent;
-          } catch {
-            // Not JSON, use as is
-          }
+        // Ensure we have some content to display
+        if (!cleanContent || cleanContent.trim() === '' || cleanContent === '[]' || cleanContent === 'null') {
+          cleanContent = 'השרת לא החזיר תוכן. אנא בדקו את הגדרות ה-webhook ב-n8n או נסו שוב.';
         }
 
         const botMessage: Message = {
