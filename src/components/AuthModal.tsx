@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, User, Sparkles, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, User, Sparkles, Lock, Eye, EyeOff, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -21,7 +21,7 @@ const categories = [
 
 const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   const [isSignUp, setIsSignUp] = useState(true);
-  const [currentStep, setCurrentStep] = useState(1); // 1: email+password, 2: name+category (for signup)
+  const [currentStep, setCurrentStep] = useState(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -29,12 +29,12 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (isSignUp && currentStep === 1) {
-      // בשלב הראשון של הרשמה - רק בדיקת אימייל וסיסמה
       if (!email || !password) return;
       setCurrentStep(2);
       return;
@@ -59,8 +59,6 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
     setError('');
     
     try {
-      // כאן נוסיף את הלוגיקה של התחברות עם Google
-      // לעת עתה נציג הודעה שהפיצ'ר בפיתוח
       setError('התחברות עם Google תהיה זמינה בקרוב');
     } catch (err: any) {
       setError(err.message || 'שגיאה בהתחברות עם Google');
@@ -90,16 +88,32 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   };
 
   return (
-    <div className="min-h-screen premium-gradient flex items-center justify-center p-6" dir="rtl">
-      <Card className="w-full max-w-md p-8 premium-dark-surface border-white/10 shadow-2xl backdrop-blur-xl">
+    <div className={`min-h-screen premium-gradient flex items-center justify-center p-6 ${isDarkMode ? 'dark' : ''}`} dir="rtl">
+      <Card className={`w-full max-w-md p-8 shadow-2xl backdrop-blur-xl ${
+        isDarkMode 
+          ? 'bg-gray-900/90 border-gray-700/50 text-white' 
+          : 'bg-white/95 border-gray-200 text-gray-900'
+      }`}>
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-full mb-4">
-            <Sparkles className="w-8 h-8 text-white" />
+          <div className="flex justify-between items-center mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-full">
+              <Sparkles className="w-8 h-8 text-white" />
+            </div>
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className={`p-2 rounded-lg transition-colors ${
+                isDarkMode 
+                  ? 'hover:bg-white/10 text-white/80' 
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+            >
+              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent mb-2">
             ברוכים הבאים לבוט המסונן שלנו
           </h1>
-          <p className="text-white/70">
+          <p className={isDarkMode ? 'text-white/70' : 'text-gray-600'}>
             {isSignUp 
               ? (currentStep === 1 ? 'הזינו את פרטי ההרשמה שלכם' : 'השלימו את פרטי הפרופיל שלכם')
               : 'התחברו כדי להמשיך'
@@ -108,48 +122,59 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-600/20 border border-red-600/30 rounded-lg">
-            <p className="text-sm text-red-300">{error}</p>
+          <div className={`mb-4 p-3 rounded-lg ${
+            isDarkMode 
+              ? 'bg-red-600/20 border border-red-600/30 text-red-300' 
+              : 'bg-red-50 border border-red-200 text-red-600'
+          }`}>
+            <p className="text-sm">{error}</p>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* שלב 1: אימייל וסיסמה */}
           {(!isSignUp || currentStep === 1) && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-white/70">כתובת אימייל</Label>
+                <Label htmlFor="email" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>כתובת אימייל</Label>
                 <div className="relative">
-                  <Mail className="absolute right-3 top-3 w-4 h-4 text-white/40" />
+                  <Mail className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
                   <Input
                     id="email"
                     type="email"
                     placeholder="הכניסו את האימייל שלכם"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pr-10 py-3 bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-right text-white placeholder-white/50 backdrop-blur-sm"
+                    className={`pr-10 py-3 text-right backdrop-blur-sm ${
+                      isDarkMode 
+                        ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
+                        : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
+                    }`}
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-white/70">סיסמה</Label>
+                <Label htmlFor="password" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>סיסמה</Label>
                 <div className="relative">
-                  <Lock className="absolute right-3 top-3 w-4 h-4 text-white/40" />
+                  <Lock className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="הכניסו את הסיסמה שלכם"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pr-10 pl-10 py-3 bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-right text-white placeholder-white/50 backdrop-blur-sm"
+                    className={`pr-10 pl-10 py-3 text-right backdrop-blur-sm ${
+                      isDarkMode 
+                        ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
+                        : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
+                    }`}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-3 top-3 text-white/40 hover:text-white/60"
+                    className={`absolute left-3 top-3 ${isDarkMode ? 'text-white/40 hover:text-white/60' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -158,40 +183,51 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             </>
           )}
 
-          {/* שלב 2: שם וקטגוריה (רק בהרשמה) */}
           {isSignUp && currentStep === 2 && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-white/70">שם מלא</Label>
+                <Label htmlFor="name" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>שם מלא</Label>
                 <div className="relative">
-                  <User className="absolute right-3 top-3 w-4 h-4 text-white/40" />
+                  <User className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
                   <Input
                     id="name"
                     type="text"
                     placeholder="הכניסו את השם המלא שלכם"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="pr-10 py-3 bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-right text-white placeholder-white/50 backdrop-blur-sm"
+                    className={`pr-10 py-3 text-right backdrop-blur-sm ${
+                      isDarkMode 
+                        ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
+                        : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
+                    }`}
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category" className="text-white/70">קטגוריה מקצועית</Label>
+                <Label htmlFor="category" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>קטגוריה מקצועית</Label>
                 <Select value={selectedCategory} onValueChange={setSelectedCategory} required>
-                  <SelectTrigger className="text-right bg-white/10 border-white/20 text-white backdrop-blur-sm">
+                  <SelectTrigger className={`text-right backdrop-blur-sm ${
+                    isDarkMode 
+                      ? 'bg-white/10 border-white/20 text-white' 
+                      : 'bg-gray-50 border-gray-200 text-gray-900'
+                  }`}>
                     <SelectValue placeholder="בחרו את הקטגוריה המקצועית שלכם" />
                   </SelectTrigger>
-                  <SelectContent className="bg-black/90 border-white/20 text-white backdrop-blur-xl">
+                  <SelectContent className={`backdrop-blur-xl ${
+                    isDarkMode 
+                      ? 'bg-black/90 border-white/20 text-white' 
+                      : 'bg-white border-gray-200 text-gray-900'
+                  }`}>
                     {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.name} className="hover:bg-white/10">
+                      <SelectItem key={category.id} value={category.name} className={isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}>
                         {category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-white/50">
+                <p className={`text-xs ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
                   הקטגוריה הזו תהיה קבועה עבור החשבון שלכם
                 </p>
               </div>
@@ -199,20 +235,22 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           )}
 
           <div className="space-y-3">
-            {/* כפתור חזרה (רק בשלב 2 של הרשמה) */}
             {isSignUp && currentStep === 2 && (
               <Button
                 type="button"
                 variant="outline"
                 onClick={goBack}
-                className="w-full py-3 bg-transparent border-white/20 text-white hover:bg-white/10"
+                className={`w-full py-3 ${
+                  isDarkMode 
+                    ? 'bg-transparent border-white/20 text-white hover:bg-white/10' 
+                    : 'bg-transparent border-gray-200 text-gray-900 hover:bg-gray-50'
+                }`}
                 disabled={isLoading}
               >
                 חזור
               </Button>
             )}
 
-            {/* כפתור עיקרי */}
             <Button
               type="submit"
               className="w-full py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium border-0"
@@ -233,15 +271,18 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
               )}
             </Button>
 
-            {/* התחברות עם Google (רק בהתחברות) */}
             {!isSignUp && (
               <>
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/20" />
+                    <div className={`w-full border-t ${isDarkMode ? 'border-white/20' : 'border-gray-200'}`} />
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-black/90 text-white/50">או</span>
+                    <span className={`px-2 ${
+                      isDarkMode 
+                        ? 'bg-gray-900/90 text-white/50' 
+                        : 'bg-white text-gray-500'
+                    }`}>או</span>
                   </div>
                 </div>
 
@@ -249,7 +290,11 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
                   type="button"
                   variant="outline"
                   onClick={handleGoogleLogin}
-                  className="w-full py-3 bg-transparent border-white/20 text-white hover:bg-white/10"
+                  className={`w-full py-3 ${
+                    isDarkMode 
+                      ? 'bg-transparent border-white/20 text-white hover:bg-white/10' 
+                      : 'bg-transparent border-gray-200 text-gray-900 hover:bg-gray-50'
+                  }`}
                   disabled={isLoading}
                 >
                   <svg className="w-5 h-5 ml-2" viewBox="0 0 24 24">
@@ -269,18 +314,31 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           <button
             type="button"
             onClick={switchMode}
-            className="text-sm text-white/60 hover:text-green-400 transition-colors"
+            className={`text-sm transition-colors ${
+              isDarkMode 
+                ? 'text-white/60 hover:text-green-400' 
+                : 'text-gray-600 hover:text-green-600'
+            }`}
           >
             {isSignUp ? 'יש לכם כבר חשבון? התחברו' : 'אין לכם חשבון? הירשמו'}
           </button>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-white/10">
+        <div className={`mt-8 pt-6 border-t ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
           <div className="grid grid-cols-2 gap-4 text-center">
             <div>
               <div className="text-lg font-bold text-green-400">50+</div>
-              <div className="text-xs text-white/50">הודעות חינם</div>
+              <div className={`text-xs ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>הודעות חינם</div>
             </div>
             <div>
               <div className="text-lg font-bold text-blue-400">4</div>
-              <div className="text-xs text-white/50">
+              <div className={`text-xs ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>קטגוריות מקצועיות</div>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+export default AuthModal;

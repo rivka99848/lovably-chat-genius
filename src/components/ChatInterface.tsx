@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Plus, User, Settings, Crown, Upload } from 'lucide-react';
+import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -35,6 +35,7 @@ const ChatInterface = () => {
   const [showAuth, setShowAuth] = useState(false);
   const [showPlanUpgrade, setShowPlanUpgrade] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,11 +52,21 @@ const ChatInterface = () => {
     } else {
       setShowAuth(true);
     }
+    
+    // Load theme preference
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      setIsDarkMode(savedTheme === 'dark');
+    }
   }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -314,34 +325,57 @@ const ChatInterface = () => {
   }
 
   return (
-    <div className="flex h-screen premium-gradient text-white" dir="rtl">
+    <div className={`flex h-screen premium-gradient ${isDarkMode ? 'dark text-white' : 'text-gray-900'}`} dir="rtl">
       {/* Sidebar */}
-      <div className="w-80 premium-dark-surface border-l border-white/10 flex flex-col backdrop-blur-xl">
+      <div className={`w-80 border-l backdrop-blur-xl flex flex-col ${
+        isDarkMode 
+          ? 'bg-gray-900/90 border-gray-700/50' 
+          : 'bg-white/95 border-gray-200'
+      }`}>
         {/* Header */}
-        <div className="p-6 border-b border-white/10">
+        <div className={`p-6 border-b ${isDarkMode ? 'border-gray-700/50' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
               בוט מסונן
             </h1>
-            <button
-              onClick={() => setShowPlanUpgrade(true)}
-              className="premium-icon-button p-2 rounded-lg"
-              title="שדרוג"
-            >
-              <Crown className="w-5 h-5 text-yellow-400" />
-            </button>
+            <div className="flex space-x-2 space-x-reverse">
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`p-2 rounded-lg transition-colors ${
+                  isDarkMode 
+                    ? 'hover:bg-white/10 text-white/80' 
+                    : 'hover:bg-gray-100 text-gray-600'
+                }`}
+                title="החלף צבע"
+              >
+                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={() => setShowPlanUpgrade(true)}
+                className={`p-2 rounded-lg transition-colors ${
+                  isDarkMode 
+                    ? 'hover:bg-white/10 text-yellow-400' 
+                    : 'hover:bg-gray-100 text-yellow-600'
+                }`}
+                title="שדרוג"
+              >
+                <Crown className="w-5 h-5" />
+              </button>
+            </div>
           </div>
           
           {user && (
             <div className="space-y-2">
-              <div className="flex items-center space-x-2 space-x-reverse text-sm text-white/70">
+              <div className={`flex items-center space-x-2 space-x-reverse text-sm ${
+                isDarkMode ? 'text-white/70' : 'text-gray-600'
+              }`}>
                 <User className="w-4 h-4" />
                 <span>{user.name}</span>
               </div>
               <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
                 {user.category}
               </Badge>
-              <div className="text-xs text-white/50">
+              <div className={`text-xs ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
                 {user.messagesUsed}/{user.messageLimit} הודעות נשלחו
               </div>
             </div>
@@ -352,7 +386,7 @@ const ChatInterface = () => {
         <div className="p-4">
           <Button
             onClick={startNewConversation}
-            className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 border-0"
+            className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 border-0 text-white"
           >
             <Plus className="w-4 h-4 ml-2" />
             שיחה חדשה
@@ -361,19 +395,23 @@ const ChatInterface = () => {
 
         {/* Chat History Summary */}
         <div className="flex-1 p-4">
-          <h3 className="text-sm font-semibold text-white/70 mb-3">שיחות אחרונות</h3>
+          <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>שיחות אחרונות</h3>
           <div className="space-y-2">
             {messages.length > 0 ? (
-              <Card className="p-3 cursor-pointer hover:bg-white/5 transition-colors bg-white/10 border-white/10">
-                <div className="text-sm text-white/70 truncate">
+              <Card className={`p-3 cursor-pointer transition-colors ${
+                isDarkMode 
+                  ? 'bg-white/10 border-white/10 hover:bg-white/15' 
+                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+              }`}>
+                <div className={`text-sm truncate ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
                   {messages[0]?.content.substring(0, 50)}...
                 </div>
-                <div className="text-xs text-white/50 mt-1">
+                <div className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
                   {messages.length} הודעות
                 </div>
               </Card>
             ) : (
-              <div className="text-sm text-white/40 text-center py-8">
+              <div className={`text-sm text-center py-8 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>
                 עדיין אין שיחות
               </div>
             )}
@@ -381,8 +419,8 @@ const ChatInterface = () => {
         </div>
 
         {/* Settings */}
-        <div className="p-4 border-t border-white/10">
-          <div className="text-sm text-white/50 text-center">
+        <div className={`p-4 border-t ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
+          <div className={`text-sm text-center ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
             הקטגוריה שלכם: <span className="font-semibold text-green-400">{user?.category}</span>
           </div>
         </div>
@@ -395,23 +433,27 @@ const ChatInterface = () => {
           {messages.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🤖</div>
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 ברוכים הבאים לבוט המסונן שלנו – לצרכי עבודה בלבד
               </h2>
-              <p className="text-white/70 max-w-md mx-auto">
+              <p className={`max-w-md mx-auto ${isDarkMode ? 'text-white/70' : 'text-gray-600'}`}>
                 המומחה שלכם ב{user?.category} מוכן לעזור. 
                 שאלו אותי כל שאלה הקשורה ל{user?.category.toLowerCase()}!
               </p>
             </div>
           ) : (
             messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+              <MessageBubble key={message.id} message={message} isDarkMode={isDarkMode} />
             ))
           )}
           
           {isLoading && (
             <div className="flex justify-end">
-              <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm border border-white/10 max-w-xs">
+              <div className={`rounded-lg p-4 backdrop-blur-sm border max-w-xs ${
+                isDarkMode 
+                  ? 'bg-white/10 border-white/10' 
+                  : 'bg-gray-100 border-gray-200'
+              }`}>
                 <div className="flex space-x-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce"></div>
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -425,14 +467,25 @@ const ChatInterface = () => {
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-white/10 bg-black/20 backdrop-blur-xl p-6">
-          {/* File Upload Area */}
+        <div className={`border-t backdrop-blur-xl p-6 ${
+          isDarkMode 
+            ? 'border-white/10 bg-black/20' 
+            : 'border-gray-200 bg-white/50'
+        }`}>
           {uploadedFiles.length > 0 && (
-            <div className="mb-4 p-3 bg-white/5 rounded-lg border border-white/10">
+            <div className={`mb-4 p-3 rounded-lg border ${
+              isDarkMode 
+                ? 'bg-white/5 border-white/10' 
+                : 'bg-gray-50 border-gray-200'
+            }`}>
               <div className="flex flex-wrap gap-2">
                 {uploadedFiles.map((file, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full border border-white/20">
-                    <span className="text-sm text-white/70">{file.name}</span>
+                  <div key={index} className={`flex items-center gap-2 px-3 py-1 rounded-full border ${
+                    isDarkMode 
+                      ? 'bg-white/10 border-white/20' 
+                      : 'bg-white border-gray-300'
+                  }`}>
+                    <span className={`text-sm ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>{file.name}</span>
                     <button
                       onClick={() => removeFile(index)}
                       className="text-red-400 hover:text-red-300 text-sm"
@@ -457,7 +510,11 @@ const ChatInterface = () => {
             
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="premium-icon-button p-3 rounded-lg"
+              className={`p-3 rounded-lg transition-all duration-200 ${
+                isDarkMode 
+                  ? 'hover:bg-white/5 text-white/80 hover:text-white' 
+                  : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+              }`}
               disabled={isLoading}
               title="העלאת קבצים"
             >
@@ -471,14 +528,22 @@ const ChatInterface = () => {
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder={`שאלו את המומחה שלכם ב${user?.category} כל שאלה או העלו קבצים...`}
-                className="pl-12 py-3 text-base bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-right text-white placeholder-white/50 backdrop-blur-sm"
+                className={`pl-12 py-3 text-base text-right backdrop-blur-sm ${
+                  isDarkMode 
+                    ? 'bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-white placeholder-white/50' 
+                    : 'bg-white/80 border-gray-200 focus:border-green-500 focus:ring-green-500 text-gray-900 placeholder-gray-500'
+                }`}
                 disabled={isLoading}
               />
             </div>
             <button
               onClick={sendMessage}
               disabled={(!inputValue.trim() && uploadedFiles.length === 0) || isLoading}
-              className="premium-icon-button p-3 rounded-lg disabled:opacity-50"
+              className={`p-3 rounded-lg transition-all duration-200 disabled:opacity-50 ${
+                isDarkMode 
+                  ? 'hover:bg-white/5 text-white/80 hover:text-white' 
+                  : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+              }`}
               title="שליחת נתונים"
             >
               <Send className="w-5 h-5" />
@@ -486,12 +551,18 @@ const ChatInterface = () => {
           </div>
           
           {user && user.messagesUsed >= user.messageLimit * 0.8 && (
-            <div className="mt-3 p-3 bg-yellow-600/20 border border-yellow-600/30 rounded-lg">
-              <p className="text-sm text-yellow-300">
+            <div className={`mt-3 p-3 rounded-lg border ${
+              isDarkMode 
+                ? 'bg-yellow-600/20 border-yellow-600/30 text-yellow-300' 
+                : 'bg-yellow-50 border-yellow-200 text-yellow-700'
+            }`}>
+              <p className="text-sm">
                 נגמרות לכם ההודעות ({user.messagesUsed}/{user.messageLimit} נשלחו). 
                 <Button
                   variant="link"
-                  className="p-0 mr-1 text-yellow-300 underline"
+                  className={`p-0 mr-1 underline ${
+                    isDarkMode ? 'text-yellow-300' : 'text-yellow-700'
+                  }`}
                   onClick={() => setShowPlanUpgrade(true)}
                 >
                   שדרגו להודעות ללא הגבלה
