@@ -45,6 +45,16 @@ const ChatInterface = () => {
   // Updated webhook URL
   const WEBHOOK_BASE_URL = 'https://n8n.smartbiz.org.il/webhook';
 
+  // Generate or get session ID
+  const getSessionId = () => {
+    let sessionId = localStorage.getItem('lovable_session_id');
+    if (!sessionId) {
+      sessionId = crypto.randomUUID();
+      localStorage.setItem('lovable_session_id', sessionId);
+    }
+    return sessionId;
+  };
+
   useEffect(() => {
     // Check for existing user session
     const savedUser = localStorage.getItem('lovable_user');
@@ -257,7 +267,7 @@ const ChatInterface = () => {
     setMessages(newMessages);
     saveChatHistory(newMessages);
     
-    // Prepare form data for file upload with all user details
+    // Prepare form data for file upload with all user details and session ID
     const formData = new FormData();
     formData.append('userId', user.id);
     formData.append('userEmail', user.email);
@@ -270,6 +280,7 @@ const ChatInterface = () => {
     formData.append('category', user.category);
     formData.append('chatHistory', JSON.stringify(messages.slice(-10)));
     formData.append('timestamp', new Date().toISOString());
+    formData.append('session_id', getSessionId()); // Added session_id
     
     // Add files to form data
     uploadedFiles.forEach((file, index) => {
@@ -281,7 +292,7 @@ const ChatInterface = () => {
     setIsLoading(true);
 
     try {
-      console.log('Sending request to webhook...');
+      console.log('Sending request to webhook with session_id:', getSessionId());
       const response = await fetch(`${WEBHOOK_BASE_URL}/chatbot`, {
         method: 'POST',
         body: formData
