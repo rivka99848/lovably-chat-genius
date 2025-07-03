@@ -10,7 +10,7 @@ interface Message {
   id: string;
   content: string;
   isUser: boolean;
-  timestamp: Date;
+  timestamp: Date | string;
   category?: string;
 }
 
@@ -91,6 +91,12 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     });
   };
 
+  // Handle both Date objects and string dates from localStorage
+  const getFormattedTime = () => {
+    const date = typeof message.timestamp === 'string' ? new Date(message.timestamp) : message.timestamp;
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <div className={`flex ${message.isUser ? 'justify-start' : 'justify-end'}`} dir="rtl">
       <div className={`max-w-4xl ${message.isUser ? 'w-auto' : 'w-full'}`}>
@@ -160,7 +166,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                 <div className="flex-1"></div>
                 
                 <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {getFormattedTime()}
                 </span>
               </div>
             )}
@@ -169,7 +175,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
             {message.isUser && (
               <div className="text-left">
                 <span className="text-xs text-green-100 opacity-75">
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {getFormattedTime()}
                 </span>
               </div>
             )}

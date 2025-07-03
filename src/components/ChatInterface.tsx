@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -39,6 +40,7 @@ const ChatInterface = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   // Updated webhook URL
   const WEBHOOK_BASE_URL = 'https://n8n.smartbiz.org.il/webhook';
@@ -346,7 +348,7 @@ const ChatInterface = () => {
   };
 
   const handleProfileClick = () => {
-    window.location.href = '/profile';
+    navigate('/profile');
   };
 
   if (showAuth) {
