@@ -31,49 +31,106 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const copyEntireMessage = () => {
-    copyToClipboard(message.content);
+    copyToClipboard(processedContent);
   };
 
-  // Clean JSON format and extract clean content
+  // Advanced content cleaning function
   const cleanContent = (content: string) => {
+    if (!content) return '';
+    
     try {
-      // Try to parse if it's JSON format
-      const parsed = JSON.parse(content);
-      if (typeof parsed === 'string') {
-        return parsed;
+      // Try to parse JSON if it looks like JSON
+      if (content.trim().startsWith('{') || content.trim().startsWith('[')) {
+        const parsed = JSON.parse(content);
+        
+        // Extract meaningful content from common JSON structures
+        if (typeof parsed === 'string') {
+          return cleanTextContent(parsed);
+        }
+        
+        if (Array.isArray(parsed)) {
+          // Handle array responses - join meaningful content
+          return parsed
+            .map(item => {
+              if (typeof item === 'string') return cleanTextContent(item);
+              if (item && typeof item === 'object') {
+                return extractContentFromObject(item);
+              }
+              return String(item);
+            })
+            .filter(item => item && item.trim())
+            .join('\n\n');
+        }
+        
+        if (parsed && typeof parsed === 'object') {
+          return extractContentFromObject(parsed);
+        }
+        
+        return cleanTextContent(String(parsed));
       }
-      if (parsed && typeof parsed === 'object' && parsed.message) {
-        return parsed.message;
-      }
-      if (parsed && typeof parsed === 'object' && parsed.response) {
-        return parsed.response;
-      }
-      return content;
+      
+      // If not JSON, clean as regular text
+      return cleanTextContent(content);
+      
     } catch {
-      // If not JSON, clean brackets and quotes
-      return content
-        .replace(/^\[|\]$/g, '') // Remove outer brackets
-        .replace(/^"(.*)"$/, '$1') // Remove outer quotes
-        .replace(/\\n/g, '\n') // Convert \n to actual newlines
-        .replace(/\\"/g, '"') // Convert \" to "
-        .trim();
+      // If JSON parsing fails, clean as regular text
+      return cleanTextContent(content);
     }
+  };
+
+  // Extract content from object structures
+  const extractContentFromObject = (obj: any): string => {
+    // Common content fields to look for
+    const contentFields = ['message', 'response', 'content', 'text', 'data', 'result', 'output'];
+    
+    for (const field of contentFields) {
+      if (obj[field] && typeof obj[field] === 'string') {
+        return cleanTextContent(obj[field]);
+      }
+    }
+    
+    // If no standard fields found, try to extract meaningful text
+    const values = Object.values(obj)
+      .filter(val => typeof val === 'string' && val.trim().length > 10)
+      .map(val => cleanTextContent(val as string));
+    
+    return values.length > 0 ? values.join('\n\n') : cleanTextContent(JSON.stringify(obj, null, 2));
+  };
+
+  // Clean text content from escape characters and formatting
+  const cleanTextContent = (text: string): string => {
+    return text
+      .replace(/^[\[\]"]+|[\[\]"]+$/g, '') // Remove leading/trailing brackets and quotes
+      .replace(/\\n/g, '\n') // Convert \n to actual newlines
+      .replace(/\\t/g, '\t') // Convert \t to actual tabs
+      .replace(/\\"/g, '"') // Convert \" to "
+      .replace(/\\r/g, '\r') // Convert \r to actual carriage returns
+      .replace(/\\\\/g, '\\') // Convert \\ to \
+      .replace(/\\u[\dA-Fa-f]{4}/g, (match) => {
+        // Convert Unicode escape sequences
+        return String.fromCharCode(parseInt(match.replace('\\u', ''), 16));
+      })
+      .replace(/^\s*["'`]|["'`]\s*$/g, '') // Remove outer quotes
+      .replace(/\s+$/gm, '') // Remove trailing whitespace from lines
+      .replace(/^\s*[\r\n]+|[\r\n]+\s*$/g, '') // Remove leading/trailing empty lines
+      .trim();
   };
 
   // Enhanced content detection
   const detectContentType = (content: string) => {
-    const cleanedContent = cleanContent(content);
-    const hasCodeBlocks = cleanedContent.includes('```');
-    const hasSQLKeywords = /\b(CREATE|SELECT|INSERT|UPDATE|DELETE|TABLE|FROM|WHERE|JOIN)\b/i.test(cleanedContent);
-    const hasHTMLTags = /<[^>]+>/g.test(cleanedContent);
-    const hasJavaScript = /\b(function|const|let|var|class|import|export)\b/.test(cleanedContent);
+    const hasCodeBlocks = content.includes('```');
+    const hasSQLKeywords = /\b(CREATE|SELECT|INSERT|UPDATE|DELETE|TABLE|FROM|WHERE|JOIN|ALTER|DROP)\b/i.test(content);
+    const hasHTMLTags = /<[^>]+>/g.test(content);
+    const hasJavaScript = /\b(function|const|let|var|class|import|export|if|for|while)\b/.test(content);
+    const hasProgrammingKeywords = /\b(def|class|import|from|return|if|elif|else|try|except|for|while|with)\b/.test(content);
     
     return {
       hasCodeBlocks,
       hasSQLKeywords,
       hasHTMLTags,
       hasJavaScript,
-      hasVisualCode: hasHTMLTags || cleanedContent.includes('className') || cleanedContent.includes('style=')
+      hasProgrammingKeywords,
+      hasVisualCode: hasHTMLTags || content.includes('className') || content.includes('style=')
     };
   };
 
@@ -89,15 +146,15 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       if (part.startsWith('```') && part.endsWith('```')) {
         const codeContent = part.slice(3, -3).trim();
         const lines = codeContent.split('\n');
-        const language = lines[0] && !lines[0].includes(' ') ? lines[0] : 'text';
-        const code = language !== 'text' ? lines.slice(1).join('\n') : codeContent;
+        const language = lines[0] && !lines[0].includes(' ') && lines[0].length < 20 ? lines[0] : '';
+        const code = language ? lines.slice(1).join('\n') : codeContent;
         
         return (
           <div key={index} className="my-4 relative group">
             <div className={`rounded-lg overflow-hidden border ${
               isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
             }`}>
-              {language !== 'text' && (
+              {language && (
                 <div className={`px-4 py-2 text-xs font-medium border-b flex items-center justify-between ${
                   isDarkMode 
                     ? 'bg-gray-800 text-gray-300 border-gray-700' 
@@ -118,13 +175,13 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
               <div className="p-4 overflow-x-auto relative">
                 <pre className={`text-sm leading-relaxed ${
                   isDarkMode ? 'text-gray-100' : 'text-gray-800'
-                } whitespace-pre-wrap`}>
+                } whitespace-pre-wrap font-mono`}>
                   <code>{code}</code>
                 </pre>
-                {language === 'text' && (
+                {!language && (
                   <button
                     onClick={() => copyToClipboard(code)}
-                    className={`absolute top-2 left-2 p-1 rounded hover:bg-gray-600/20 transition-colors opacity-70 hover:opacity-100 ${
+                    className={`absolute top-2 left-2 p-1 rounded hover:bg-gray-600/20 transition-colors opacity-0 group-hover:opacity-100 ${
                       isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
                     }`}
                     title="העתק"
@@ -149,29 +206,33 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
   const formatTextWithInlineCode = (text: string) => {
     // Handle inline code and technical terms
-    const technicalTerms = /\b(SQL|HTML|CSS|JavaScript|React|CREATE TABLE|SELECT|INSERT|UPDATE|DELETE|VARCHAR|INT|PRIMARY KEY|FOREIGN KEY|NOT NULL|UNIQUE|INDEX|DATABASE|SCHEMA)\b/g;
+    const technicalTerms = /\b(SQL|HTML|CSS|JavaScript|React|Python|CREATE TABLE|SELECT|INSERT|UPDATE|DELETE|VARCHAR|INT|PRIMARY KEY|FOREIGN KEY|NOT NULL|UNIQUE|INDEX|DATABASE|SCHEMA|API|JSON|XML|HTTP|HTTPS|URL|ID|UUID)\b/g;
     
-    return text.split('\n').map((line, lineIndex) => (
-      <div key={lineIndex} className="mb-3">
-        {line.split(technicalTerms).map((segment, segmentIndex) => {
-          if (technicalTerms.test(segment)) {
-            return (
-              <span
-                key={segmentIndex}
-                className={`inline-block px-2 py-1 rounded text-sm font-mono mx-1 ${
-                  isDarkMode 
-                    ? 'bg-blue-900/30 text-blue-300 border border-blue-700/50' 
-                    : 'bg-blue-100 text-blue-700 border border-blue-200'
-                }`}
-              >
-                {segment}
-              </span>
-            );
-          }
-          return segment;
-        })}
-      </div>
-    ));
+    return text.split('\n').map((line, lineIndex) => {
+      if (!line.trim()) return <br key={lineIndex} />;
+      
+      return (
+        <div key={lineIndex} className="mb-2">
+          {line.split(technicalTerms).map((segment, segmentIndex) => {
+            if (technicalTerms.test(segment)) {
+              return (
+                <span
+                  key={segmentIndex}
+                  className={`inline-block px-2 py-0.5 rounded text-sm font-mono mx-0.5 ${
+                    isDarkMode 
+                      ? 'bg-blue-900/30 text-blue-300 border border-blue-700/50' 
+                      : 'bg-blue-100 text-blue-700 border border-blue-200'
+                  }`}
+                >
+                  {segment}
+                </span>
+              );
+            }
+            return segment;
+          })}
+        </div>
+      );
+    });
   };
 
   // Handle both Date objects and string dates from localStorage
@@ -209,17 +270,17 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
               }`}>
                 <button
                   onClick={copyEntireMessage}
-                  className={`flex items-center space-x-1 space-x-reverse px-3 py-1.5 rounded-md text-xs transition-colors ${
+                  className={`p-2 rounded-md transition-colors ${
                     isDarkMode 
                       ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
                       : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                   }`}
                   title="העתק תשובה"
                 >
-                  <Copy className="w-3 h-3" />
+                  <Copy className="w-4 h-4" />
                 </button>
 
-                {(contentTypes.hasCodeBlocks || contentTypes.hasSQLKeywords) && (
+                {(contentTypes.hasCodeBlocks || contentTypes.hasSQLKeywords || contentTypes.hasProgrammingKeywords) && (
                   <button
                     onClick={() => {
                       const codeBlocks = processedContent.match(/```[\s\S]*?```/g) || [];
@@ -228,28 +289,28 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                       ).join('\n\n');
                       copyToClipboard(allCode || processedContent);
                     }}
-                    className={`flex items-center space-x-1 space-x-reverse px-3 py-1.5 rounded-md text-xs transition-colors ${
+                    className={`p-2 rounded-md transition-colors ${
                       isDarkMode 
                         ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                     }`}
                     title="העתק קוד"
                   >
-                    <Code className="w-3 h-3" />
+                    <Code className="w-4 h-4" />
                   </button>
                 )}
 
                 {contentTypes.hasVisualCode && (
                   <button
                     onClick={() => setShowPreview(true)}
-                    className={`flex items-center space-x-1 space-x-reverse px-3 py-1.5 rounded-md text-xs transition-colors ${
+                    className={`p-2 rounded-md transition-colors ${
                       isDarkMode 
                         ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                     }`}
                     title="תצוגה מקדימה"
                   >
-                    <Eye className="w-3 h-3" />
+                    <Eye className="w-4 h-4" />
                   </button>
                 )}
 
