@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun, LogOut, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -58,6 +59,9 @@ const ChatInterface = () => {
     if (!sessionId) {
       sessionId = crypto.randomUUID();
       localStorage.setItem('lovable_session_id', sessionId);
+      console.log('Generated new session ID:', sessionId);
+    } else {
+      console.log('Using existing session ID:', sessionId);
     }
     return sessionId;
   };
@@ -274,6 +278,9 @@ const ChatInterface = () => {
     setMessages(newMessages);
     saveChatHistory(newMessages);
     
+    const currentSessionId = getSessionId();
+    console.log('Preparing to send message with session ID:', currentSessionId);
+    
     // Prepare form data for file upload with all user details and session ID
     const formData = new FormData();
     formData.append('userId', user.id);
@@ -287,19 +294,29 @@ const ChatInterface = () => {
     formData.append('category', user.category);
     formData.append('chatHistory', JSON.stringify(messages.slice(-10)));
     formData.append('timestamp', new Date().toISOString());
-    formData.append('session_id', getSessionId()); // Added session_id
+    formData.append('sessionId', currentSessionId); // שינוי מ-session_id ל-sessionId
     
     // Add files to form data
     uploadedFiles.forEach((file, index) => {
       formData.append(`file_${index}`, file);
     });
 
+    // Log all form data for debugging
+    console.log('Form data being sent:');
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`${key}: [File] ${value.name}`);
+      } else {
+        console.log(`${key}: ${value}`);
+      }
+    }
+
     setInputValue('');
     setUploadedFiles([]);
     setIsLoading(true);
 
     try {
-      console.log('Sending request to webhook with session_id:', getSessionId());
+      console.log('Sending request to webhook with sessionId:', currentSessionId);
       const response = await fetch(`${WEBHOOK_BASE_URL}/chatbot`, {
         method: 'POST',
         body: formData
