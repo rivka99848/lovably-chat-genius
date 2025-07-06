@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Settings, CreditCard, User } from 'lucide-react';
+import { Settings, CreditCard, LogOut, User } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface ProfileDropdownProps {
@@ -33,6 +33,16 @@ const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
     });
   };
 
+  const handleLogout = () => {
+    toast({
+      title: "התנתקת בהצלחה",
+      description: "מעבירים אותך לדף ההתחברות"
+    });
+    
+    // Navigate back to home page where the auth modal will appear
+    navigate('/');
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -52,6 +62,11 @@ const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
         <DropdownMenuItem onClick={handleUpgradeClick} dir="rtl">
           <CreditCard className="ml-2 h-4 w-4" />
           שדרוג
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleLogout} dir="rtl" className="text-orange-600">
+          <LogOut className="ml-2 h-4 w-4" />
+          התנתק
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
