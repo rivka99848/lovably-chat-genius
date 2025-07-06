@@ -1,5 +1,3 @@
-
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun, LogOut, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -51,8 +49,9 @@ const ChatInterface = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // Updated webhook URL - using the same URL for all operations
-  const WEBHOOK_BASE_URL = 'https://n8n.smartbiz.org.il/webhook/login';
+  // Updated webhook URLs - separate for login and chatbot
+  const LOGIN_WEBHOOK_URL = 'https://n8n.smartbiz.org.il/webhook/login';
+  const CHATBOT_WEBHOOK_URL = 'https://n8n.smartbiz.org.il/webhook/chatbot';
 
   // Generate or get session ID
   const getSessionId = () => {
@@ -113,7 +112,7 @@ const ChatInterface = () => {
       
       if (isSignUp) {
         // רישום משתמש חדש
-        const registerResponse = await fetch(WEBHOOK_BASE_URL, {
+        const registerResponse = await fetch(LOGIN_WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -168,7 +167,7 @@ const ChatInterface = () => {
         }
       } else {
         // התחברות משתמש קיים
-        const loginResponse = await fetch(WEBHOOK_BASE_URL, {
+        const loginResponse = await fetch(LOGIN_WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -329,8 +328,8 @@ const ChatInterface = () => {
     setIsLoading(true);
 
     try {
-      console.log('Sending request to webhook with sessionId:', currentSessionId);
-      const response = await fetch(`${WEBHOOK_BASE_URL}/chatbot`, {
+      console.log('Sending request to chatbot webhook:', CHATBOT_WEBHOOK_URL, 'with sessionId:', currentSessionId);
+      const response = await fetch(CHATBOT_WEBHOOK_URL, {
         method: 'POST',
         body: formData
       });
@@ -803,4 +802,3 @@ const ChatInterface = () => {
 };
 
 export default ChatInterface;
-
