@@ -3,16 +3,21 @@ import React, { useState } from 'react';
 import { Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface MessageBubbleProps {
+interface Message {
+  id: string;
   content: string;
-  isUser?: boolean;
-  timestamp?: string;
+  isUser: boolean;
+  timestamp: string;
+}
+
+interface MessageBubbleProps {
+  message: Message;
+  isDarkMode?: boolean;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ 
-  content, 
-  isUser = false, 
-  timestamp 
+  message,
+  isDarkMode = false
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -94,8 +99,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     };
   };
 
-  const sections = detectContentSections(content);
-  const displayContent = cleanContent(content);
+  const sections = detectContentSections(message.content);
+  const displayContent = cleanContent(message.content);
 
   const copyToClipboard = async (textToCopy: string) => {
     try {
@@ -118,11 +123,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     ));
   };
 
-  if (!isUser && (sections.hasInstructions || sections.isCode)) {
+  if (!message.isUser && (sections.hasInstructions || sections.isCode)) {
     return (
       <div className={cn(
         "max-w-3xl mb-4 space-y-3",
-        isUser ? "ml-auto" : "mr-auto"
+        message.isUser ? "ml-auto" : "mr-auto"
       )}>
         {/* Instructions section */}
         {sections.hasInstructions && (
@@ -180,9 +185,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         )}
         
-        {timestamp && (
+        {message.timestamp && (
           <div className="text-xs text-gray-500 text-center">
-            {timestamp}
+            {message.timestamp}
           </div>
         )}
       </div>
@@ -193,11 +198,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   return (
     <div className={cn(
       "max-w-3xl mb-4",
-      isUser ? "ml-auto" : "mr-auto"
+      message.isUser ? "ml-auto" : "mr-auto"
     )}>
       <div className={cn(
         "p-4 rounded-lg shadow-sm relative group",
-        isUser 
+        message.isUser 
           ? "bg-blue-600 text-white border-r-4 border-blue-800" 
           : "bg-white text-gray-800 border border-gray-200"
       )}>
@@ -206,7 +211,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             {formatContent(displayContent)}
           </div>
           
-          {!isUser && (
+          {!message.isUser && (
             <button
               onClick={() => copyToClipboard(displayContent)}
               className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors opacity-70 hover:opacity-100"
@@ -224,9 +229,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         </div>
       )}
       
-      {timestamp && (
+      {message.timestamp && (
         <div className="text-xs text-gray-500 text-center mt-1">
-          {timestamp}
+          {message.timestamp}
         </div>
       )}
     </div>
