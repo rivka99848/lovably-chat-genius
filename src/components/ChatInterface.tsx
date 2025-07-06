@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun, LogOut, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -127,30 +128,41 @@ const ChatInterface = () => {
         });
 
         if (registerResponse.ok) {
-          const userData = await registerResponse.json();
+          const responseText = await registerResponse.text();
+          console.log('Register response:', responseText);
           
-          if (userData === false) {
-            throw new Error('המשתמש כבר קיים במערכת. אנא התחברו במקום להירשם.');
+          let userData;
+          try {
+            userData = JSON.parse(responseText);
+          } catch {
+            userData = responseText;
           }
           
-          const newUser: User = {
-            id: userData.id || userId,
-            email,
-            name,
-            category,
-            plan: userData.plan || 'free',
-            messagesUsed: userData.messagesUsed || 0,
-            messageLimit: userData.messageLimit || 50
-          };
-          
-          setUser(newUser);
-          localStorage.setItem('lovable_user', JSON.stringify(newUser));
-          setShowAuth(false);
-          
-          toast({
-            title: "ברוכים הבאים!",
-            description: `נרשמתם בהצלחה כמומחה ב${category}.`
-          });
+          // אם זה true - המשתמש נרשם בהצלחה
+          if (userData === true || (typeof userData === 'object' && userData.success)) {
+            const newUser: User = {
+              id: userData.id || userId,
+              email,
+              name,
+              category,
+              plan: userData.plan || 'free',
+              messagesUsed: userData.messagesUsed || 0,
+              messageLimit: userData.messageLimit || 50
+            };
+            
+            setUser(newUser);
+            localStorage.setItem('lovable_user', JSON.stringify(newUser));
+            setShowAuth(false);
+            
+            toast({
+              title: "ברוכים הבאים!",
+              description: `נרשמתם בהצלחה כמומחה ב${category}.`
+            });
+          } else {
+            // אם זה לא true - הצג את ההודעה שהשרת החזיר
+            const errorMessage = typeof userData === 'string' ? userData : 'המשתמש כבר קיים במערכת';
+            throw new Error(errorMessage);
+          }
         } else {
           throw new Error('שגיאה ברישום. אנא נסו שוב.');
         }
@@ -168,19 +180,18 @@ const ChatInterface = () => {
         });
 
         if (loginResponse.ok) {
-          const userData = await loginResponse.json();
+          const responseText = await loginResponse.text();
+          console.log('Login response:', responseText);
           
-          if (userData === false) {
-            throw new Error('משתמש לא נמצא במערכת. אנא הירשמו תחילה.');
+          let userData;
+          try {
+            userData = JSON.parse(responseText);
+          } catch {
+            userData = responseText;
           }
           
-          if (userData === 'invalid_password') {
-            throw new Error('סיסמה שגויה. אנא נסו שוב.');
-          }
-          
+          // אם זה true - המשתמש התחבר בהצלחה
           if (userData === true || (typeof userData === 'object' && userData.success)) {
-            // במקרה שהשרת מחזיר רק true, נצטרך לטעון את פרטי המשתמש בקריאה נוספת
-            // או לקבל את הפרטים בתגובה
             const existingUser: User = {
               id: userData.id || userId,
               email,
@@ -200,7 +211,9 @@ const ChatInterface = () => {
               description: `התחברתם בהצלחה כמומחה ב${existingUser.category}.`
             });
           } else {
-            throw new Error('שגיאה בהתחברות. אנא בדקו את הפרטים ונסו שוב.');
+            // אם זה לא true - הצג את ההודעה שהשרת החזיר
+            const errorMessage = typeof userData === 'string' ? userData : 'שגיאה בהתחברות';
+            throw new Error(errorMessage);
           }
         } else {
           throw new Error('שגיאה בהתחברות. אנא נסו שוב.');
@@ -294,7 +307,7 @@ const ChatInterface = () => {
     formData.append('category', user.category);
     formData.append('chatHistory', JSON.stringify(messages.slice(-10)));
     formData.append('timestamp', new Date().toISOString());
-    formData.append('sessionId', currentSessionId); // שינוי מ-session_id ל-sessionId
+    formData.append('sessionId', currentSessionId);
     
     // Add files to form data
     uploadedFiles.forEach((file, index) => {
@@ -338,37 +351,56 @@ const ChatInterface = () => {
           data = { message: responseText };
         }
         
-        // Handle empty array or null responses from n8n
+        // Handle server response - if it's true, process the message, otherwise just show the message
         let cleanContent = '';
+        let shouldProcessMessage = false;
         
-        if (Array.isArray(data)) {
+        if (data === true) {
+          // השרת החזיר true - אנחנו צריכים לחכות להודעה או לעבד את התוכן
+          shouldProcessMessage = true;
+          cleanContent = 'ממתין לתגובה מהשרת...';
+        } else if (Array.isArray(data)) {
           console.log('Response is an array:', data);
           if (data.length === 0) {
-            cleanContent = 'השרת החזיר תגובה ריקה. אנא נסו שוב או בדקו את הגדרות n8n.';
+            cleanContent = 'השרת החזיר תגובה ריקה.';
           } else {
-            // Try to extract content from first array element
             const firstItem = data[0];
             if (typeof firstItem === 'string') {
               cleanContent = firstItem;
+              shouldProcessMessage = true;
             } else if (firstItem && typeof firstItem === 'object') {
-              cleanContent = firstItem.message || firstItem.response || firstItem.content || firstItem.text || JSON.stringify(firstItem);
+              if (firstItem.shouldProcess === true || firstItem.success === true) {
+                shouldProcessMessage = true;
+                cleanContent = firstItem.message || firstItem.response || firstItem.content || firstItem.text || 'קיבלתי תגובה מהשרת';
+              } else {
+                // רק הצג את ההודעה בלי לעבד
+                cleanContent = firstItem.message || firstItem.response || firstItem.content || firstItem.text || JSON.stringify(firstItem);
+              }
             } else {
               cleanContent = JSON.stringify(data);
             }
           }
         } else if (typeof data === 'string') {
           cleanContent = data || 'תגובה ריקה מהשרת';
+          shouldProcessMessage = true;
         } else if (data && typeof data === 'object') {
-          cleanContent = data.message || data.response || data.content || data.text || JSON.stringify(data);
+          if (data.shouldProcess === true || data.success === true) {
+            shouldProcessMessage = true;
+            cleanContent = data.message || data.response || data.content || data.text || 'קיבלתי תגובה מהשרת';
+          } else {
+            // רק הצג את ההודעה בלי לעבד
+            cleanContent = data.message || data.response || data.content || data.text || JSON.stringify(data);
+          }
         } else {
           cleanContent = responseText || 'קיבלתי תשובה לא צפויה מהשרת';
         }
 
         console.log('Final message content:', cleanContent);
+        console.log('Should process message:', shouldProcessMessage);
 
         // Ensure we have some content to display
         if (!cleanContent || cleanContent.trim() === '' || cleanContent === '[]' || cleanContent === 'null') {
-          cleanContent = 'השרת לא החזיר תוכן. אנא בדקו את הגדרות ה-webhook ב-n8n או נסו שוב.';
+          cleanContent = 'השרת לא החזיר תוכן.';
         }
 
         const botMessage: Message = {
@@ -385,13 +417,16 @@ const ChatInterface = () => {
         setMessages(updatedMessages);
         saveChatHistory(updatedMessages);
 
-        const updatedUser = { ...user, messagesUsed: user.messagesUsed + 1 };
-        setUser(updatedUser);
-        localStorage.setItem('lovable_user', JSON.stringify(updatedUser));
+        // Update message count only if we should process the message
+        if (shouldProcessMessage) {
+          const updatedUser = { ...user, messagesUsed: user.messagesUsed + 1 };
+          setUser(updatedUser);
+          localStorage.setItem('lovable_user', JSON.stringify(updatedUser));
+        }
 
         toast({
           title: "תשובה התקבלה",
-          description: "השרת השיב בהצלחה"
+          description: shouldProcessMessage ? "השרת השיב בהצלחה" : "הודעה מהשרת"
         });
       } else {
         console.error('Response not ok:', response.status, response.statusText);
@@ -768,3 +803,4 @@ const ChatInterface = () => {
 };
 
 export default ChatInterface;
+
