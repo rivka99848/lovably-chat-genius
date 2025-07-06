@@ -49,8 +49,8 @@ const ChatInterface = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // Updated webhook URL
-  const WEBHOOK_BASE_URL = 'https://n8n.smartbiz.org.il/webhook';
+  // Updated webhook URL - using the same URL for all operations
+  const WEBHOOK_BASE_URL = 'https://n8n.smartbiz.org.il/webhook/login';
 
   // Generate or get session ID
   const getSessionId = () => {
@@ -108,7 +108,7 @@ const ChatInterface = () => {
       
       if (isSignUp) {
         // רישום משתמש חדש
-        const registerResponse = await fetch(`${WEBHOOK_BASE_URL}/register`, {
+        const registerResponse = await fetch(WEBHOOK_BASE_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -152,7 +152,7 @@ const ChatInterface = () => {
         }
       } else {
         // התחברות משתמש קיים
-        const loginResponse = await fetch(`${WEBHOOK_BASE_URL}/login`, {
+        const loginResponse = await fetch(WEBHOOK_BASE_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
