@@ -122,9 +122,6 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     };
   };
 
-  const processedContent = cleanContent(message.content);
-  const contentTypes = detectContentType(processedContent);
-  
   const formatContent = (content: string) => {
     const parts = content.split(/(```[\s\S]*?```)/g);
     
@@ -213,13 +210,14 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const processedContent = cleanContent(message.content);
+  const contentTypes = detectContentType(processedContent);
+
   return (
     <div className="w-full mb-6" dir="rtl">
-      {/* Message Header */}
+      {/* Message Header - Only Icon and Time */}
       <div className="flex items-center mb-2">
-        <div className={`flex items-center space-x-2 space-x-reverse ${
-          message.isUser ? 'flex-row' : 'flex-row'
-        }`}>
+        <div className="flex items-center space-x-2 space-x-reverse">
           <div className={`p-1.5 rounded-full ${
             message.isUser 
               ? 'bg-green-500' 
@@ -233,11 +231,6 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
               <Bot className="w-4 h-4 text-white" />
             )}
           </div>
-          <span className={`font-medium text-sm ${
-            isDarkMode ? 'text-gray-300' : 'text-gray-700'
-          }`}>
-            {message.isUser ? 'אתה' : 'בוט'}
-          </span>
           <span className={`text-xs ${
             isDarkMode ? 'text-gray-500' : 'text-gray-400'
           }`}>
