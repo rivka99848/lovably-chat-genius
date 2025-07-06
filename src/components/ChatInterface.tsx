@@ -561,7 +561,12 @@ const ChatInterface = () => {
             </div>
           ) : (
             messages.map((message) => (
-              <MessageBubble key={message.id} message={message} isDarkMode={isDarkMode} />
+              <MessageBubble 
+                key={message.id} 
+                content={message.content}
+                isUser={message.isUser}
+                timestamp={message.timestamp.toLocaleString()}
+              />
             ))
           )}
           
