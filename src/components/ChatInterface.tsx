@@ -152,7 +152,7 @@ const ChatInterface = () => {
         }
       } else {
         // התחברות משתמש קיים
-        const loginResponse = await fetch('https://n8n.smartbiz.org.il/webhook/login', {
+        const loginResponse = await fetch(`${WEBHOOK_BASE_URL}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
