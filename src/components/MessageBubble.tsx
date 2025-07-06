@@ -1,8 +1,5 @@
-
 import React, { useState } from 'react';
-import { Copy, Eye, Code } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Copy, Eye, Code, User, Bot } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import CodePreview from './CodePreview';
 
@@ -30,26 +27,18 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     });
   };
 
-  const copyEntireMessage = () => {
-    copyToClipboard(processedContent);
-  };
-
-  // Advanced content cleaning function
   const cleanContent = (content: string) => {
     if (!content) return '';
     
     try {
-      // Try to parse JSON if it looks like JSON
       if (content.trim().startsWith('{') || content.trim().startsWith('[')) {
         const parsed = JSON.parse(content);
         
-        // Extract meaningful content from common JSON structures
         if (typeof parsed === 'string') {
           return cleanTextContent(parsed);
         }
         
         if (Array.isArray(parsed)) {
-          // Handle array responses - join meaningful content
           return parsed
             .map(item => {
               if (typeof item === 'string') return cleanTextContent(item);
@@ -69,18 +58,14 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         return cleanTextContent(String(parsed));
       }
       
-      // If not JSON, clean as regular text
       return cleanTextContent(content);
       
     } catch {
-      // If JSON parsing fails, clean as regular text
       return cleanTextContent(content);
     }
   };
 
-  // Extract content from object structures
   const extractContentFromObject = (obj: any): string => {
-    // Common content fields to look for
     const contentFields = ['message', 'response', 'content', 'text', 'data', 'result', 'output'];
     
     for (const field of contentFields) {
@@ -89,7 +74,6 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       }
     }
     
-    // If no standard fields found, try to extract meaningful text
     const values = Object.values(obj)
       .filter(val => typeof val === 'string' && val.trim().length > 10)
       .map(val => cleanTextContent(val as string));
@@ -97,33 +81,30 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     return values.length > 0 ? values.join('\n\n') : cleanTextContent(JSON.stringify(obj, null, 2));
   };
 
-  // Enhanced text cleaning function to remove unwanted characters
   const cleanTextContent = (text: string): string => {
     return text
-      .replace(/^[\[\]"]+|[\[\]"]+$/g, '') // Remove leading/trailing brackets and quotes
-      .replace(/\\n/g, '\n') // Convert \n to actual newlines
-      .replace(/\\t/g, '\t') // Convert \t to actual tabs
-      .replace(/\\"/g, '"') // Convert \" to "
-      .replace(/\\r/g, '\r') // Convert \r to actual carriage returns
-      .replace(/\\\\/g, '\\') // Convert \\ to \
+      .replace(/^[\[\]"]+|[\[\]"]+$/g, '')
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"')
+      .replace(/\\r/g, '\r')
+      .replace(/\\\\/g, '\\')
       .replace(/\\u[\dA-Fa-f]{4}/g, (match) => {
-        // Convert Unicode escape sequences
         return String.fromCharCode(parseInt(match.replace('\\u', ''), 16));
       })
-      .replace(/^\s*["'`]|["'`]\s*$/g, '') // Remove outer quotes
-      .replace(/[#]{3,}/g, '') // Remove multiple hash symbols (###, ####, etc)
-      .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '') // Remove bullet points and special symbols
-      .replace(/[\u201C\u201D\u2018\u2019]/g, '"') // Replace smart quotes with regular quotes
-      .replace(/[\u2013\u2014]/g, '-') // Replace em/en dashes with regular dashes
-      .replace(/[\u00A0]/g, ' ') // Replace non-breaking spaces with regular spaces
-      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'-]/g, '') // Keep only letters, numbers, Hebrew, spaces, and basic punctuation
-      .replace(/\s+$/gm, '') // Remove trailing whitespace from lines
-      .replace(/^\s*[\r\n]+|[\r\n]+\s*$/g, '') // Remove leading/trailing empty lines
-      .replace(/[\r\n]{3,}/g, '\n\n') // Replace multiple line breaks with double line breaks
+      .replace(/^\s*["'`]|["'`]\s*$/g, '')
+      .replace(/[#]{3,}/g, '')
+      .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '')
+      .replace(/[\u201C\u201D\u2018\u2019]/g, '"')
+      .replace(/[\u2013\u2014]/g, '-')
+      .replace(/[\u00A0]/g, ' ')
+      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'-]/g, '')
+      .replace(/\s+$/gm, '')
+      .replace(/^\s*[\r\n]+|[\r\n]+\s*$/g, '')
+      .replace(/[\r\n]{3,}/g, '\n\n')
       .trim();
   };
 
-  // Enhanced content detection
   const detectContentType = (content: string) => {
     const hasCodeBlocks = content.includes('```');
     const hasSQLKeywords = /\b(CREATE|SELECT|INSERT|UPDATE|DELETE|TABLE|FROM|WHERE|JOIN|ALTER|DROP)\b/i.test(content);
@@ -145,11 +126,9 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   const contentTypes = detectContentType(processedContent);
   
   const formatContent = (content: string) => {
-    // Split content by code blocks first
     const parts = content.split(/(```[\s\S]*?```)/g);
     
     return parts.map((part, index) => {
-      // Handle code blocks
       if (part.startsWith('```') && part.endsWith('```')) {
         const codeContent = part.slice(3, -3).trim();
         const lines = codeContent.split('\n');
@@ -185,24 +164,12 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                 } whitespace-pre-wrap font-mono`}>
                   <code>{code}</code>
                 </pre>
-                {!language && (
-                  <button
-                    onClick={() => copyToClipboard(code)}
-                    className={`absolute top-2 left-2 p-1 rounded hover:bg-gray-600/20 transition-colors opacity-0 group-hover:opacity-100 ${
-                      isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                    title="העתק"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                )}
               </div>
             </div>
           </div>
         );
       }
       
-      // Handle regular text
       return (
         <div key={index} className="leading-relaxed text-base">
           {formatTextWithInlineCode(part)}
@@ -212,7 +179,6 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const formatTextWithInlineCode = (text: string) => {
-    // Handle inline code and technical terms
     const technicalTerms = /\b(SQL|HTML|CSS|JavaScript|React|Python|CREATE TABLE|SELECT|INSERT|UPDATE|DELETE|VARCHAR|INT|PRIMARY KEY|FOREIGN KEY|NOT NULL|UNIQUE|INDEX|DATABASE|SCHEMA|API|JSON|XML|HTTP|HTTPS|URL|ID|UUID)\b/g;
     
     return text.split('\n').map((line, lineIndex) => {
@@ -242,112 +208,109 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     });
   };
 
-  // Handle both Date objects and string dates from localStorage
   const getFormattedTime = () => {
     const date = typeof message.timestamp === 'string' ? new Date(message.timestamp) : message.timestamp;
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
-    <div className={`flex ${message.isUser ? 'justify-start' : 'justify-end'}`} dir="rtl">
-      <div className={`max-w-4xl ${message.isUser ? 'w-auto' : 'w-full'}`}>
-        <Card className={`p-6 ${
-          message.isUser 
-            ? 'bg-gradient-to-r from-green-600 to-blue-600 text-white mr-12' 
-            : isDarkMode
-              ? 'bg-gray-800 border-gray-700 text-white ml-12'
-              : 'bg-white border-gray-200 text-gray-800 ml-12'
+    <div className="w-full mb-6" dir="rtl">
+      {/* Message Header */}
+      <div className="flex items-center mb-2">
+        <div className={`flex items-center space-x-2 space-x-reverse ${
+          message.isUser ? 'flex-row' : 'flex-row'
         }`}>
-          <div className="space-y-3">
-            {/* Message Content */}
-            <div className={`text-sm ${
-              message.isUser 
-                ? 'text-white' 
-                : isDarkMode 
-                  ? 'text-gray-100' 
-                  : 'text-gray-800'
-            }`}>
-              {formatContent(processedContent)}
-            </div>
-
-            {/* Action Buttons */}
-            {!message.isUser && (
-              <div className={`flex items-center space-x-3 space-x-reverse pt-3 border-t ${
-                isDarkMode ? 'border-gray-700' : 'border-gray-200'
-              }`}>
-                <button
-                  onClick={copyEntireMessage}
-                  className={`p-2 rounded-md transition-colors ${
-                    isDarkMode 
-                      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                  title="העתק תשובה"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-
-                {(contentTypes.hasCodeBlocks || contentTypes.hasSQLKeywords || contentTypes.hasProgrammingKeywords) && (
-                  <button
-                    onClick={() => {
-                      const codeBlocks = processedContent.match(/```[\s\S]*?```/g) || [];
-                      const allCode = codeBlocks.map(block => 
-                        block.slice(3, -3).trim().split('\n').slice(1).join('\n')
-                      ).join('\n\n');
-                      copyToClipboard(allCode || processedContent);
-                    }}
-                    className={`p-2 rounded-md transition-colors ${
-                      isDarkMode 
-                        ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
-                    title="העתק קוד"
-                  >
-                    <Code className="w-4 h-4" />
-                  </button>
-                )}
-
-                {contentTypes.hasVisualCode && (
-                  <button
-                    onClick={() => setShowPreview(true)}
-                    className={`p-2 rounded-md transition-colors ${
-                      isDarkMode 
-                        ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
-                    title="תצוגה מקדימה"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                )}
-
-                <div className="flex-1"></div>
-                
-                <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {getFormattedTime()}
-                </span>
-              </div>
-            )}
-
-            {/* User message timestamp */}
-            {message.isUser && (
-              <div className="text-left">
-                <span className="text-xs text-green-100 opacity-75">
-                  {getFormattedTime()}
-                </span>
-              </div>
+          <div className={`p-1.5 rounded-full ${
+            message.isUser 
+              ? 'bg-green-500' 
+              : isDarkMode 
+                ? 'bg-blue-500' 
+                : 'bg-blue-600'
+          }`}>
+            {message.isUser ? (
+              <User className="w-4 h-4 text-white" />
+            ) : (
+              <Bot className="w-4 h-4 text-white" />
             )}
           </div>
-        </Card>
-
-        {/* Code Preview Modal */}
-        {showPreview && contentTypes.hasVisualCode && (
-          <CodePreview
-            code={processedContent}
-            onClose={() => setShowPreview(false)}
-          />
-        )}
+          <span className={`font-medium text-sm ${
+            isDarkMode ? 'text-gray-300' : 'text-gray-700'
+          }`}>
+            {message.isUser ? 'אתה' : 'בוט'}
+          </span>
+          <span className={`text-xs ${
+            isDarkMode ? 'text-gray-500' : 'text-gray-400'
+          }`}>
+            {getFormattedTime()}
+          </span>
+        </div>
       </div>
+
+      {/* Message Content */}
+      <div className={`text-base leading-relaxed ${
+        isDarkMode ? 'text-gray-100' : 'text-gray-800'
+      } mb-3`}>
+        {formatContent(processedContent)}
+      </div>
+
+      {/* Action Buttons for Bot Messages */}
+      {!message.isUser && (
+        <div className="flex items-center space-x-3 space-x-reverse">
+          <button
+            onClick={() => copyToClipboard(processedContent)}
+            className={`p-2 rounded-md transition-colors ${
+              isDarkMode 
+                ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50' 
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+            }`}
+            title="העתק תשובה"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+
+          {(contentTypes.hasCodeBlocks || contentTypes.hasSQLKeywords || contentTypes.hasProgrammingKeywords) && (
+            <button
+              onClick={() => {
+                const codeBlocks = processedContent.match(/```[\s\S]*?```/g) || [];
+                const allCode = codeBlocks.map(block => 
+                  block.slice(3, -3).trim().split('\n').slice(1).join('\n')
+                ).join('\n\n');
+                copyToClipboard(allCode || processedContent);
+              }}
+              className={`p-2 rounded-md transition-colors ${
+                isDarkMode 
+                  ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50' 
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }`}
+              title="העתק קוד"
+            >
+              <Code className="w-4 h-4" />
+            </button>
+          )}
+
+          {contentTypes.hasVisualCode && (
+            <button
+              onClick={() => setShowPreview(true)}
+              className={`p-2 rounded-md transition-colors ${
+                isDarkMode 
+                  ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50' 
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }`}
+              title="תצוגה מקדימה"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Code Preview Modal */}
+      {showPreview && contentTypes.hasVisualCode && (
+        <CodePreview
+          code={processedContent}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   );
 };
