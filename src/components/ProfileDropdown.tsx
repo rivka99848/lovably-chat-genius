@@ -23,10 +23,12 @@ const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
   const navigate = useNavigate();
 
   const handleSettingsClick = () => {
+    console.log('Settings clicked');
     navigate('/profile');
   };
 
   const handleUpgradeClick = () => {
+    console.log('Upgrade clicked');
     toast({
       title: "שדרוג התוכנית",
       description: "עמוד השדרוג יהיה זמין בקרוב"
@@ -34,6 +36,7 @@ const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
   };
 
   const handleLogout = () => {
+    console.log('Logout clicked');
     toast({
       title: "התנתקת בהצלחה",
       description: "מעבירים אותך לדף ההתחברות"
@@ -51,7 +54,7 @@ const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
           <span className="hidden md:inline">{user.name}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-gray-800 border shadow-lg">
         <div className="px-2 py-1.5 text-sm font-semibold">{user.name}</div>
         <div className="px-2 py-1.5 text-xs text-muted-foreground">{user.email}</div>
         <DropdownMenuSeparator />
@@ -64,7 +67,7 @@ const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
           שדרוג
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout} dir="rtl" className="text-orange-600">
+        <DropdownMenuItem onClick={handleLogout} dir="rtl" className="text-orange-600 hover:text-orange-700 hover:bg-orange-50">
           <LogOut className="ml-2 h-4 w-4" />
           התנתק
         </DropdownMenuItem>
