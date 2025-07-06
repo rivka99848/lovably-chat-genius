@@ -1,353 +1,234 @@
 
 import React, { useState } from 'react';
-import { Copy, Eye, Code } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
-import CodePreview from './CodePreview';
+import { Copy } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-interface Message {
-  id: string;
+interface MessageBubbleProps {
   content: string;
-  isUser: boolean;
-  timestamp: Date | string;
-  category?: string;
+  isUser?: boolean;
+  timestamp?: string;
 }
 
-interface Props {
-  message: Message;
-  isDarkMode?: boolean;
-}
+const MessageBubble: React.FC<MessageBubbleProps> = ({ 
+  content, 
+  isUser = false, 
+  timestamp 
+}) => {
+  const [copied, setCopied] = useState(false);
 
-const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
-  const [showPreview, setShowPreview] = useState(false);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "הועתק!",
-      description: "התוכן הועתק ללוח הכתיבה.",
-    });
-  };
-
-  const copyEntireMessage = () => {
-    copyToClipboard(processedContent);
-  };
-
-  // Advanced content cleaning function
-  const cleanContent = (content: string) => {
-    if (!content) return '';
-    
+  // Clean content from unwanted characters and JSON formatting
+  const cleanContent = (text: string): string => {
     try {
-      // Try to parse JSON if it looks like JSON
-      if (content.trim().startsWith('{') || content.trim().startsWith('[')) {
-        const parsed = JSON.parse(content);
-        
-        // Extract meaningful content from common JSON structures
-        if (typeof parsed === 'string') {
-          return cleanTextContent(parsed);
-        }
-        
-        if (Array.isArray(parsed)) {
-          // Handle array responses - join meaningful content
-          return parsed
-            .map(item => {
-              if (typeof item === 'string') return cleanTextContent(item);
-              if (item && typeof item === 'object') {
-                return extractContentFromObject(item);
-              }
-              return String(item);
-            })
-            .filter(item => item && item.trim())
-            .join('\n\n');
-        }
-        
-        if (parsed && typeof parsed === 'object') {
-          return extractContentFromObject(parsed);
-        }
-        
-        return cleanTextContent(String(parsed));
+      // Try to parse as JSON first
+      const parsed = JSON.parse(text);
+      if (typeof parsed === 'string') {
+        text = parsed;
+      } else if (parsed.content) {
+        text = parsed.content;
+      } else if (parsed.message) {
+        text = parsed.message;
       }
-      
-      // If not JSON, clean as regular text
-      return cleanTextContent(content);
-      
     } catch {
-      // If JSON parsing fails, clean as regular text
-      return cleanTextContent(content);
+      // Not JSON, continue with cleaning
     }
-  };
 
-  // Extract content from object structures
-  const extractContentFromObject = (obj: any): string => {
-    // Common content fields to look for
-    const contentFields = ['message', 'response', 'content', 'text', 'data', 'result', 'output'];
-    
-    for (const field of contentFields) {
-      if (obj[field] && typeof obj[field] === 'string') {
-        return cleanTextContent(obj[field]);
-      }
-    }
-    
-    // If no standard fields found, try to extract meaningful text
-    const values = Object.values(obj)
-      .filter(val => typeof val === 'string' && val.trim().length > 10)
-      .map(val => cleanTextContent(val as string));
-    
-    return values.length > 0 ? values.join('\n\n') : cleanTextContent(JSON.stringify(obj, null, 2));
-  };
-
-  // Enhanced text cleaning function to remove unwanted characters
-  const cleanTextContent = (text: string): string => {
     return text
-      .replace(/^[\[\]"]+|[\[\]"]+$/g, '') // Remove leading/trailing brackets and quotes
-      .replace(/\\n/g, '\n') // Convert \n to actual newlines
-      .replace(/\\t/g, '\t') // Convert \t to actual tabs
-      .replace(/\\"/g, '"') // Convert \" to "
-      .replace(/\\r/g, '\r') // Convert \r to actual carriage returns
-      .replace(/\\\\/g, '\\') // Convert \\ to \
-      .replace(/\\u[\dA-Fa-f]{4}/g, (match) => {
-        // Convert Unicode escape sequences
-        return String.fromCharCode(parseInt(match.replace('\\u', ''), 16));
-      })
-      .replace(/^\s*["'`]|["'`]\s*$/g, '') // Remove outer quotes
-      .replace(/[#]{3,}/g, '') // Remove multiple hash symbols (###, ####, etc)
-      .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '') // Remove bullet points and special symbols
-      .replace(/[\u201C\u201D\u2018\u2019]/g, '"') // Replace smart quotes with regular quotes
-      .replace(/[\u2013\u2014]/g, '-') // Replace em/en dashes with regular dashes
-      .replace(/[\u00A0]/g, ' ') // Replace non-breaking spaces with regular spaces
-      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'-]/g, '') // Keep only letters, numbers, Hebrew, spaces, and basic punctuation
-      .replace(/\s+$/gm, '') // Remove trailing whitespace from lines
-      .replace(/^\s*[\r\n]+|[\r\n]+\s*$/g, '') // Remove leading/trailing empty lines
-      .replace(/[\r\n]{3,}/g, '\n\n') // Replace multiple line breaks with double line breaks
+      // Remove markdown formatting
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/`(.*?)`/g, '$1')
+      // Remove hashtags and special characters at start of lines
+      .replace(/^#+\s*/gm, '')
+      .replace(/^[#*-]\s*/gm, '')
+      // Clean up extra whitespace
+      .replace(/\n\s*\n/g, '\n')
       .trim();
   };
 
-  // Enhanced content detection
-  const detectContentType = (content: string) => {
-    const hasCodeBlocks = content.includes('```');
-    const hasSQLKeywords = /\b(CREATE|SELECT|INSERT|UPDATE|DELETE|TABLE|FROM|WHERE|JOIN|ALTER|DROP)\b/i.test(content);
-    const hasHTMLTags = /<[^>]+>/g.test(content);
-    const hasJavaScript = /\b(function|const|let|var|class|import|export|if|for|while)\b/.test(content);
-    const hasProgrammingKeywords = /\b(def|class|import|from|return|if|elif|else|try|except|for|while|with)\b/.test(content);
+  // Detect if content has instructions followed by actual content
+  const detectContentSections = (text: string) => {
+    const cleaned = cleanContent(text);
+    const lines = cleaned.split('\n');
+    
+    // Look for patterns that indicate instructions vs content
+    const codeKeywords = ['CREATE', 'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DATABASE', 'TABLE', 'USE', 'PRIMARY KEY', 'FOREIGN KEY'];
+    const instructionKeywords = ['צריך', 'רוצה', 'בקשה', 'יש', 'לך', 'אתה', 'כדי', 'בשביל'];
+    
+    let instructionLines: string[] = [];
+    let contentLines: string[] = [];
+    let foundCode = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      // Check if this line contains code keywords
+      const hasCodeKeywords = codeKeywords.some(keyword => 
+        line.toUpperCase().includes(keyword)
+      );
+      
+      // Check if this line contains instruction keywords
+      const hasInstructionKeywords = instructionKeywords.some(keyword => 
+        line.includes(keyword)
+      );
+      
+      if (hasCodeKeywords || foundCode) {
+        foundCode = true;
+        contentLines.push(line);
+      } else if (hasInstructionKeywords && !foundCode) {
+        instructionLines.push(line);
+      } else if (!foundCode) {
+        instructionLines.push(line);
+      } else {
+        contentLines.push(line);
+      }
+    }
     
     return {
-      hasCodeBlocks,
-      hasSQLKeywords,
-      hasHTMLTags,
-      hasJavaScript,
-      hasProgrammingKeywords,
-      hasVisualCode: hasHTMLTags || content.includes('className') || content.includes('style=')
+      hasInstructions: instructionLines.length > 0,
+      instructions: instructionLines.join('\n'),
+      content: contentLines.join('\n'),
+      isCode: contentLines.some(line => 
+        codeKeywords.some(keyword => line.toUpperCase().includes(keyword))
+      )
     };
   };
 
-  const processedContent = cleanContent(message.content);
-  const contentTypes = detectContentType(processedContent);
-  
-  const formatContent = (content: string) => {
-    // Split content by code blocks first
-    const parts = content.split(/(```[\s\S]*?```)/g);
-    
-    return parts.map((part, index) => {
-      // Handle code blocks
-      if (part.startsWith('```') && part.endsWith('```')) {
-        const codeContent = part.slice(3, -3).trim();
-        const lines = codeContent.split('\n');
-        const language = lines[0] && !lines[0].includes(' ') && lines[0].length < 20 ? lines[0] : '';
-        const code = language ? lines.slice(1).join('\n') : codeContent;
+  const sections = detectContentSections(content);
+  const displayContent = cleanContent(content);
+
+  const copyToClipboard = async (textToCopy: string) => {
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const formatContent = (text: string, isCodeSection: boolean = false) => {
+    return text.split('\n').map((line, index) => (
+      <div key={index} className={cn(
+        "leading-relaxed",
+        isCodeSection && "font-mono text-sm"
+      )}>
+        {line || <br />}
+      </div>
+    ));
+  };
+
+  if (!isUser && (sections.hasInstructions || sections.isCode)) {
+    return (
+      <div className={cn(
+        "max-w-3xl mb-4 space-y-3",
+        isUser ? "ml-auto" : "mr-auto"
+      )}>
+        {/* Instructions section */}
+        {sections.hasInstructions && (
+          <div className={cn(
+            "p-4 rounded-lg shadow-sm border-r-4",
+            "bg-blue-50 border-blue-400 text-gray-800"
+          )}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 text-right" dir="rtl">
+                {formatContent(sections.instructions)}
+              </div>
+              <div className="text-xs text-blue-600 font-medium">
+                הנחיות
+              </div>
+            </div>
+          </div>
+        )}
         
-        return (
-          <div key={index} className="my-4 relative group">
-            <div className={`rounded-lg overflow-hidden border ${
-              isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
-            }`}>
-              {language && (
-                <div className={`px-4 py-2 text-xs font-medium border-b flex items-center justify-between ${
-                  isDarkMode 
-                    ? 'bg-gray-800 text-gray-300 border-gray-700' 
-                    : 'bg-gray-100 text-gray-600 border-gray-200'
-                }`}>
-                  <span>{language.toUpperCase()}</span>
-                  <button
-                    onClick={() => copyToClipboard(code)}
-                    className={`p-1 rounded hover:bg-gray-600/20 transition-colors ${
-                      isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                    title="העתק קוד"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
+        {/* Content section */}
+        {sections.content && (
+          <div className={cn(
+            "p-4 rounded-lg shadow-sm border-r-4 relative group",
+            sections.isCode 
+              ? "bg-gray-900 border-green-400 text-green-400" 
+              : "bg-gray-50 border-gray-400 text-gray-800"
+          )}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1" dir={sections.isCode ? "ltr" : "rtl"}>
+                {formatContent(sections.content, sections.isCode)}
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <div className="text-xs font-medium">
+                  {sections.isCode ? "קוד" : "תוכן"}
                 </div>
-              )}
-              <div className="p-4 overflow-x-auto relative">
-                <pre className={`text-sm leading-relaxed ${
-                  isDarkMode ? 'text-gray-100' : 'text-gray-800'
-                } whitespace-pre-wrap font-mono`}>
-                  <code>{code}</code>
-                </pre>
-                {!language && (
-                  <button
-                    onClick={() => copyToClipboard(code)}
-                    className={`absolute top-2 left-2 p-1 rounded hover:bg-gray-600/20 transition-colors opacity-0 group-hover:opacity-100 ${
-                      isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                    title="העתק"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      }
-      
-      // Handle regular text
-      return (
-        <div key={index} className="leading-relaxed text-base">
-          {formatTextWithInlineCode(part)}
-        </div>
-      );
-    });
-  };
-
-  const formatTextWithInlineCode = (text: string) => {
-    // Handle inline code and technical terms
-    const technicalTerms = /\b(SQL|HTML|CSS|JavaScript|React|Python|CREATE TABLE|SELECT|INSERT|UPDATE|DELETE|VARCHAR|INT|PRIMARY KEY|FOREIGN KEY|NOT NULL|UNIQUE|INDEX|DATABASE|SCHEMA|API|JSON|XML|HTTP|HTTPS|URL|ID|UUID)\b/g;
-    
-    return text.split('\n').map((line, lineIndex) => {
-      if (!line.trim()) return <br key={lineIndex} />;
-      
-      return (
-        <div key={lineIndex} className="mb-2">
-          {line.split(technicalTerms).map((segment, segmentIndex) => {
-            if (technicalTerms.test(segment)) {
-              return (
-                <span
-                  key={segmentIndex}
-                  className={`inline-block px-2 py-0.5 rounded text-sm font-mono mx-0.5 ${
-                    isDarkMode 
-                      ? 'bg-blue-900/30 text-blue-300 border border-blue-700/50' 
-                      : 'bg-blue-100 text-blue-700 border border-blue-200'
-                  }`}
-                >
-                  {segment}
-                </span>
-              );
-            }
-            return segment;
-          })}
-        </div>
-      );
-    });
-  };
-
-  // Handle both Date objects and string dates from localStorage
-  const getFormattedTime = () => {
-    const date = typeof message.timestamp === 'string' ? new Date(message.timestamp) : message.timestamp;
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  return (
-    <div className={`flex ${message.isUser ? 'justify-start' : 'justify-end'}`} dir="rtl">
-      <div className={`max-w-4xl ${message.isUser ? 'w-auto' : 'w-full'}`}>
-        <Card className={`p-6 ${
-          message.isUser 
-            ? 'bg-gradient-to-r from-green-600 to-blue-600 text-white mr-12' 
-            : isDarkMode
-              ? 'bg-gray-800 border-gray-700 text-white ml-12'
-              : 'bg-white border-gray-200 text-gray-800 ml-12'
-        }`}>
-          <div className="space-y-3">
-            {/* Message Content */}
-            <div className={`text-sm ${
-              message.isUser 
-                ? 'text-white' 
-                : isDarkMode 
-                  ? 'text-gray-100' 
-                  : 'text-gray-800'
-            }`}>
-              {formatContent(processedContent)}
-            </div>
-
-            {/* Action Buttons */}
-            {!message.isUser && (
-              <div className={`flex items-center space-x-3 space-x-reverse pt-3 border-t ${
-                isDarkMode ? 'border-gray-700' : 'border-gray-200'
-              }`}>
                 <button
-                  onClick={copyEntireMessage}
-                  className={`p-2 rounded-md transition-colors ${
-                    isDarkMode 
-                      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                  title="העתק תשובה"
+                  onClick={() => copyToClipboard(sections.content)}
+                  className={cn(
+                    "p-2 rounded-lg transition-all duration-200 opacity-70 hover:opacity-100",
+                    sections.isCode 
+                      ? "bg-green-800 hover:bg-green-700 text-green-200" 
+                      : "bg-gray-200 hover:bg-gray-300 text-gray-600"
+                  )}
+                  title="העתק"
                 >
-                  <Copy className="w-4 h-4" />
+                  <Copy size={16} />
                 </button>
-
-                {(contentTypes.hasCodeBlocks || contentTypes.hasSQLKeywords || contentTypes.hasProgrammingKeywords) && (
-                  <button
-                    onClick={() => {
-                      const codeBlocks = processedContent.match(/```[\s\S]*?```/g) || [];
-                      const allCode = codeBlocks.map(block => 
-                        block.slice(3, -3).trim().split('\n').slice(1).join('\n')
-                      ).join('\n\n');
-                      copyToClipboard(allCode || processedContent);
-                    }}
-                    className={`p-2 rounded-md transition-colors ${
-                      isDarkMode 
-                        ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
-                    title="העתק קוד"
-                  >
-                    <Code className="w-4 h-4" />
-                  </button>
-                )}
-
-                {contentTypes.hasVisualCode && (
-                  <button
-                    onClick={() => setShowPreview(true)}
-                    className={`p-2 rounded-md transition-colors ${
-                      isDarkMode 
-                        ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
-                    title="תצוגה מקדימה"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                )}
-
-                <div className="flex-1"></div>
-                
-                <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {getFormattedTime()}
-                </span>
               </div>
-            )}
-
-            {/* User message timestamp */}
-            {message.isUser && (
-              <div className="text-left">
-                <span className="text-xs text-green-100 opacity-75">
-                  {getFormattedTime()}
-                </span>
-              </div>
-            )}
+            </div>
           </div>
-        </Card>
-
-        {/* Code Preview Modal */}
-        {showPreview && contentTypes.hasVisualCode && (
-          <CodePreview
-            code={processedContent}
-            onClose={() => setShowPreview(false)}
-          />
+        )}
+        
+        {copied && (
+          <div className="text-xs text-green-600 text-center animate-fade-in-out">
+            הועתק!
+          </div>
+        )}
+        
+        {timestamp && (
+          <div className="text-xs text-gray-500 text-center">
+            {timestamp}
+          </div>
         )}
       </div>
+    );
+  }
+
+  // Regular message bubble for user messages or simple AI responses
+  return (
+    <div className={cn(
+      "max-w-3xl mb-4",
+      isUser ? "ml-auto" : "mr-auto"
+    )}>
+      <div className={cn(
+        "p-4 rounded-lg shadow-sm relative group",
+        isUser 
+          ? "bg-blue-600 text-white border-r-4 border-blue-800" 
+          : "bg-white text-gray-800 border border-gray-200"
+      )}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 text-right" dir="rtl">
+            {formatContent(displayContent)}
+          </div>
+          
+          {!isUser && (
+            <button
+              onClick={() => copyToClipboard(displayContent)}
+              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors opacity-70 hover:opacity-100"
+              title="העתק"
+            >
+              <Copy size={16} className="text-gray-600" />
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {copied && (
+        <div className="text-xs text-green-600 text-center mt-1 animate-fade-in-out">
+          הועתק!
+        </div>
+      )}
+      
+      {timestamp && (
+        <div className="text-xs text-gray-500 text-center mt-1">
+          {timestamp}
+        </div>
+      )}
     </div>
   );
 };
