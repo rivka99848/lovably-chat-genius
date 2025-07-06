@@ -1,11 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun } from 'lucide-react';
+import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun, LogOut, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import MessageBubble from './MessageBubble';
 import AuthModal from './AuthModal';
 import PlanUpgrade from './PlanUpgrade';
@@ -413,6 +420,37 @@ const ChatInterface = () => {
     }
   };
 
+  const handleSettingsClick = () => {
+    console.log('Settings clicked');
+    navigate('/profile');
+  };
+
+  const handleUpgradeClick = () => {
+    console.log('Upgrade clicked');
+    setShowPlanUpgrade(true);
+  };
+
+  const handleLogout = () => {
+    console.log('Logout clicked');
+    
+    // Clear user data
+    setUser(null);
+    localStorage.removeItem('lovable_user');
+    localStorage.removeItem('lovable_chat_history');
+    localStorage.removeItem('lovable_session_id');
+    
+    // Clear messages
+    setMessages([]);
+    
+    toast({
+      title: "התנתקת בהצלחה",
+      description: "מעבירים אותך לדף ההתחברות"
+    });
+    
+    // Show auth modal
+    setShowAuth(true);
+  };
+
   const handleProfileClick = () => {
     navigate('/profile');
   };
@@ -469,17 +507,35 @@ const ChatInterface = () => {
               >
                 <Crown className="w-5 h-5" />
               </button>
-              <button
-                onClick={handleProfileClick}
-                className={`p-2 rounded-lg transition-colors ${
-                  isDarkMode 
-                    ? 'hover:bg-white/10 text-blue-400' 
-                    : 'hover:bg-gray-100 text-blue-600'
-                }`}
-                title="חשבון משתמש"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={`p-2 rounded-lg transition-colors ${
+                      isDarkMode 
+                        ? 'hover:bg-white/10 text-blue-400' 
+                        : 'hover:bg-gray-100 text-blue-600'
+                    }`}
+                    title="הגדרות"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-gray-800 border shadow-lg">
+                  <DropdownMenuItem onClick={handleLogout} dir="rtl" className="text-orange-600 hover:text-orange-700 hover:bg-orange-50">
+                    <LogOut className="ml-2 h-4 w-4" />
+                    התנתקות
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSettingsClick} dir="rtl">
+                    <Settings className="ml-2 h-4 w-4" />
+                    הגדרות
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleUpgradeClick} dir="rtl">
+                    <CreditCard className="ml-2 h-4 w-4" />
+                    שדרוג
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           
