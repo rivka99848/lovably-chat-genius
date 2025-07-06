@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Settings, CreditCard, LogOut, User } from 'lucide-react';
+import { Settings, CreditCard, User } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface ProfileDropdownProps {
@@ -27,25 +27,10 @@ const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
   };
 
   const handleUpgradeClick = () => {
-    // Navigate to upgrade page (you can implement this route later)
     toast({
       title: "שדרוג התוכנית",
       description: "עמוד השדרוג יהיה זמין בקרוב"
     });
-  };
-
-  const handleLogout = () => {
-    // Clear user data from localStorage
-    localStorage.removeItem('lovable_user');
-    localStorage.removeItem('theme');
-    
-    toast({
-      title: "התנתקת בהצלחה",
-      description: "להתראות!"
-    });
-    
-    // Refresh the page to reset the app state
-    window.location.reload();
   };
 
   return (
@@ -67,11 +52,6 @@ const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
         <DropdownMenuItem onClick={handleUpgradeClick} dir="rtl">
           <CreditCard className="ml-2 h-4 w-4" />
           שדרוג
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout} dir="rtl" className="text-red-600">
-          <LogOut className="ml-2 h-4 w-4" />
-          התנתק
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
