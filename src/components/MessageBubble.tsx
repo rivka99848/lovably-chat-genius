@@ -266,9 +266,13 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
             <button
               onClick={() => {
                 const codeBlocks = processedContent.match(/```[\s\S]*?```/g) || [];
-                const allCode = codeBlocks.map(block => 
-                  block.slice(3, -3).trim().split('\n').slice(1).join('\n')
-                ).join('\n\n');
+                const allCode = codeBlocks.map(block => {
+                  const content = block.slice(3, -3).trim();
+                  const lines = content.split('\n');
+                  // אם השורה הראשונה היא שפת התכנות, נדלג עליה
+                  const isLanguageLine = lines[0] && !lines[0].includes(' ') && lines[0].length < 20;
+                  return isLanguageLine ? lines.slice(1).join('\n') : content;
+                }).join('\n\n');
                 copyToClipboard(allCode || processedContent);
               }}
               className={`p-2 rounded-md transition-colors ${
