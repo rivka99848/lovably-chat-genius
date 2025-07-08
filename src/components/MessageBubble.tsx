@@ -172,58 +172,109 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
           </div>
         );
       } else {
-        // This is regular text - check if it needs automatic code detection
+        // This is regular text - check if it contains a lot of code patterns
+        const hasLotsOfCode = detectAndWrapCodeContent(part);
+        if (hasLotsOfCode.shouldWrapAsCode) {
+          return (
+            <div key={index} className="my-4">
+              <div className={`rounded-lg border ${
+                isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
+              }`}>
+                {/* Header */}
+                <div className={`flex items-center justify-between px-4 py-3 border-b ${
+                  isDarkMode 
+                    ? 'border-gray-700 text-gray-300' 
+                    : 'border-gray-200 text-gray-600'
+                }`}>
+                  <span className="text-sm font-medium">code</span>
+                  <button
+                    onClick={() => copyToClipboard(hasLotsOfCode.cleanCode)}
+                    className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
+                      isDarkMode 
+                        ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                        : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    <Copy className="w-4 h-4" />
+                    <span>Copy code</span>
+                  </button>
+                </div>
+                
+                {/* Code */}
+                <div className="p-4 overflow-x-auto">
+                  <pre className={`text-sm font-mono ${
+                    isDarkMode ? 'text-gray-100' : 'text-gray-800'
+                  }`}>
+                    <code>{hasLotsOfCode.cleanCode}</code>
+                  </pre>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        
         return (
           <div key={index} className="leading-relaxed text-base">
-            {formatTextWithSmartCodeDetection(part)}
+            {formatPlainText(part)}
           </div>
         );
       }
     });
   };
 
-  const formatTextWithSmartCodeDetection = (text: string) => {
-    // Automatically detect code patterns and wrap them
+  const detectAndWrapCodeContent = (text: string) => {
+    // Count code-like patterns
     const codePatterns = [
-      // Commands (starting with $, npm, cd, etc.)
-      /(\$\s+[^\n]+|npm\s+[^\n]+|cd\s+[^\n]+|git\s+[^\n]+)/g,
-      // File paths
-      /(\/[^\s]+\.[a-zA-Z]+|\.\/[^\s]+|~\/[^\s]+)/g,
-      // JSON-like objects
-      /(\{[^}]*\})/g,
-      // Code snippets with parentheses and semicolons
-      /([a-zA-Z_$][a-zA-Z0-9_$]*\([^)]*\)[^.]*;?)/g
+      /\$\s+[^\n]+/g, // Commands starting with $
+      /npm\s+[^\n]+/g, // npm commands
+      /cd\s+[^\n]+/g, // cd commands
+      /import\s+[^\n]+/g, // import statements
+      /const\s+[^\n]+/g, // const declarations
+      /function\s+[^\n]+/g, // function declarations
+      /\{[^}]*\}/g, // JSON-like objects
+      /\([^)]*\)/g, // Function calls
     ];
 
-    let formattedText = text;
-    
-    // Apply smart code detection
+    let codeMatches = 0;
     codePatterns.forEach(pattern => {
-      formattedText = formattedText.replace(pattern, (match) => {
-        return `\`${match}\``;
-      });
+      const matches = text.match(pattern) || [];
+      codeMatches += matches.length;
     });
 
-    // Convert backtick code to styled spans
-    return formattedText.split(/(`[^`]+`)/g).map((segment, segmentIndex) => {
-      if (segment.startsWith('`') && segment.endsWith('`')) {
-        const codeText = segment.slice(1, -1);
+    // If there are many code patterns, treat the whole thing as code
+    const shouldWrapAsCode = codeMatches > 3;
+    
+    return {
+      shouldWrapAsCode,
+      cleanCode: text.trim()
+    };
+  };
+
+  const formatPlainText = (text: string) => {
+    // Handle numbered lists (1. 2. 3. etc.)
+    const lines = text.split('\n');
+    
+    return lines.map((line, lineIndex) => {
+      // Check if line starts with number followed by dot
+      const numberedListMatch = line.match(/^(\d+\.)\s*(.*)$/);
+      
+      if (numberedListMatch) {
         return (
-          <span
-            key={segmentIndex}
-            className={`inline-flex items-center px-2 py-0.5 rounded text-sm font-mono mx-0.5 cursor-pointer ${
-              isDarkMode 
-                ? 'bg-gray-800 text-blue-300 border border-gray-700' 
-                : 'bg-gray-100 text-blue-700 border border-gray-200'
-            }`}
-            onClick={() => copyToClipboard(codeText)}
-            title="לחץ להעתקה"
-          >
-            {codeText}
-          </span>
+          <div key={lineIndex} className="mb-2 flex">
+            <span className="font-medium ml-2 min-w-[2rem]">{numberedListMatch[1]}</span>
+            <span className="flex-1">{numberedListMatch[2]}</span>
+          </div>
         );
       }
-      return segment;
+      
+      // Regular line
+      if (!line.trim()) return <br key={lineIndex} />;
+      
+      return (
+        <div key={lineIndex} className="mb-2">
+          {line}
+        </div>
+      );
     });
   };
 
