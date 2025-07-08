@@ -270,145 +270,142 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     if (!text.trim()) return { explanation: text, code: '', afterExplanation: '' };
     
     const lines = text.split('\n');
-    let codeStartIndex = -1;
-    let codeEndIndex = -1;
+    const result: any[] = [];
+    let currentSection = { type: 'explanation', content: '', startIndex: 0 };
     
-    // מילות מפתח שמציינות התחלת קוד
-    const codeIndicators = [
-      /^bash\s*$/i,
-      /^[\$#]\s+/,  // פקודות שמתחילות ב-$ או #
-      /^npm\s+/i,
-      /^npx\s+/i,
-      /^cd\s+/i,
-      /^git\s+/i,
-      /^node\s+/i,
-      /^python\s+/i,
-      /^pip\s+/i,
-      /^yarn\s+/i,
-      /^curl\s+/i,
-      /^mkdir\s+/i,
-      /^touch\s+/i,
-      /^echo\s+/i,
-      /^cat\s+/i,
-      /^ls\s+/i,
-      /^cp\s+/i,
-      /^mv\s+/i,
-      /^rm\s+/i,
-      /^chmod\s+/i,
-      /^sudo\s+/i,
-      /^apt\s+/i,
-      /^yum\s+/i,
-      /^brew\s+/i,
-      /^docker\s+/i,
-      /^kubectl\s+/i,
-      /^ssh\s+/i,
-      /^scp\s+/i,
-      /^rsync\s+/i,
-      /^tar\s+/i,
-      /^zip\s+/i,
-      /^unzip\s+/i,
-      /^wget\s+/i,
-      /^import\s+/i, // הצהרות import
-      /^from\s+.+\s+import/i,
-      /^const\s+/i,
-      /^let\s+/i,
-      /^var\s+/i,
-      /^function\s+/i,
-      /^class\s+/i,
-      /^interface\s+/i,
-      /^type\s+/i,
-      /^export\s+/i,
-      /^<[^>]+>/,  // HTML tags
-      /^\s*{/,     // JSON או object
-      /^\s*\[/,    // Array
-    ];
-    
-    // מילות מפתח שמציינות סיום קוד והתחלת הסבר
-    const explanationIndicators = [
-      /^[א-ת].+:/,  // שורה בעברית שמסתיימת בנקודותיים
-      /^[א-ת].+[.!?]$/,  // שורה בעברית שמסתיימת בסימני פיסוק
-      /^-\s+[א-ת]/,  // רשימת מקפים בעברית
-      /^אם\s+/,
-      /^כדי\s+/,
-      /^לאחר\s+/,
-      /^עכשיו\s+/,
-      /^בשלב\s+/,
-      /^לבסוף\s+/,
-      /^חשוב\s+/,
-      /^שים\s+לב/,
-      /^הערה\s*/,
-      /^טיפ\s*/,
-      /^זכור\s+/,
-      /^בנוסף\s+/,
-      /^גם\s+/,
-      /^אפשר\s+/,
-      /^ניתן\s+/,
-    ];
-    
-    // חפש את השורה הראשונה שמכילה קוד
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+      const line = lines[i];
+      const trimmedLine = line.trim();
       
-      // דלג על שורות ריקות
-      if (!line) continue;
+      // בדוק אם השורה הנוכחית היא קוד
+      const isCodeLine = isLineCode(trimmedLine);
       
-      // בדוק אם השורה מתחילה עם אחד ממחווני הקוד
-      const isCodeLine = codeIndicators.some(pattern => pattern.test(line));
-      
-      if (isCodeLine && codeStartIndex === -1) {
-        codeStartIndex = i;
-        continue;
-      }
-      
-      // אם כבר מצאנו התחלת קוד, חפש את הסיום
-      if (codeStartIndex !== -1 && codeEndIndex === -1) {
-        // בדוק אם השורה מתחילה עם אחד ממחווני ההסבר
-        const isExplanationLine = explanationIndicators.some(pattern => pattern.test(line));
-        
-        if (isExplanationLine) {
-          codeEndIndex = i - 1;
-          break;
+      if (isCodeLine && currentSection.type === 'explanation') {
+        // עבר מהסבר לקוד
+        if (currentSection.content.trim()) {
+          result.push({ ...currentSection, endIndex: i - 1 });
         }
-        
-        // אם זה לא קוד ולא הסבר ברור, נמשיך עם הקוד
-        const stillCodeLine = codeIndicators.some(pattern => pattern.test(line));
-        if (!stillCodeLine && !line.match(/^\s*$/) && line.length > 0) {
-          // בדוק אם זה נראה כמו המשך קוד או הסבר חדש
-          if (line.match(/^[א-ת]/) && line.length > 20) {
-            codeEndIndex = i - 1;
-            break;
-          }
-        }
-      }
-      
-      // אם זה נראה כמו רשימה ממוספרת שמכילה קוד
-      const numberedListWithCode = line.match(/^\d+\.\s*(.+)$/);
-      if (numberedListWithCode && codeStartIndex === -1) {
-        const listContent = numberedListWithCode[1];
-        const hasCodeInList = codeIndicators.some(pattern => pattern.test(listContent));
-        if (hasCodeInList) {
-          codeStartIndex = i;
+        currentSection = { type: 'code', content: line, startIndex: i };
+      } else if (isCodeLine && currentSection.type === 'code') {
+        // המשך קוד
+        currentSection.content += '\n' + line;
+      } else if (!isCodeLine && currentSection.type === 'code') {
+        // עבר מקוד להסבר
+        result.push({ ...currentSection, endIndex: i - 1 });
+        currentSection = { type: 'explanation', content: line, startIndex: i };
+      } else {
+        // המשך אותו סוג
+        if (currentSection.content) {
+          currentSection.content += '\n' + line;
+        } else {
+          currentSection.content = line;
         }
       }
     }
     
-    if (codeStartIndex === -1) {
-      // לא נמצא קוד, החזר הכל כהסבר
+    // הוסף את החלק האחרון
+    if (currentSection.content.trim()) {
+      result.push({ ...currentSection, endIndex: lines.length - 1 });
+    }
+    
+    // אם יש רק הסבר, החזר כמו קודם
+    if (result.length === 1 && result[0].type === 'explanation') {
       return { explanation: text, code: '', afterExplanation: '' };
     }
     
-    // אם לא נמצא סיום קוד, הקוד ממשיך עד הסוף
-    if (codeEndIndex === -1) {
-      codeEndIndex = lines.length - 1;
+    // אם יש רק קוד, החזר כמו קודם
+    if (result.length === 1 && result[0].type === 'code') {
+      return { explanation: '', code: text, afterExplanation: '' };
     }
     
-    const explanation = lines.slice(0, codeStartIndex).join('\n').trim();
-    const code = lines.slice(codeStartIndex, codeEndIndex + 1).join('\n').trim();
-    const afterExplanation = codeEndIndex < lines.length - 1 
-      ? lines.slice(codeEndIndex + 1).join('\n').trim() 
-      : '';
+    // אם יש מיקס, החזר את החלק הראשון כהסבר
+    const firstExplanation = result.find(r => r.type === 'explanation')?.content.trim() || '';
+    const codeSection = result.find(r => r.type === 'code')?.content.trim() || '';
     
-    return { explanation, code, afterExplanation };
+    // מצא את ההסבר האחרון
+    let lastExplanationIndex = -1;
+    for (let i = result.length - 1; i >= 0; i--) {
+      if (result[i].type === 'explanation') {
+        lastExplanationIndex = i;
+        break;
+      }
+    }
+    
+    const afterExplanation = lastExplanationIndex > 0 ? result[lastExplanationIndex].content.trim() : '';
+    
+    return { explanation: firstExplanation, code: codeSection, afterExplanation };
+  };
+
+  const isLineCode = (line: string): boolean => {
+    if (!line || line.length < 2) return false;
+    
+    // דלג על שורות שמתחילות בטקסט עברי רגיל (אלא אם יש בהן backticks)
+    if (/^[א-ת\s]+/.test(line) && !line.includes('`')) return false;
+    
+    // זהה סוגי קוד שונים
+    const codePatterns = [
+      // פקודות טרמינל וכלים
+      /^[\$#]\s+.+$/,
+      /^(npm|npx|yarn|pnpm)\s+.+$/i,
+      /^(git|cd|mkdir|touch|echo|cat|ls|cp|mv|rm|chmod|sudo)\s+.+$/i,
+      /^(curl|wget|ssh|scp|rsync|tar|zip|unzip)\s+.+$/i,
+      /^(docker|kubectl|helm)\s+.+$/i,
+      /^(python|pip|node|java|javac|gcc|make)\s+.+$/i,
+      /^(apt|yum|brew|dnf|pacman)\s+.+$/i,
+      
+      // הצהרות תכנות
+      /^(import|from)\s+.+$/i,
+      /^(const|let|var|function|class|interface|type|enum)\s+.+$/i,
+      /^(export|default|async|await)\s+.+$/i,
+      /^(if|else|for|while|switch|case|try|catch|finally)\s*[\(\{].*$/i,
+      /^(return|throw|break|continue)\s+.+$/i,
+      
+      // HTML/XML תגים
+      /^<[^>]+\/?>\s*$/,
+      /^<\/[^>]+>\s*$/,
+      
+      // JSON ואובייקטים
+      /^\s*[\{\[].*[\}\]]\s*,?\s*$/,
+      /^\s*["\'][^"\']*["\']:\s*.+,?\s*$/,
+      /^\s*[a-zA-Z_$][a-zA-Z0-9_$]*:\s*.+,?\s*$/,
+      
+      // קריאות פונקציות והשמות
+      /^[a-zA-Z_$][a-zA-Z0-9_$.]*\([^)]*\)\s*[;{]?\s*$/,
+      /^[a-zA-Z_$][a-zA-Z0-9_$.]*\s*[=:]\s*.+[;]?\s*$/,
+      
+      // CSS סלקטורים ותכונות
+      /^[.#]?[a-zA-Z_-][a-zA-Z0-9_-]*\s*\{\s*$/,
+      /^\s*[a-zA-Z-]+:\s*.+;\s*$/,
+      /^\s*\}\s*$/,
+      
+      // SQL פקודות
+      /^(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|FROM|WHERE|JOIN|INNER|LEFT|RIGHT|ORDER|GROUP|HAVING)\s+.+$/i,
+      
+      // קוד בתוך backticks
+      /`[^`]+`/,
+      
+      // מספרים וסמלים מיוחדים בתחילת השורה
+      /^[\d\.\-\+\*\/\=\!\@\#\$\%\^\&\*\(\)\[\]\{\}\|\\\:\;\,\<\>\?]+.*$/,
+      
+      // שורות עם סוגריים או מילים שמורות ללא עברית
+      /^.*[\(\)\[\]\{\}].*$/,
+      /^[^א-ת]*$/,  // שורות ללא עברית בכלל (חוץ מרווחים)
+      
+      // קבצים ונתיבים
+      /^[\.\/~][a-zA-Z0-9_\-\.\/]+$/,
+      /^[a-zA-Z]:[\\\/][a-zA-Z0-9_\-\\\/\.]+$/,
+      
+      // URL ו-URI
+      /^https?:\/\/.+$/i,
+      /^ftp:\/\/.+$/i,
+      /^mailto:.+$/i,
+      
+      // קונפיגורציות וסטרינגים מובנים
+      /^[A-Z_][A-Z0-9_]*\s*=.+$/,
+      /^.*\.(js|ts|jsx|tsx|html|css|json|xml|yml|yaml|ini|conf|config)$/i,
+    ];
+    
+    return codePatterns.some(pattern => pattern.test(line));
   };
 
   const detectAndWrapCodeContent = (text: string) => {
@@ -513,55 +510,8 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   const detectShortCodeLine = (line: string): boolean => {
     const trimmedLine = line.trim();
     
-    // דלג על שורות ריקות או קצרות מדי
-    if (!trimmedLine || trimmedLine.length < 3) return false;
-    
-    // דלג על שורות שמתחילות בטקסט עברי רגיל
-    if (/^[א-ת\s]+/.test(trimmedLine) && !trimmedLine.includes('`')) return false;
-    
-    // זהה שורות קוד קצרות
-    const shortCodePatterns = [
-      /^[\$#]\s+.+$/,           // פקודות טרמינל
-      /^npm\s+.+$/i,           // פקודות npm
-      /^npx\s+.+$/i,           // פקודות npx
-      /^git\s+.+$/i,           // פקודות git
-      /^cd\s+.+$/i,            // פקודות cd
-      /^node\s+.+$/i,          // פקודות node
-      /^python\s+.+$/i,        // פקודות python
-      /^pip\s+.+$/i,           // פקודות pip
-      /^yarn\s+.+$/i,          // פקודות yarn
-      /^curl\s+.+$/i,          // פקודות curl
-      /^mkdir\s+.+$/i,         // פקודות mkdir
-      /^touch\s+.+$/i,         // פקודות touch
-      /^echo\s+.+$/i,          // פקודות echo
-      /^cat\s+.+$/i,           // פקודות cat
-      /^ls\s+.+$/i,            // פקודות ls
-      /^cp\s+.+$/i,            // פקודות cp
-      /^mv\s+.+$/i,            // פקודות mv
-      /^rm\s+.+$/i,            // פקודות rm
-      /^chmod\s+.+$/i,         // פקודות chmod
-      /^sudo\s+.+$/i,          // פקודות sudo
-      /^docker\s+.+$/i,        // פקודות docker
-      /^kubectl\s+.+$/i,       // פקודות kubectl
-      /^ssh\s+.+$/i,           // פקודות ssh
-      /^scp\s+.+$/i,           // פקודות scp
-      /^import\s+.+$/i,        // הצהרות import
-      /^from\s+.+\s+import/i,  // הצהרות from import
-      /^const\s+.+$/i,         // הצהרות const
-      /^let\s+.+$/i,           // הצהרות let
-      /^var\s+.+$/i,           // הצהרות var
-      /^function\s+.+$/i,      // הצהרות function
-      /^class\s+.+$/i,         // הצהרות class
-      /^interface\s+.+$/i,     // הצהרות interface
-      /^type\s+.+$/i,          // הצהרות type
-      /^export\s+.+$/i,        // הצהרות export
-      /^<[^>]+\/?>\s*$/,       // תגיות HTML בודדות
-      /^[a-zA-Z_$][a-zA-Z0-9_$]*\([^)]*\)\s*[;{]?$/, // קריאות פונקציות
-      /^[a-zA-Z_$][a-zA-Z0-9_$.]*\s*[=:]\s*.+$/,     // השמות משתנים
-      /`[^`]+`/,               // קוד בתוך backticks
-    ];
-    
-    return shortCodePatterns.some(pattern => pattern.test(trimmedLine));
+    // השתמש באותה פונקציה שמזהה קוד
+    return isLineCode(trimmedLine);
   };
 
   const formatTextWithInlineCode = (text: string) => {
