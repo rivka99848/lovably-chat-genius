@@ -124,7 +124,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const formatContent = (content: string) => {
-    // Split content by code blocks
+    // Split content by code blocks first
     const parts = content.split(/(```[\s\S]*?```)/g);
     
     return parts.map((part, index) => {
@@ -189,69 +189,168 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
           </div>
         );
       } else {
-        // This is regular text - check if it contains a lot of code patterns
-        const hasLotsOfCode = detectAndWrapCodeContent(part);
-        if (hasLotsOfCode.shouldWrapAsCode) {
-          return (
-            <div key={index} className="my-4">
-              <div className={`rounded-lg border ${
-                isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
-              }`}>
-                {/* Header */}
-                <div className={`flex items-center justify-between px-4 py-3 border-b ${
-                  isDarkMode 
-                    ? 'border-gray-700 text-gray-300' 
-                    : 'border-gray-200 text-gray-600'
+        // This is regular text - check if it needs to be split between explanation and code
+        const separatedContent = separateExplanationFromCode(part);
+        
+        return (
+          <div key={index}>
+            {/* Explanation text */}
+            {separatedContent.explanation && (
+              <div className="leading-relaxed text-base mb-4">
+                {formatPlainText(separatedContent.explanation)}
+              </div>
+            )}
+            
+            {/* Code section */}
+            {separatedContent.code && (
+              <div className="my-4">
+                <div className={`rounded-lg border ${
+                  isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
                 }`}>
-                  <span className="text-sm font-medium">code</span>
-                  <div className="flex items-center space-x-2 space-x-reverse">
-                    {(hasLotsOfCode.cleanCode.includes('<') || hasLotsOfCode.cleanCode.includes('function') || hasLotsOfCode.cleanCode.includes('const')) && (
+                  {/* Header */}
+                  <div className={`flex items-center justify-between px-4 py-3 border-b ${
+                    isDarkMode 
+                      ? 'border-gray-700 text-gray-300' 
+                      : 'border-gray-200 text-gray-600'
+                  }`}>
+                    <span className="text-sm font-medium">code</span>
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      {(separatedContent.code.includes('<') || separatedContent.code.includes('function') || separatedContent.code.includes('const')) && (
+                        <button
+                          onClick={() => setShowPreview(true)}
+                          className={`p-2 rounded text-sm transition-colors ${
+                            isDarkMode 
+                              ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                              : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                          }`}
+                          title="תצוגה מקדימה"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
-                        onClick={() => setShowPreview(true)}
+                        onClick={() => copyToClipboard(separatedContent.code)}
                         className={`p-2 rounded text-sm transition-colors ${
                           isDarkMode 
                             ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
                             : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
                         }`}
-                        title="תצוגה מקדימה"
+                        title="העתק קוד"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Copy className="w-4 h-4" />
                       </button>
-                    )}
-                    <button
-                      onClick={() => copyToClipboard(hasLotsOfCode.cleanCode)}
-                      className={`p-2 rounded text-sm transition-colors ${
-                        isDarkMode 
-                          ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
-                          : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-                      }`}
-                      title="העתק קוד"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
+                    </div>
+                  </div>
+                  
+                  {/* Code */}
+                  <div className="p-4 overflow-x-auto max-w-full">
+                    <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
+                      isDarkMode ? 'text-gray-100' : 'text-gray-800'
+                    }`}>
+                      <code className="block">{separatedContent.code}</code>
+                    </pre>
                   </div>
                 </div>
-                
-                {/* Code */}
-                <div className="p-4 overflow-x-auto max-w-full">
-                  <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
-                    isDarkMode ? 'text-gray-100' : 'text-gray-800'
-                  }`}>
-                    <code className="block">{hasLotsOfCode.cleanCode}</code>
-                  </pre>
-                </div>
               </div>
-            </div>
-          );
-        }
-        
-        return (
-          <div key={index} className="leading-relaxed text-base">
-            {formatPlainText(part)}
+            )}
           </div>
         );
       }
     });
+  };
+
+  const separateExplanationFromCode = (text: string) => {
+    if (!text.trim()) return { explanation: text, code: '' };
+    
+    const lines = text.split('\n');
+    let codeStartIndex = -1;
+    
+    // מילות מפתח שמציינות התחלת קוד
+    const codeIndicators = [
+      /^bash\s*$/i,
+      /^[\$#]\s+/,  // פקודות שמתחילות ב-$ או #
+      /^npm\s+/i,
+      /^npx\s+/i,
+      /^cd\s+/i,
+      /^git\s+/i,
+      /^node\s+/i,
+      /^python\s+/i,
+      /^pip\s+/i,
+      /^yarn\s+/i,
+      /^curl\s+/i,
+      /^mkdir\s+/i,
+      /^touch\s+/i,
+      /^echo\s+/i,
+      /^cat\s+/i,
+      /^ls\s+/i,
+      /^cp\s+/i,
+      /^mv\s+/i,
+      /^rm\s+/i,
+      /^chmod\s+/i,
+      /^sudo\s+/i,
+      /^apt\s+/i,
+      /^yum\s+/i,
+      /^brew\s+/i,
+      /^docker\s+/i,
+      /^kubectl\s+/i,
+      /^ssh\s+/i,
+      /^scp\s+/i,
+      /^rsync\s+/i,
+      /^tar\s+/i,
+      /^zip\s+/i,
+      /^unzip\s+/i,
+      /^wget\s+/i,
+      /^^import\s+/i, // הצהרות import
+      /^from\s+.+\s+import/i,
+      /^const\s+/i,
+      /^let\s+/i,
+      /^var\s+/i,
+      /^function\s+/i,
+      /^class\s+/i,
+      /^interface\s+/i,
+      /^type\s+/i,
+      /^export\s+/i,
+      /^<[^>]+>/,  // HTML tags
+      /^\s*{/,     // JSON או object
+      /^\s*\[/,    // Array
+    ];
+    
+    // חפש את השורה הראשונה שמכילה קוד
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // דלג על שורות ריקות
+      if (!line) continue;
+      
+      // בדוק אם השורה מתחילה עם אחד ממחווני הקוד
+      const isCodeLine = codeIndicators.some(pattern => pattern.test(line));
+      
+      if (isCodeLine) {
+        codeStartIndex = i;
+        break;
+      }
+      
+      // אם זה נראה כמו רשימה ממוספרת שמכילה קוד
+      const numberedListWithCode = line.match(/^\d+\.\s*(.+)$/);
+      if (numberedListWithCode) {
+        const listContent = numberedListWithCode[1];
+        const hasCodeInList = codeIndicators.some(pattern => pattern.test(listContent));
+        if (hasCodeInList) {
+          codeStartIndex = i;
+          break;
+        }
+      }
+    }
+    
+    if (codeStartIndex === -1) {
+      // לא נמצא קוד, החזר הכל כהסבר
+      return { explanation: text, code: '' };
+    }
+    
+    const explanation = lines.slice(0, codeStartIndex).join('\n').trim();
+    const code = lines.slice(codeStartIndex).join('\n').trim();
+    
+    return { explanation, code };
   };
 
   const detectAndWrapCodeContent = (text: string) => {
