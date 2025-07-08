@@ -115,18 +115,32 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const formatMarkdownContent = (content: string) => {
-    const parts = content.split(/(```[\s\S]*?```)/g);
+    const codeBlockRegex = /```[\s\S]*?```/g;
+    const parts = content.split(codeBlockRegex);
+    const codeBlocks = content.match(codeBlockRegex) || [];
     
-    return parts.map((part, index) => {
-      if (part.startsWith('```') && part.endsWith('```')) {
-        // This is a code block
-        const codeContent = part.slice(3, -3).trim();
+    const result = [];
+    
+    for (let i = 0; i < parts.length; i++) {
+      // Add regular text part
+      if (parts[i].trim()) {
+        result.push(
+          <div key={`text-${i}`} className="my-2">
+            {formatPlainText(parts[i])}
+          </div>
+        );
+      }
+      
+      // Add code block if exists
+      if (codeBlocks[i]) {
+        const codeContent = codeBlocks[i].slice(3, -3).trim();
         const lines = codeContent.split('\n');
-        const language = lines[0] && !lines[0].includes(' ') && lines[0].length < 20 ? lines[0] : '';
+        const firstLine = lines[0] || '';
+        const language = firstLine && !firstLine.includes(' ') && firstLine.length < 20 ? firstLine : '';
         const code = language ? lines.slice(1).join('\n') : codeContent;
         
-        return (
-          <div key={index} className="my-4">
+        result.push(
+          <div key={`code-${i}`} className="my-4">
             <div className={`rounded-lg border ${
               isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
             }`}>
@@ -137,7 +151,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                   : 'border-gray-200 text-gray-600'
               }`}>
                 <span className="text-sm font-medium">
-                  {language || 'code'}
+                  {language || 'קוד'}
                 </span>
                 <div className="flex items-center gap-2">
                   <button
@@ -165,15 +179,10 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
             </div>
           </div>
         );
-      } else {
-        // Regular text
-        return (
-          <div key={index} className="my-2">
-            {formatPlainText(part)}
-          </div>
-        );
       }
-    });
+    }
+    
+    return result;
   };
 
   const formatPlainText = (text: string) => {
