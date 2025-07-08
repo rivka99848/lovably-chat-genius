@@ -237,15 +237,21 @@ const ChatInterface = () => {
       return 'mp4';
     }
     
-    // Audio files - return actual format
-    if (mimeType.startsWith('audio/') || fileName.endsWith('.mp3') || fileName.endsWith('.wav') || fileName.endsWith('.aac') || fileName.endsWith('.ogg') || fileName.endsWith('.m4a') || fileName.endsWith('.weba') || fileName.endsWith('.webm')) {
-      if (fileName.endsWith('.weba')) return 'weba';
-      if (fileName.endsWith('.wav')) return 'wav';
-      if (fileName.endsWith('.webm')) return 'webm';
-      if (fileName.endsWith('.aac')) return 'aac';
-      if (fileName.endsWith('.ogg')) return 'ogg';
-      if (fileName.endsWith('.m4a')) return 'm4a';
-      return 'mp3';
+    // Audio files - prioritize file extension over mime type
+    if (fileName.endsWith('.mp3')) return 'mp3';
+    if (fileName.endsWith('.wav')) return 'wav';
+    if (fileName.endsWith('.weba')) return 'weba';
+    if (fileName.endsWith('.webm')) return 'webm';
+    if (fileName.endsWith('.aac')) return 'aac';
+    if (fileName.endsWith('.ogg')) return 'ogg';
+    if (fileName.endsWith('.m4a')) return 'm4a';
+    
+    // Fallback to mime type check
+    if (mimeType.startsWith('audio/')) {
+      if (mimeType.includes('mpeg') || mimeType.includes('mp3')) return 'mp3';
+      if (mimeType.includes('wav')) return 'wav';
+      if (mimeType.includes('webm')) return 'webm';
+      return 'mp3'; // default for audio
     }
     
     return 'file';
