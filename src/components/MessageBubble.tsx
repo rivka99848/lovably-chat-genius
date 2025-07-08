@@ -134,65 +134,20 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         const code = language ? lines.slice(1).join('\n') : codeContent;
         
         return (
-          <div key={index} className="my-6">
-            {/* Code block styled like the reference image */}
-            <div className={`rounded-lg border overflow-hidden ${
+          <div key={index} className="my-4">
+            {/* Simple code block like in the reference */}
+            <div className={`rounded-lg overflow-hidden ${
               isDarkMode 
-                ? 'bg-slate-800 border-slate-600' 
-                : 'bg-gray-50 border-gray-200'
+                ? 'bg-slate-800' 
+                : 'bg-slate-100'
             }`}>
-              {/* Header with actions */}
-              <div className={`px-4 py-2 flex items-center justify-between text-sm ${
-                isDarkMode 
-                  ? 'bg-slate-700 text-slate-300' 
-                  : 'bg-gray-100 text-gray-600'
-              }`}>
-                <div className="flex items-center space-x-2 space-x-reverse">
-                  <button
-                    onClick={() => copyToClipboard(code)}
-                    className={`px-2 py-1 rounded text-xs transition-colors ${
-                      isDarkMode 
-                        ? 'hover:bg-slate-600 text-slate-400' 
-                        : 'hover:bg-gray-200 text-gray-500'
-                    }`}
-                    title="העתק"
-                  >
-                    Copy
-                  </button>
-                  <span className="text-xs opacity-60">|</span>
-                  <button
-                    className={`px-2 py-1 rounded text-xs transition-colors ${
-                      isDarkMode 
-                        ? 'hover:bg-slate-600 text-slate-400' 
-                        : 'hover:bg-gray-200 text-gray-500'
-                    }`}
-                  >
-                    Edit
-                  </button>
-                </div>
-                <span className="text-xs font-mono opacity-60">
-                  {language || 'js'}
-                </span>
-              </div>
-              
-              {/* Code content */}
-              <div className={`p-4 ${
-                isDarkMode ? 'bg-slate-900' : 'bg-white'
-              }`}>
-                <pre className={`text-sm leading-6 font-mono overflow-x-auto ${
+              {/* Code content - simple and clean */}
+              <div className="p-4">
+                <pre className={`text-sm leading-6 font-mono whitespace-pre-wrap ${
                   isDarkMode ? 'text-slate-100' : 'text-slate-800'
                 }`}>
                   <code>{code}</code>
                 </pre>
-                
-                {/* Down arrow at bottom */}
-                <div className="flex justify-center mt-3 pt-2">
-                  <div className={`w-6 h-6 flex items-center justify-center ${
-                    isDarkMode ? 'text-slate-500' : 'text-gray-400'
-                  }`}>
-                    ↓
-                  </div>
-                </div>
               </div>
             </div>
           </div>
