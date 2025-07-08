@@ -1,6 +1,8 @@
+
 import React, { useState } from 'react';
 import { Copy, Code, User, Bot, Eye } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import CodePreview from './CodePreview';
 
 interface Message {
   id: string;
@@ -82,65 +84,59 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
   const cleanTextContent = (text: string): string => {
     return text
-      .replace(/^[\[\]\"]+|[\[\]\"]+$/g, '')
+      .replace(/^[\[\]"]+|[\[\]"]+$/g, '')
       .replace(/\\n/g, '\n')
       .replace(/\\t/g, '\t')
-      .replace(/\\\"/g, '"')
+      .replace(/\\"/g, '"')
       .replace(/\\r/g, '\r')
       .replace(/\\\\/g, '\\')
       .replace(/\\u[\dA-Fa-f]{4}/g, (match) => {
         return String.fromCharCode(parseInt(match.replace('\\u', ''), 16));
       })
-      .replace(/^\s*[\"'`]|[\"'`]\s*$/g, '')
+      .replace(/^\s*["'`]|["'`]\s*$/g, '')
       .replace(/[#]{3,}/g, '')
       .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '')
       .replace(/[\u201C\u201D\u2018\u2019]/g, '"')
       .replace(/[\u2013\u2014]/g, '-')
       .replace(/[\u00A0]/g, ' ')
-      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()\[\]{}\"'-]/g, '')
+      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'-]/g, '')
       .replace(/\s+$/gm, '')
       .replace(/^\s*[\r\n]+|[\r\n]+\s*$/g, '')
       .replace(/[\r\n]{3,}/g, '\n\n')
       .trim();
   };
 
-  const formatContent = (content: string) => {
-    // Check if content has markdown code blocks
-    if (content.includes('```')) {
-      return formatMarkdownContent(content);
-    }
+  const detectContentType = (content: string) => {
+    const hasCodeBlocks = content.includes('```');
+    const hasSQLKeywords = /\b(CREATE|SELECT|INSERT|UPDATE|DELETE|TABLE|FROM|WHERE|JOIN|ALTER|DROP)\b/i.test(content);
+    const hasHTMLTags = /<[^>]+>/g.test(content);
+    const hasJavaScript = /\b(function|const|let|var|class|import|export|if|for|while)\b/.test(content);
+    const hasProgrammingKeywords = /\b(def|class|import|from|return|if|elif|else|try|except|for|while|with)\b/.test(content);
     
-    // Otherwise, format as plain text
-    return formatPlainText(content);
+    return {
+      hasCodeBlocks,
+      hasSQLKeywords,
+      hasHTMLTags,
+      hasJavaScript,
+      hasProgrammingKeywords,
+      hasVisualCode: hasHTMLTags || content.includes('className') || content.includes('style=')
+    };
   };
 
-  const formatMarkdownContent = (content: string) => {
-    const codeBlockRegex = /```[\s\S]*?```/g;
-    const parts = content.split(codeBlockRegex);
-    const codeBlocks = content.match(codeBlockRegex) || [];
+  const formatContent = (content: string) => {
+    // Split content by code blocks first
+    const parts = content.split(/(```[\s\S]*?```)/g);
     
-    const result = [];
-    
-    for (let i = 0; i < parts.length; i++) {
-      // Add regular text part
-      if (parts[i].trim()) {
-        result.push(
-          <div key={`text-${i}`} className="my-2">
-            {formatPlainText(parts[i])}
-          </div>
-        );
-      }
-      
-      // Add code block if exists
-      if (codeBlocks[i]) {
-        const codeContent = codeBlocks[i].slice(3, -3).trim();
+    return parts.map((part, index) => {
+      if (part.startsWith('```') && part.endsWith('```')) {
+        // This is a code block
+        const codeContent = part.slice(3, -3).trim();
         const lines = codeContent.split('\n');
-        const firstLine = lines[0] || '';
-        const language = firstLine && !firstLine.includes(' ') && firstLine.length < 20 ? firstLine : '';
+        const language = lines[0] && !lines[0].includes(' ') && lines[0].length < 20 ? lines[0] : '';
         const code = language ? lines.slice(1).join('\n') : codeContent;
         
-        result.push(
-          <div key={`code-${i}`} className="my-4">
+        return (
+          <div key={index} className="my-4 relative group">
             <div className={`rounded-lg border ${
               isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
             }`}>
@@ -151,9 +147,22 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                   : 'border-gray-200 text-gray-600'
               }`}>
                 <span className="text-sm font-medium">
-                  {language || 'קוד'}
+                  {language || 'code'}
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  {(language === 'html' || language === 'javascript' || language === 'js' || language === 'jsx' || language === 'tsx' || code.includes('<') || code.includes('function') || code.includes('const')) && (
+                    <button
+                      onClick={() => setShowPreview(true)}
+                      className={`p-2 rounded text-sm transition-colors ${
+                        isDarkMode 
+                          ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                          : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                      }`}
+                      title="תצוגה מקדימה"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={() => copyToClipboard(code)}
                     className={`p-2 rounded text-sm transition-colors ${
@@ -169,29 +178,342 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
               </div>
               
               {/* Code */}
-              <div className="p-4 overflow-x-auto">
-                <pre className={`text-sm font-mono whitespace-pre-wrap ${
+              <div className="p-4 overflow-x-auto max-w-full">
+                <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
                   isDarkMode ? 'text-gray-100' : 'text-gray-800'
                 }`}>
-                  <code>{code}</code>
+                  <code className="block">{code}</code>
                 </pre>
               </div>
             </div>
           </div>
         );
+      } else {
+        // This is regular text - check if it needs to be split between explanation and code
+        const separatedContent = separateExplanationFromCode(part);
+        
+        // Handle mixed content with multiple sections
+        if ('sections' in separatedContent) {
+          return (
+            <div key={index}>
+              {separatedContent.sections.map((section, sectionIndex) => {
+                if (section.type === 'text') {
+                  return (
+                    <div key={sectionIndex} className="leading-relaxed text-base mb-4">
+                      {formatPlainText(section.content)}
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div key={sectionIndex} className="my-4">
+                      <div className={`rounded-lg border ${
+                        isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
+                      }`}>
+                        {/* Header */}
+                        <div className={`flex items-center justify-between px-4 py-3 border-b ${
+                          isDarkMode 
+                            ? 'border-gray-700 text-gray-300' 
+                            : 'border-gray-200 text-gray-600'
+                        }`}>
+                          <span className="text-sm font-medium">code</span>
+                          <div className="flex items-center space-x-2 space-x-reverse">
+                            {(section.content.includes('<') || section.content.includes('function') || section.content.includes('const')) && (
+                              <button
+                                onClick={() => setShowPreview(true)}
+                                className={`p-2 rounded text-sm transition-colors ${
+                                  isDarkMode 
+                                    ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                                    : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                                }`}
+                                title="תצוגה מקדימה"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => copyToClipboard(section.content)}
+                              className={`p-2 rounded text-sm transition-colors ${
+                                isDarkMode 
+                                  ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                                  : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                              }`}
+                              title="העתק קוד"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Code */}
+                        <div className="p-4 overflow-x-auto max-w-full">
+                          <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
+                            isDarkMode ? 'text-gray-100' : 'text-gray-800'
+                          }`}>
+                            <code className="block">{section.content}</code>
+                          </pre>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+              })}
+            </div>
+          );
+        }
+        
+        // Handle simple separation (backward compatibility)
+        return (
+          <div key={index}>
+            {/* Explanation text */}
+            {separatedContent.explanation && (
+              <div className="leading-relaxed text-base mb-4">
+                {formatPlainText(separatedContent.explanation)}
+              </div>
+            )}
+            
+            {/* Code section */}
+            {separatedContent.code && (
+              <div className="my-4">
+                <div className={`rounded-lg border ${
+                  isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
+                }`}>
+                  {/* Header */}
+                  <div className={`flex items-center justify-between px-4 py-3 border-b ${
+                    isDarkMode 
+                      ? 'border-gray-700 text-gray-300' 
+                      : 'border-gray-200 text-gray-600'
+                  }`}>
+                    <span className="text-sm font-medium">code</span>
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      {(separatedContent.code.includes('<') || separatedContent.code.includes('function') || separatedContent.code.includes('const')) && (
+                        <button
+                          onClick={() => setShowPreview(true)}
+                          className={`p-2 rounded text-sm transition-colors ${
+                            isDarkMode 
+                              ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                              : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                          }`}
+                          title="תצוגה מקדימה"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => copyToClipboard(separatedContent.code)}
+                        className={`p-2 rounded text-sm transition-colors ${
+                          isDarkMode 
+                            ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                            : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                        }`}
+                        title="העתק קוד"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Code */}
+                  <div className="p-4 overflow-x-auto max-w-full">
+                    <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
+                      isDarkMode ? 'text-gray-100' : 'text-gray-800'
+                    }`}>
+                      <code className="block">{separatedContent.code}</code>
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+    });
+  };
+
+  const separateExplanationFromCode = (text: string): 
+    | { explanation: string; code: string }
+    | { sections: Array<{type: 'text' | 'code', content: string}> } => {
+    if (!text.trim()) return { explanation: text, code: '' };
+    
+    const lines = text.split('\n');
+    const sections: Array<{type: 'text' | 'code', content: string}> = [];
+    
+    // מילות מפתח שמציינות התחלת קוד
+    const codeIndicators = [
+      /^bash\s*$/i,
+      /^[\$#]\s+/,  // פקודות שמתחילות ב-$ או #
+      /^npm\s+/i,
+      /^npx\s+/i,
+      /^cd\s+/i,
+      /^git\s+/i,
+      /^node\s+/i,
+      /^python\s+/i,
+      /^pip\s+/i,
+      /^yarn\s+/i,
+      /^curl\s+/i,
+      /^mkdir\s+/i,
+      /^touch\s+/i,
+      /^echo\s+/i,
+      /^cat\s+/i,
+      /^ls\s+/i,
+      /^cp\s+/i,
+      /^mv\s+/i,
+      /^rm\s+/i,
+      /^chmod\s+/i,
+      /^sudo\s+/i,
+      /^apt\s+/i,
+      /^yum\s+/i,
+      /^brew\s+/i,
+      /^docker\s+/i,
+      /^kubectl\s+/i,
+      /^ssh\s+/i,
+      /^scp\s+/i,
+      /^rsync\s+/i,
+      /^tar\s+/i,
+      /^zip\s+/i,
+      /^unzip\s+/i,
+      /^wget\s+/i,
+      /^^import\s+/i, // הצהרות import
+      /^from\s+.+\s+import/i,
+      /^const\s+/i,
+      /^let\s+/i,
+      /^var\s+/i,
+      /^function\s+/i,
+      /^class\s+/i,
+      /^interface\s+/i,
+      /^type\s+/i,
+      /^export\s+/i,
+      /^<[^>]+>/,  // HTML tags
+      /^\s*{/,     // JSON או object
+      /^\s*\[/,    // Array
+      /^\/\//,     // שורת הערה
+      /^\/\*/,     // התחלת הערה רב-שורתית
+      /^\w+\(/,    // קריאה לפונקציה
+      /^\.[\w-]+/,  // CSS classes
+      /^@\w+/,     // CSS at-rules או decorators
+      /^\s*[\w-]+:\s*[\w-]+/,  // CSS properties
+    ];
+
+    let currentSection: {type: 'text' | 'code', content: string} = { type: 'text', content: '' };
+    let inCodeBlock = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmedLine = line.trim();
+      
+      // דלג על שורות ריקות - הוסף אותן לחלק הנוכחי
+      if (!trimmedLine) {
+        currentSection.content += line + '\n';
+        continue;
+      }
+      
+      // בדוק אם השורה מתחילה עם אחד ממחווני הקוד
+      const isCodeLine = codeIndicators.some(pattern => pattern.test(trimmedLine));
+      
+      // אם זה נראה כמו רשימה ממוספרת שמכילה קוד
+      let hasCodeInList = false;
+      const numberedListWithCode = trimmedLine.match(/^\d+\.\s*(.+)$/);
+      if (numberedListWithCode) {
+        const listContent = numberedListWithCode[1];
+        hasCodeInList = codeIndicators.some(pattern => pattern.test(listContent));
+      }
+
+      const shouldBeCode = isCodeLine || hasCodeInList;
+
+      // אם החלק הנוכחי הוא טקסט והשורה הנוכחית היא קוד
+      if (currentSection.type === 'text' && shouldBeCode) {
+        // סיים את החלק הטקסטואלי הנוכחי
+        if (currentSection.content.trim()) {
+          sections.push({...currentSection, content: currentSection.content.trim()});
+        }
+        // התחל חלק קוד חדש
+        currentSection = { type: 'code', content: line + '\n' };
+        inCodeBlock = true;
+      }
+      // אם החלק הנוכחי הוא קוד והשורה הנוכחית לא נראית כמו קוד
+      else if (currentSection.type === 'code' && !shouldBeCode) {
+        // בדוק אם זו הפסקה זמנית (כמו הנחיה) או סוף הקוד
+        let nextCodeLineIndex = -1;
+        for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+          const nextLine = lines[j].trim();
+          if (nextLine && codeIndicators.some(pattern => pattern.test(nextLine))) {
+            nextCodeLineIndex = j;
+            break;
+          }
+        }
+
+        // אם יש עוד קוד בקרוב, השאר באותו חלק קוד
+        if (nextCodeLineIndex !== -1 && (nextCodeLineIndex - i) <= 3) {
+          currentSection.content += line + '\n';
+        } else {
+          // סיים את חלק הקוד
+          if (currentSection.content.trim()) {
+            sections.push({...currentSection, content: currentSection.content.trim()});
+          }
+          // התחל חלק טקסט חדש
+          currentSection = { type: 'text', content: line + '\n' };
+          inCodeBlock = false;
+        }
+      }
+      // אחרת, הוסף לחלק הנוכחי
+      else {
+        currentSection.content += line + '\n';
       }
     }
+
+    // הוסף את החלק האחרון
+    if (currentSection.content.trim()) {
+      sections.push({...currentSection, content: currentSection.content.trim()});
+    }
+
+    // אם נמצא רק חלק אחד, החזר כפי שהיה
+    if (sections.length <= 1) {
+      const hasAnyCode = sections.some(s => s.type === 'code');
+      if (!hasAnyCode) {
+        return { explanation: text, code: '' };
+      }
+      if (sections[0]?.type === 'code') {
+        return { explanation: '', code: text };
+      }
+    }
+
+    // החזר את החלקים המעורבים
+    return { sections };
+  };
+
+  const detectAndWrapCodeContent = (text: string) => {
+    // Count code-like patterns
+    const codePatterns = [
+      /\$\s+[^\n]+/g, // Commands starting with $
+      /npm\s+[^\n]+/g, // npm commands
+      /cd\s+[^\n]+/g, // cd commands
+      /import\s+[^\n]+/g, // import statements
+      /const\s+[^\n]+/g, // const declarations
+      /function\s+[^\n]+/g, // function declarations
+      /\{[^}]*\}/g, // JSON-like objects
+      /\([^)]*\)/g, // Function calls
+    ];
+
+    let codeMatches = 0;
+    codePatterns.forEach(pattern => {
+      const matches = text.match(pattern) || [];
+      codeMatches += matches.length;
+    });
+
+    // If there are many code patterns, treat the whole thing as code
+    const shouldWrapAsCode = codeMatches > 3;
     
-    return result;
+    return {
+      shouldWrapAsCode,
+      cleanCode: text.trim()
+    };
   };
 
   const formatPlainText = (text: string) => {
-    if (!text.trim()) return null;
-    
+    // Handle numbered lists (1. 2. 3. etc.)
     const lines = text.split('\n');
     
     return lines.map((line, lineIndex) => {
-      // Check for numbered lists
+      // Check if line starts with number followed by dot
       const numberedListMatch = line.match(/^(\d+\.)\s*(.*)$/);
       
       if (numberedListMatch) {
@@ -203,10 +525,9 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         );
       }
       
-      // Empty line
+      // Regular line
       if (!line.trim()) return <br key={lineIndex} />;
       
-      // Regular line
       return (
         <div key={lineIndex} className="mb-2">
           {line}
@@ -221,10 +542,11 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const processedContent = cleanContent(message.content);
+  const contentTypes = detectContentType(processedContent);
 
   return (
     <div className="w-full mb-6" dir="rtl">
-      {/* Message Header */}
+      {/* Message Header - Only Icon and Time */}
       <div className="flex items-center mb-2">
         <div className="flex items-center space-x-2 space-x-reverse">
           <div className={`p-1.5 rounded-full ${
@@ -270,13 +592,14 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
             <Copy className="w-4 h-4" />
           </button>
 
-          {processedContent.includes('```') && (
+          {(contentTypes.hasCodeBlocks || contentTypes.hasSQLKeywords || contentTypes.hasProgrammingKeywords) && (
             <button
               onClick={() => {
                 const codeBlocks = processedContent.match(/```[\s\S]*?```/g) || [];
                 const allCode = codeBlocks.map(block => {
                   const content = block.slice(3, -3).trim();
                   const lines = content.split('\n');
+                  // אם השורה הראשונה היא שפת התכנות, נדלג עליה
                   const isLanguageLine = lines[0] && !lines[0].includes(' ') && lines[0].length < 20;
                   return isLanguageLine ? lines.slice(1).join('\n') : content;
                 }).join('\n\n');
@@ -294,6 +617,15 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
           )}
         </div>
       )}
+
+      {/* Code Preview Modal */}
+      {showPreview && (
+        <CodePreview 
+          code={processedContent} 
+          onClose={() => setShowPreview(false)} 
+        />
+      )}
+
     </div>
   );
 };
