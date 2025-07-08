@@ -134,18 +134,57 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         const code = language ? lines.slice(1).join('\n') : codeContent;
         
         return (
-          <div key={index} className="my-4">
-            {/* Simple code block like in the reference */}
-            <div className={`rounded-lg overflow-hidden ${
-              isDarkMode 
-                ? 'bg-slate-800' 
-                : 'bg-slate-100'
+          <div key={index} className="my-6 relative group">
+            <div className={`rounded-lg overflow-hidden border-2 ${
+              isDarkMode ? 'bg-gray-900 border-blue-500/30' : 'bg-gray-50 border-blue-300/50'
             }`}>
-              {/* Code content - simple and clean */}
-              <div className="p-4">
-                <pre className={`text-sm leading-6 font-mono whitespace-pre-wrap ${
-                  isDarkMode ? 'text-slate-100' : 'text-slate-800'
-                }`}>
+              {/* Header with language and actions */}
+              <div className={`px-4 py-3 border-b flex items-center justify-between ${
+                isDarkMode 
+                  ? 'bg-gradient-to-r from-blue-900/50 to-purple-900/50 text-blue-300 border-gray-700' 
+                  : 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-gray-200'
+              }`}>
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <Code className="w-4 h-4" />
+                  <span className="font-semibold text-sm">
+                    {language ? `קוד ${language.toUpperCase()}` : 'קוד'}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <button
+                    onClick={() => copyToClipboard(code)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center space-x-1 space-x-reverse ${
+                      isDarkMode 
+                        ? 'bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/30' 
+                        : 'bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-300'
+                    }`}
+                    title="העתק קוד"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>העתק</span>
+                  </button>
+                  {contentTypes.hasVisualCode && (
+                    <button
+                      onClick={() => setShowPreview(true)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center space-x-1 space-x-reverse ${
+                        isDarkMode 
+                          ? 'bg-green-600/20 hover:bg-green-600/40 text-green-300 border border-green-500/30' 
+                          : 'bg-green-100 hover:bg-green-200 text-green-700 border border-green-300'
+                      }`}
+                      title="פריווי"
+                    >
+                      <Eye className="w-3 h-3" />
+                      <span>פריווי</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              {/* Code content */}
+              <div className="p-4 overflow-x-auto relative">
+                <pre className={`text-sm leading-relaxed ${
+                  isDarkMode ? 'text-gray-100' : 'text-gray-800'
+                } whitespace-pre-wrap font-mono`}>
                   <code>{code}</code>
                 </pre>
               </div>
