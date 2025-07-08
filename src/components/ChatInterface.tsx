@@ -232,13 +232,20 @@ const ChatInterface = () => {
     const mimeType = file.type.toLowerCase();
     
     // Video files
-    if (mimeType.startsWith('video/') || fileName.endsWith('.mp4') || fileName.endsWith('.avi') || fileName.endsWith('.mov') || fileName.endsWith('.mkv') || fileName.endsWith('.wmv')) {
+    if (mimeType.startsWith('video/') || fileName.endsWith('.mp4') || fileName.endsWith('.avi') || fileName.endsWith('.mov') || fileName.endsWith('.mkv') || fileName.endsWith('.wmv') || fileName.endsWith('.webm')) {
+      if (fileName.endsWith('.webm')) return 'webm';
       return 'mp4';
     }
     
-    // Audio files
-    if (mimeType.startsWith('audio/') || fileName.endsWith('.mp3') || fileName.endsWith('.wav') || fileName.endsWith('.aac') || fileName.endsWith('.ogg') || fileName.endsWith('.m4a')) {
-      return fileName.endsWith('.wav') ? 'wav' : 'mp3';
+    // Audio files - return actual format
+    if (mimeType.startsWith('audio/') || fileName.endsWith('.mp3') || fileName.endsWith('.wav') || fileName.endsWith('.aac') || fileName.endsWith('.ogg') || fileName.endsWith('.m4a') || fileName.endsWith('.weba') || fileName.endsWith('.webm')) {
+      if (fileName.endsWith('.weba')) return 'weba';
+      if (fileName.endsWith('.wav')) return 'wav';
+      if (fileName.endsWith('.webm')) return 'webm';
+      if (fileName.endsWith('.aac')) return 'aac';
+      if (fileName.endsWith('.ogg')) return 'ogg';
+      if (fileName.endsWith('.m4a')) return 'm4a';
+      return 'mp3';
     }
     
     return 'file';
@@ -250,7 +257,7 @@ const ChatInterface = () => {
     // Detect file types and show appropriate messages
     const audioVideoFiles = files.filter(file => {
       const type = detectFileType(file);
-      return type === 'mp3' || type === 'wav' || type === 'mp4';
+      return ['mp3', 'wav', 'mp4', 'weba', 'webm', 'aac', 'ogg', 'm4a'].includes(type);
     });
     
     setUploadedFiles(prev => [...prev, ...files]);
