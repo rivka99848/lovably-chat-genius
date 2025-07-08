@@ -153,26 +153,26 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                   {(language === 'html' || language === 'javascript' || language === 'js' || language === 'jsx' || language === 'tsx' || code.includes('<') || code.includes('function') || code.includes('const')) && (
                     <button
                       onClick={() => setShowPreview(true)}
-                      className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
+                      className={`p-2 rounded text-sm transition-colors ${
                         isDarkMode 
                           ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
                           : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
                       }`}
+                      title="תצוגה מקדימה"
                     >
                       <Eye className="w-4 h-4" />
-                      <span>Preview</span>
                     </button>
                   )}
                   <button
                     onClick={() => copyToClipboard(code)}
-                    className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
+                    className={`p-2 rounded text-sm transition-colors ${
                       isDarkMode 
                         ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
                         : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
                     }`}
+                    title="העתק קוד"
                   >
                     <Copy className="w-4 h-4" />
-                    <span>Copy</span>
                   </button>
                 </div>
               </div>
@@ -208,26 +208,26 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                     {(hasLotsOfCode.cleanCode.includes('<') || hasLotsOfCode.cleanCode.includes('function') || hasLotsOfCode.cleanCode.includes('const')) && (
                       <button
                         onClick={() => setShowPreview(true)}
-                        className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
+                        className={`p-2 rounded text-sm transition-colors ${
                           isDarkMode 
                             ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
                             : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
                         }`}
+                        title="תצוגה מקדימה"
                       >
                         <Eye className="w-4 h-4" />
-                        <span>Preview</span>
                       </button>
                     )}
                     <button
                       onClick={() => copyToClipboard(hasLotsOfCode.cleanCode)}
-                      className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
+                      className={`p-2 rounded text-sm transition-colors ${
                         isDarkMode 
                           ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
                           : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
                       }`}
+                      title="העתק קוד"
                     >
                       <Copy className="w-4 h-4" />
-                      <span>Copy</span>
                     </button>
                   </div>
                 </div>
