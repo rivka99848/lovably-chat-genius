@@ -134,45 +134,64 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         const code = language ? lines.slice(1).join('\n') : codeContent;
         
         return (
-          <div key={index} className="my-6 relative group">
-            <div className={`rounded-lg overflow-hidden border-2 ${
-              isDarkMode ? 'bg-gray-900 border-blue-500/30' : 'bg-gray-50 border-blue-300/50'
+          <div key={index} className="my-4 relative group">
+            {/* Code block with clear boundaries */}
+            <div className={`rounded-xl border-2 shadow-lg ${
+              isDarkMode 
+                ? 'bg-slate-900 border-slate-700/50 shadow-slate-900/20' 
+                : 'bg-white border-slate-200 shadow-slate-200/30'
             }`}>
-              {/* Header with language and actions */}
-              <div className={`px-4 py-3 border-b flex items-center justify-between ${
+              {/* Header */}
+              <div className={`px-4 py-3 border-b rounded-t-xl ${
                 isDarkMode 
-                  ? 'bg-gradient-to-r from-blue-900/50 to-purple-900/50 text-blue-300 border-gray-700' 
-                  : 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-gray-200'
+                  ? 'bg-slate-800/80 text-slate-300 border-slate-700/50' 
+                  : 'bg-slate-50 text-slate-700 border-slate-200'
               }`}>
-                <div className="flex items-center space-x-2 space-x-reverse">
-                  <Code className="w-4 h-4" />
-                  <span className="font-semibold text-sm">
-                    {language ? `קוד ${language.toUpperCase()}` : 'קוד'}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2 space-x-reverse">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <div className={`p-1.5 rounded-md ${
+                      isDarkMode ? 'bg-blue-500/20' : 'bg-blue-500/10'
+                    }`}>
+                      <Code className="w-3.5 h-3.5 text-blue-500" />
+                    </div>
+                    <span className="font-medium text-sm">
+                      {language ? `${language.toUpperCase()} Code` : 'Code'}
+                    </span>
+                  </div>
                   <button
                     onClick={() => copyToClipboard(code)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center space-x-1 space-x-reverse ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 flex items-center space-x-1.5 space-x-reverse ${
                       isDarkMode 
-                        ? 'bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/30' 
-                        : 'bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-300'
+                        ? 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30' 
+                        : 'bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200'
                     }`}
-                    title="העתק קוד"
+                    title="העתק קוד בלבד"
                   >
                     <Copy className="w-3 h-3" />
-                    <span>העתק</span>
+                    <span>העתק קוד</span>
                   </button>
                 </div>
               </div>
               
-              {/* Code content */}
-              <div className="p-4 overflow-x-auto relative">
-                <pre className={`text-sm leading-relaxed ${
-                  isDarkMode ? 'text-gray-100' : 'text-gray-800'
-                } whitespace-pre-wrap font-mono`}>
-                  <code>{code}</code>
-                </pre>
+              {/* Code content with clear visual separation */}
+              <div className={`relative ${
+                isDarkMode ? 'bg-slate-900' : 'bg-slate-50/30'
+              }`}>
+                <div className="p-6 overflow-x-auto">
+                  <pre className={`text-sm leading-6 ${
+                    isDarkMode ? 'text-slate-100' : 'text-slate-800'
+                  } whitespace-pre-wrap font-mono`}>
+                    <code>{code}</code>
+                  </pre>
+                </div>
+                
+                {/* Visual indicators for code boundaries */}
+                <div className={`absolute top-0 left-0 w-1 h-full ${
+                  isDarkMode ? 'bg-blue-500/30' : 'bg-blue-500/20'
+                }`}></div>
+                <div className={`absolute bottom-0 right-0 w-8 h-1 ${
+                  isDarkMode ? 'bg-slate-700' : 'bg-slate-300'
+                } rounded-tl-full opacity-60`}></div>
               </div>
             </div>
           </div>
