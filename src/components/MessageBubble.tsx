@@ -253,13 +253,6 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                 </div>
               </div>
             )}
-            
-            {/* After explanation text */}
-            {separatedContent.afterExplanation && (
-              <div className="leading-relaxed text-base mt-4">
-                {formatPlainText(separatedContent.afterExplanation)}
-              </div>
-            )}
           </div>
         );
       }
@@ -267,145 +260,97 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const separateExplanationFromCode = (text: string) => {
-    if (!text.trim()) return { explanation: text, code: '', afterExplanation: '' };
+    if (!text.trim()) return { explanation: text, code: '' };
     
     const lines = text.split('\n');
-    const result: any[] = [];
-    let currentSection = { type: 'explanation', content: '', startIndex: 0 };
+    let codeStartIndex = -1;
     
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const trimmedLine = line.trim();
-      
-      // בדוק אם השורה הנוכחית היא קוד
-      const isCodeLine = isLineCode(trimmedLine);
-      
-      if (isCodeLine && currentSection.type === 'explanation') {
-        // עבר מהסבר לקוד
-        if (currentSection.content.trim()) {
-          result.push({ ...currentSection, endIndex: i - 1 });
-        }
-        currentSection = { type: 'code', content: line, startIndex: i };
-      } else if (isCodeLine && currentSection.type === 'code') {
-        // המשך קוד
-        currentSection.content += '\n' + line;
-      } else if (!isCodeLine && currentSection.type === 'code') {
-        // עבר מקוד להסבר
-        result.push({ ...currentSection, endIndex: i - 1 });
-        currentSection = { type: 'explanation', content: line, startIndex: i };
-      } else {
-        // המשך אותו סוג
-        if (currentSection.content) {
-          currentSection.content += '\n' + line;
-        } else {
-          currentSection.content = line;
-        }
-      }
-    }
-    
-    // הוסף את החלק האחרון
-    if (currentSection.content.trim()) {
-      result.push({ ...currentSection, endIndex: lines.length - 1 });
-    }
-    
-    // אם יש רק הסבר, החזר כמו קודם
-    if (result.length === 1 && result[0].type === 'explanation') {
-      return { explanation: text, code: '', afterExplanation: '' };
-    }
-    
-    // אם יש רק קוד, החזר כמו קודם
-    if (result.length === 1 && result[0].type === 'code') {
-      return { explanation: '', code: text, afterExplanation: '' };
-    }
-    
-    // אם יש מיקס, החזר את החלק הראשון כהסבר
-    const firstExplanation = result.find(r => r.type === 'explanation')?.content.trim() || '';
-    const codeSection = result.find(r => r.type === 'code')?.content.trim() || '';
-    
-    // מצא את ההסבר האחרון
-    let lastExplanationIndex = -1;
-    for (let i = result.length - 1; i >= 0; i--) {
-      if (result[i].type === 'explanation') {
-        lastExplanationIndex = i;
-        break;
-      }
-    }
-    
-    const afterExplanation = lastExplanationIndex > 0 ? result[lastExplanationIndex].content.trim() : '';
-    
-    return { explanation: firstExplanation, code: codeSection, afterExplanation };
-  };
-
-  const isLineCode = (line: string): boolean => {
-    if (!line || line.length < 2) return false;
-    
-    // דלג על שורות שמתחילות בטקסט עברי רגיל (אלא אם יש בהן backticks)
-    if (/^[א-ת\s]+/.test(line) && !line.includes('`')) return false;
-    
-    // זהה סוגי קוד שונים
-    const codePatterns = [
-      // פקודות טרמינל וכלים
-      /^[\$#]\s+.+$/,
-      /^(npm|npx|yarn|pnpm)\s+.+$/i,
-      /^(git|cd|mkdir|touch|echo|cat|ls|cp|mv|rm|chmod|sudo)\s+.+$/i,
-      /^(curl|wget|ssh|scp|rsync|tar|zip|unzip)\s+.+$/i,
-      /^(docker|kubectl|helm)\s+.+$/i,
-      /^(python|pip|node|java|javac|gcc|make)\s+.+$/i,
-      /^(apt|yum|brew|dnf|pacman)\s+.+$/i,
-      
-      // הצהרות תכנות
-      /^(import|from)\s+.+$/i,
-      /^(const|let|var|function|class|interface|type|enum)\s+.+$/i,
-      /^(export|default|async|await)\s+.+$/i,
-      /^(if|else|for|while|switch|case|try|catch|finally)\s*[\(\{].*$/i,
-      /^(return|throw|break|continue)\s+.+$/i,
-      
-      // HTML/XML תגים
-      /^<[^>]+\/?>\s*$/,
-      /^<\/[^>]+>\s*$/,
-      
-      // JSON ואובייקטים
-      /^\s*[\{\[].*[\}\]]\s*,?\s*$/,
-      /^\s*["\'][^"\']*["\']:\s*.+,?\s*$/,
-      /^\s*[a-zA-Z_$][a-zA-Z0-9_$]*:\s*.+,?\s*$/,
-      
-      // קריאות פונקציות והשמות
-      /^[a-zA-Z_$][a-zA-Z0-9_$.]*\([^)]*\)\s*[;{]?\s*$/,
-      /^[a-zA-Z_$][a-zA-Z0-9_$.]*\s*[=:]\s*.+[;]?\s*$/,
-      
-      // CSS סלקטורים ותכונות
-      /^[.#]?[a-zA-Z_-][a-zA-Z0-9_-]*\s*\{\s*$/,
-      /^\s*[a-zA-Z-]+:\s*.+;\s*$/,
-      /^\s*\}\s*$/,
-      
-      // SQL פקודות
-      /^(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|FROM|WHERE|JOIN|INNER|LEFT|RIGHT|ORDER|GROUP|HAVING)\s+.+$/i,
-      
-      // קוד בתוך backticks
-      /`[^`]+`/,
-      
-      // מספרים וסמלים מיוחדים בתחילת השורה
-      /^[\d\.\-\+\*\/\=\!\@\#\$\%\^\&\*\(\)\[\]\{\}\|\\\:\;\,\<\>\?]+.*$/,
-      
-      // שורות עם סוגריים או מילים שמורות ללא עברית
-      /^.*[\(\)\[\]\{\}].*$/,
-      /^[^א-ת]*$/,  // שורות ללא עברית בכלל (חוץ מרווחים)
-      
-      // קבצים ונתיבים
-      /^[\.\/~][a-zA-Z0-9_\-\.\/]+$/,
-      /^[a-zA-Z]:[\\\/][a-zA-Z0-9_\-\\\/\.]+$/,
-      
-      // URL ו-URI
-      /^https?:\/\/.+$/i,
-      /^ftp:\/\/.+$/i,
-      /^mailto:.+$/i,
-      
-      // קונפיגורציות וסטרינגים מובנים
-      /^[A-Z_][A-Z0-9_]*\s*=.+$/,
-      /^.*\.(js|ts|jsx|tsx|html|css|json|xml|yml|yaml|ini|conf|config)$/i,
+    // מילות מפתח שמציינות התחלת קוד
+    const codeIndicators = [
+      /^bash\s*$/i,
+      /^[\$#]\s+/,  // פקודות שמתחילות ב-$ או #
+      /^npm\s+/i,
+      /^npx\s+/i,
+      /^cd\s+/i,
+      /^git\s+/i,
+      /^node\s+/i,
+      /^python\s+/i,
+      /^pip\s+/i,
+      /^yarn\s+/i,
+      /^curl\s+/i,
+      /^mkdir\s+/i,
+      /^touch\s+/i,
+      /^echo\s+/i,
+      /^cat\s+/i,
+      /^ls\s+/i,
+      /^cp\s+/i,
+      /^mv\s+/i,
+      /^rm\s+/i,
+      /^chmod\s+/i,
+      /^sudo\s+/i,
+      /^apt\s+/i,
+      /^yum\s+/i,
+      /^brew\s+/i,
+      /^docker\s+/i,
+      /^kubectl\s+/i,
+      /^ssh\s+/i,
+      /^scp\s+/i,
+      /^rsync\s+/i,
+      /^tar\s+/i,
+      /^zip\s+/i,
+      /^unzip\s+/i,
+      /^wget\s+/i,
+      /^^import\s+/i, // הצהרות import
+      /^from\s+.+\s+import/i,
+      /^const\s+/i,
+      /^let\s+/i,
+      /^var\s+/i,
+      /^function\s+/i,
+      /^class\s+/i,
+      /^interface\s+/i,
+      /^type\s+/i,
+      /^export\s+/i,
+      /^<[^>]+>/,  // HTML tags
+      /^\s*{/,     // JSON או object
+      /^\s*\[/,    // Array
     ];
     
-    return codePatterns.some(pattern => pattern.test(line));
+    // חפש את השורה הראשונה שמכילה קוד
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // דלג על שורות ריקות
+      if (!line) continue;
+      
+      // בדוק אם השורה מתחילה עם אחד ממחווני הקוד
+      const isCodeLine = codeIndicators.some(pattern => pattern.test(line));
+      
+      if (isCodeLine) {
+        codeStartIndex = i;
+        break;
+      }
+      
+      // אם זה נראה כמו רשימה ממוספרת שמכילה קוד
+      const numberedListWithCode = line.match(/^\d+\.\s*(.+)$/);
+      if (numberedListWithCode) {
+        const listContent = numberedListWithCode[1];
+        const hasCodeInList = codeIndicators.some(pattern => pattern.test(listContent));
+        if (hasCodeInList) {
+          codeStartIndex = i;
+          break;
+        }
+      }
+    }
+    
+    if (codeStartIndex === -1) {
+      // לא נמצא קוד, החזר הכל כהסבר
+      return { explanation: text, code: '' };
+    }
+    
+    const explanation = lines.slice(0, codeStartIndex).join('\n').trim();
+    const code = lines.slice(codeStartIndex).join('\n').trim();
+    
+    return { explanation, code };
   };
 
   const detectAndWrapCodeContent = (text: string) => {
@@ -437,104 +382,30 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const formatPlainText = (text: string) => {
-    // Handle numbered lists (1. 2. 3. etc.) and inline code
+    // Handle numbered lists (1. 2. 3. etc.)
     const lines = text.split('\n');
-    const elements: JSX.Element[] = [];
     
-    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-      const line = lines[lineIndex];
-      
+    return lines.map((line, lineIndex) => {
       // Check if line starts with number followed by dot
       const numberedListMatch = line.match(/^(\d+\.)\s*(.*)$/);
       
       if (numberedListMatch) {
-        elements.push(
+        return (
           <div key={lineIndex} className="mb-2 flex">
             <span className="font-medium ml-2 min-w-[2rem]">{numberedListMatch[1]}</span>
-            <span className="flex-1">{formatTextWithInlineCode(numberedListMatch[2])}</span>
+            <span className="flex-1">{numberedListMatch[2]}</span>
           </div>
         );
-      } else if (!line.trim()) {
-        elements.push(<br key={lineIndex} />);
-      } else {
-        // Check if this line is a short code snippet
-        const isShortCode = detectShortCodeLine(line);
-        
-        if (isShortCode) {
-          elements.push(
-            <div key={lineIndex} className="my-3">
-              <div className={`rounded-lg border ${
-                isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
-              }`}>
-                <div className={`flex items-center justify-between px-4 py-3 border-b ${
-                  isDarkMode 
-                    ? 'border-gray-700 text-gray-300' 
-                    : 'border-gray-200 text-gray-600'
-                }`}>
-                  <span className="text-sm font-medium">code</span>
-                  <button
-                    onClick={() => copyToClipboard(line.trim())}
-                    className={`p-2 rounded text-sm transition-colors ${
-                      isDarkMode 
-                        ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
-                        : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-                    }`}
-                    title="העתק קוד"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="p-4 overflow-x-auto max-w-full">
-                  <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
-                    isDarkMode ? 'text-gray-100' : 'text-gray-800'
-                  }`}>
-                    <code className="block">{line.trim()}</code>
-                  </pre>
-                </div>
-              </div>
-            </div>
-          );
-        } else {
-          elements.push(
-            <div key={lineIndex} className="mb-2">
-              {formatTextWithInlineCode(line)}
-            </div>
-          );
-        }
       }
-    }
-    
-    return elements;
-  };
-
-  const detectShortCodeLine = (line: string): boolean => {
-    const trimmedLine = line.trim();
-    
-    // השתמש באותה פונקציה שמזהה קוד
-    return isLineCode(trimmedLine);
-  };
-
-  const formatTextWithInlineCode = (text: string) => {
-    // זהה קוד בתוך backticks
-    const parts = text.split(/(`[^`]+`)/g);
-    
-    return parts.map((part, index) => {
-      if (part.startsWith('`') && part.endsWith('`')) {
-        const codeText = part.slice(1, -1);
-        return (
-          <code 
-            key={index}
-            className={`px-2 py-1 mx-1 rounded text-sm font-mono ${
-              isDarkMode 
-                ? 'bg-gray-800 text-gray-200 border border-gray-600' 
-                : 'bg-gray-100 text-gray-800 border border-gray-300'
-            }`}
-          >
-            {codeText}
-          </code>
-        );
-      }
-      return part;
+      
+      // Regular line
+      if (!line.trim()) return <br key={lineIndex} />;
+      
+      return (
+        <div key={lineIndex} className="mb-2">
+          {line}
+        </div>
+      );
     });
   };
 
