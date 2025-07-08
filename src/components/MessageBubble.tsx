@@ -134,28 +134,39 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         const code = language ? lines.slice(1).join('\n') : codeContent;
         
         return (
-          <div key={index} className="my-4 relative group">
-            <div className={`rounded-lg overflow-hidden border ${
-              isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
+          <div key={index} className="my-6 relative group">
+            <div className={`rounded-lg overflow-hidden border-2 ${
+              isDarkMode ? 'bg-gray-900 border-blue-500/30' : 'bg-gray-50 border-blue-300/50'
             }`}>
-              {language && (
-                <div className={`px-4 py-2 text-xs font-medium border-b flex items-center justify-between ${
-                  isDarkMode 
-                    ? 'bg-gray-800 text-gray-300 border-gray-700' 
-                    : 'bg-gray-100 text-gray-600 border-gray-200'
-                }`}>
-                  <span>{language.toUpperCase()}</span>
+              {/* Header with language and actions */}
+              <div className={`px-4 py-3 border-b flex items-center justify-between ${
+                isDarkMode 
+                  ? 'bg-gradient-to-r from-blue-900/50 to-purple-900/50 text-blue-300 border-gray-700' 
+                  : 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-gray-200'
+              }`}>
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <Code className="w-4 h-4" />
+                  <span className="font-semibold text-sm">
+                    {language ? `קוד ${language.toUpperCase()}` : 'קוד'}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2 space-x-reverse">
                   <button
                     onClick={() => copyToClipboard(code)}
-                    className={`p-1 rounded hover:bg-gray-600/20 transition-colors ${
-                      isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center space-x-1 space-x-reverse ${
+                      isDarkMode 
+                        ? 'bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/30' 
+                        : 'bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-300'
                     }`}
                     title="העתק קוד"
                   >
-                    <Copy className="w-4 h-4" />
+                    <Copy className="w-3 h-3" />
+                    <span>העתק</span>
                   </button>
                 </div>
-              )}
+              </div>
+              
+              {/* Code content */}
               <div className="p-4 overflow-x-auto relative">
                 <pre className={`text-sm leading-relaxed ${
                   isDarkMode ? 'text-gray-100' : 'text-gray-800'
