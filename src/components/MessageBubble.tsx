@@ -122,10 +122,12 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const formatContent = (content: string) => {
+    // Split content by code blocks
     const parts = content.split(/(```[\s\S]*?```)/g);
     
     return parts.map((part, index) => {
       if (part.startsWith('```') && part.endsWith('```')) {
+        // This is a code block
         const codeContent = part.slice(3, -3).trim();
         const lines = codeContent.split('\n');
         const language = lines[0] && !lines[0].includes(' ') && lines[0].length < 20 ? lines[0] : '';
@@ -169,43 +171,59 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
             </div>
           </div>
         );
+      } else {
+        // This is regular text - check if it needs automatic code detection
+        return (
+          <div key={index} className="leading-relaxed text-base">
+            {formatTextWithSmartCodeDetection(part)}
+          </div>
+        );
       }
-      
-      return (
-        <div key={index} className="leading-relaxed text-base">
-          {formatTextWithInlineCode(part)}
-        </div>
-      );
     });
   };
 
-  const formatTextWithInlineCode = (text: string) => {
-    const technicalTerms = /\b(SQL|HTML|CSS|JavaScript|React|Python|CREATE TABLE|SELECT|INSERT|UPDATE|DELETE|VARCHAR|INT|PRIMARY KEY|FOREIGN KEY|NOT NULL|UNIQUE|INDEX|DATABASE|SCHEMA|API|JSON|XML|HTTP|HTTPS|URL|ID|UUID)\b/g;
+  const formatTextWithSmartCodeDetection = (text: string) => {
+    // Automatically detect code patterns and wrap them
+    const codePatterns = [
+      // Commands (starting with $, npm, cd, etc.)
+      /(\$\s+[^\n]+|npm\s+[^\n]+|cd\s+[^\n]+|git\s+[^\n]+)/g,
+      // File paths
+      /(\/[^\s]+\.[a-zA-Z]+|\.\/[^\s]+|~\/[^\s]+)/g,
+      // JSON-like objects
+      /(\{[^}]*\})/g,
+      // Code snippets with parentheses and semicolons
+      /([a-zA-Z_$][a-zA-Z0-9_$]*\([^)]*\)[^.]*;?)/g
+    ];
+
+    let formattedText = text;
     
-    return text.split('\n').map((line, lineIndex) => {
-      if (!line.trim()) return <br key={lineIndex} />;
-      
-      return (
-        <div key={lineIndex} className="mb-2">
-          {line.split(technicalTerms).map((segment, segmentIndex) => {
-            if (technicalTerms.test(segment)) {
-              return (
-                <span
-                  key={segmentIndex}
-                  className={`inline-block px-2 py-0.5 rounded text-sm font-mono mx-0.5 ${
-                    isDarkMode 
-                      ? 'bg-blue-900/30 text-blue-300 border border-blue-700/50' 
-                      : 'bg-blue-100 text-blue-700 border border-blue-200'
-                  }`}
-                >
-                  {segment}
-                </span>
-              );
-            }
-            return segment;
-          })}
-        </div>
-      );
+    // Apply smart code detection
+    codePatterns.forEach(pattern => {
+      formattedText = formattedText.replace(pattern, (match) => {
+        return `\`${match}\``;
+      });
+    });
+
+    // Convert backtick code to styled spans
+    return formattedText.split(/(`[^`]+`)/g).map((segment, segmentIndex) => {
+      if (segment.startsWith('`') && segment.endsWith('`')) {
+        const codeText = segment.slice(1, -1);
+        return (
+          <span
+            key={segmentIndex}
+            className={`inline-flex items-center px-2 py-0.5 rounded text-sm font-mono mx-0.5 cursor-pointer ${
+              isDarkMode 
+                ? 'bg-gray-800 text-blue-300 border border-gray-700' 
+                : 'bg-gray-100 text-blue-700 border border-gray-200'
+            }`}
+            onClick={() => copyToClipboard(codeText)}
+            title="לחץ להעתקה"
+          >
+            {codeText}
+          </span>
+        );
+      }
+      return segment;
     });
   };
 
