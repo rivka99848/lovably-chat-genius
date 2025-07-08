@@ -227,14 +227,46 @@ const ChatInterface = () => {
     }
   };
 
+  const detectFileType = (file: File): string => {
+    const fileName = file.name.toLowerCase();
+    const mimeType = file.type.toLowerCase();
+    
+    // Video files
+    if (mimeType.startsWith('video/') || fileName.endsWith('.mp4') || fileName.endsWith('.avi') || fileName.endsWith('.mov') || fileName.endsWith('.mkv') || fileName.endsWith('.wmv')) {
+      return 'mp4';
+    }
+    
+    // Audio files
+    if (mimeType.startsWith('audio/') || fileName.endsWith('.mp3') || fileName.endsWith('.wav') || fileName.endsWith('.aac') || fileName.endsWith('.ogg') || fileName.endsWith('.m4a')) {
+      return fileName.endsWith('.wav') ? 'wav' : 'mp3';
+    }
+    
+    return 'file';
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
+    
+    // Detect file types and show appropriate messages
+    const audioVideoFiles = files.filter(file => {
+      const type = detectFileType(file);
+      return type === 'mp3' || type === 'wav' || type === 'mp4';
+    });
+    
     setUploadedFiles(prev => [...prev, ...files]);
     
-    toast({
-      title: "קבצים הועלו",
-      description: `הועלו ${files.length} קבצים בהצלחה.`
-    });
+    if (audioVideoFiles.length > 0) {
+      const formats = audioVideoFiles.map(file => detectFileType(file)).join(', ');
+      toast({
+        title: "קבצי מדיה הועלו",
+        description: `הועלו ${audioVideoFiles.length} קבצי אודיו/וידאו בפורמטים: ${formats}`
+      });
+    } else {
+      toast({
+        title: "קבצים הועלו",
+        description: `הועלו ${files.length} קבצים בהצלחה.`
+      });
+    }
   };
 
   const removeFile = (index: number) => {
