@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Copy, Code, User, Bot, Eye } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import CodePreview from './CodePreview';
 
 interface Message {
   id: string;
@@ -83,59 +82,51 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
   const cleanTextContent = (text: string): string => {
     return text
-      .replace(/^[\[\]"]+|[\[\]"]+$/g, '')
+      .replace(/^[\[\]\"]+|[\[\]\"]+$/g, '')
       .replace(/\\n/g, '\n')
       .replace(/\\t/g, '\t')
-      .replace(/\\"/g, '"')
+      .replace(/\\\"/g, '"')
       .replace(/\\r/g, '\r')
       .replace(/\\\\/g, '\\')
       .replace(/\\u[\dA-Fa-f]{4}/g, (match) => {
         return String.fromCharCode(parseInt(match.replace('\\u', ''), 16));
       })
-      .replace(/^\s*["'`]|["'`]\s*$/g, '')
+      .replace(/^\s*[\"'`]|[\"'`]\s*$/g, '')
       .replace(/[#]{3,}/g, '')
       .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '')
       .replace(/[\u201C\u201D\u2018\u2019]/g, '"')
       .replace(/[\u2013\u2014]/g, '-')
       .replace(/[\u00A0]/g, ' ')
-      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'-]/g, '')
+      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()\[\]{}\"'-]/g, '')
       .replace(/\s+$/gm, '')
       .replace(/^\s*[\r\n]+|[\r\n]+\s*$/g, '')
       .replace(/[\r\n]{3,}/g, '\n\n')
       .trim();
   };
 
-  const detectContentType = (content: string) => {
-    const hasCodeBlocks = content.includes('```');
-    const hasSQLKeywords = /\b(CREATE|SELECT|INSERT|UPDATE|DELETE|TABLE|FROM|WHERE|JOIN|ALTER|DROP)\b/i.test(content);
-    const hasHTMLTags = /<[^>]+>/g.test(content);
-    const hasJavaScript = /\b(function|const|let|var|class|import|export|if|for|while)\b/.test(content);
-    const hasProgrammingKeywords = /\b(def|class|import|from|return|if|elif|else|try|except|for|while|with)\b/.test(content);
+  const formatContent = (content: string) => {
+    // Check if content has markdown code blocks
+    if (content.includes('```')) {
+      return formatMarkdownContent(content);
+    }
     
-    return {
-      hasCodeBlocks,
-      hasSQLKeywords,
-      hasHTMLTags,
-      hasJavaScript,
-      hasProgrammingKeywords,
-      hasVisualCode: hasHTMLTags || content.includes('className') || content.includes('style=')
-    };
+    // Otherwise, format as plain text
+    return formatPlainText(content);
   };
 
-  const formatContent = (content: string) => {
-    // Split content by markdown code blocks first
+  const formatMarkdownContent = (content: string) => {
     const parts = content.split(/(```[\s\S]*?```)/g);
     
     return parts.map((part, index) => {
       if (part.startsWith('```') && part.endsWith('```')) {
-        // This is a markdown code block
+        // This is a code block
         const codeContent = part.slice(3, -3).trim();
         const lines = codeContent.split('\n');
         const language = lines[0] && !lines[0].includes(' ') && lines[0].length < 20 ? lines[0] : '';
         const code = language ? lines.slice(1).join('\n') : codeContent;
         
         return (
-          <div key={index} className="my-4 relative group">
+          <div key={index} className="my-4">
             <div className={`rounded-lg border ${
               isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
             }`}>
@@ -148,20 +139,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                 <span className="text-sm font-medium">
                   {language || 'code'}
                 </span>
-                <div className="flex items-center space-x-2 space-x-reverse">
-                  {(language === 'html' || language === 'javascript' || language === 'js' || language === 'jsx' || language === 'tsx' || code.includes('<') || code.includes('function') || code.includes('const')) && (
-                    <button
-                      onClick={() => setShowPreview(true)}
-                      className={`p-2 rounded text-sm transition-colors ${
-                        isDarkMode 
-                          ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
-                          : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-                      }`}
-                      title="תצוגה מקדימה"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  )}
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => copyToClipboard(code)}
                     className={`p-2 rounded text-sm transition-colors ${
@@ -177,20 +155,20 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
               </div>
               
               {/* Code */}
-              <div className="p-4 overflow-x-auto max-w-full">
-                <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
+              <div className="p-4 overflow-x-auto">
+                <pre className={`text-sm font-mono whitespace-pre-wrap ${
                   isDarkMode ? 'text-gray-100' : 'text-gray-800'
                 }`}>
-                  <code className="block">{code}</code>
+                  <code>{code}</code>
                 </pre>
               </div>
             </div>
           </div>
         );
       } else {
-        // This is regular text - format it properly
+        // Regular text
         return (
-          <div key={index} className="leading-relaxed text-base mb-2">
+          <div key={index} className="my-2">
             {formatPlainText(part)}
           </div>
         );
@@ -201,11 +179,10 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   const formatPlainText = (text: string) => {
     if (!text.trim()) return null;
     
-    // Handle numbered lists and regular text
     const lines = text.split('\n');
     
     return lines.map((line, lineIndex) => {
-      // Check if line starts with number followed by dot
+      // Check for numbered lists
       const numberedListMatch = line.match(/^(\d+\.)\s*(.*)$/);
       
       if (numberedListMatch) {
@@ -217,9 +194,10 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         );
       }
       
-      // Regular line
+      // Empty line
       if (!line.trim()) return <br key={lineIndex} />;
       
+      // Regular line
       return (
         <div key={lineIndex} className="mb-2">
           {line}
@@ -234,11 +212,10 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const processedContent = cleanContent(message.content);
-  const contentTypes = detectContentType(processedContent);
 
   return (
     <div className="w-full mb-6" dir="rtl">
-      {/* Message Header - Only Icon and Time */}
+      {/* Message Header */}
       <div className="flex items-center mb-2">
         <div className="flex items-center space-x-2 space-x-reverse">
           <div className={`p-1.5 rounded-full ${
@@ -284,14 +261,13 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
             <Copy className="w-4 h-4" />
           </button>
 
-          {(contentTypes.hasCodeBlocks || contentTypes.hasSQLKeywords || contentTypes.hasProgrammingKeywords) && (
+          {processedContent.includes('```') && (
             <button
               onClick={() => {
                 const codeBlocks = processedContent.match(/```[\s\S]*?```/g) || [];
                 const allCode = codeBlocks.map(block => {
                   const content = block.slice(3, -3).trim();
                   const lines = content.split('\n');
-                  // אם השורה הראשונה היא שפת התכנות, נדלג עליה
                   const isLanguageLine = lines[0] && !lines[0].includes(' ') && lines[0].length < 20;
                   return isLanguageLine ? lines.slice(1).join('\n') : content;
                 }).join('\n\n');
@@ -309,15 +285,6 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
           )}
         </div>
       )}
-
-      {/* Code Preview Modal */}
-      {showPreview && (
-        <CodePreview 
-          code={processedContent} 
-          onClose={() => setShowPreview(false)} 
-        />
-      )}
-
     </div>
   );
 };
