@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { Copy, Code, User, Bot } from 'lucide-react';
+import { Copy, Code, User, Bot, Eye } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import CodePreview from './CodePreview';
 
 interface Message {
   id: string;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
+  const [showPreview, setShowPreview] = useState(false);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -147,25 +149,40 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                 <span className="text-sm font-medium">
                   {language || 'code'}
                 </span>
-                <button
-                  onClick={() => copyToClipboard(code)}
-                  className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
-                    isDarkMode 
-                      ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
-                      : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  <Copy className="w-4 h-4" />
-                  <span>Copy code</span>
-                </button>
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  {(language === 'html' || language === 'javascript' || language === 'js' || language === 'jsx' || language === 'tsx' || code.includes('<') || code.includes('function') || code.includes('const')) && (
+                    <button
+                      onClick={() => setShowPreview(true)}
+                      className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
+                        isDarkMode 
+                          ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                          : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                      }`}
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>Preview</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => copyToClipboard(code)}
+                    className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
+                      isDarkMode 
+                        ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                        : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    <Copy className="w-4 h-4" />
+                    <span>Copy</span>
+                  </button>
+                </div>
               </div>
               
               {/* Code */}
-              <div className="p-4 overflow-x-auto">
-                <pre className={`text-sm font-mono ${
+              <div className="p-4 overflow-x-auto max-w-full">
+                <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
                   isDarkMode ? 'text-gray-100' : 'text-gray-800'
                 }`}>
-                  <code>{code}</code>
+                  <code className="block">{code}</code>
                 </pre>
               </div>
             </div>
@@ -187,25 +204,40 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                     : 'border-gray-200 text-gray-600'
                 }`}>
                   <span className="text-sm font-medium">code</span>
-                  <button
-                    onClick={() => copyToClipboard(hasLotsOfCode.cleanCode)}
-                    className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
-                      isDarkMode 
-                        ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
-                        : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-                    }`}
-                  >
-                    <Copy className="w-4 h-4" />
-                    <span>Copy code</span>
-                  </button>
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    {(hasLotsOfCode.cleanCode.includes('<') || hasLotsOfCode.cleanCode.includes('function') || hasLotsOfCode.cleanCode.includes('const')) && (
+                      <button
+                        onClick={() => setShowPreview(true)}
+                        className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
+                          isDarkMode 
+                            ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                            : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                        }`}
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>Preview</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => copyToClipboard(hasLotsOfCode.cleanCode)}
+                      className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
+                        isDarkMode 
+                          ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                          : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                      }`}
+                    >
+                      <Copy className="w-4 h-4" />
+                      <span>Copy</span>
+                    </button>
+                  </div>
                 </div>
                 
                 {/* Code */}
-                <div className="p-4 overflow-x-auto">
-                  <pre className={`text-sm font-mono ${
+                <div className="p-4 overflow-x-auto max-w-full">
+                  <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
                     isDarkMode ? 'text-gray-100' : 'text-gray-800'
                   }`}>
-                    <code>{hasLotsOfCode.cleanCode}</code>
+                    <code className="block">{hasLotsOfCode.cleanCode}</code>
                   </pre>
                 </div>
               </div>
@@ -358,6 +390,14 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
             </button>
           )}
         </div>
+      )}
+
+      {/* Code Preview Modal */}
+      {showPreview && (
+        <CodePreview 
+          code={processedContent} 
+          onClose={() => setShowPreview(false)} 
+        />
       )}
 
     </div>
