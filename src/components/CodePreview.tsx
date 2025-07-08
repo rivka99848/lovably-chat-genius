@@ -124,35 +124,33 @@ ${actualCode}
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="preview" className="flex-1">
-              <ScrollArea className="h-full">
-                <div className="h-full border rounded-lg overflow-hidden bg-white">
-                  {previewContent ? (
-                    <iframe
-                      srcDoc={previewContent}
-                      className="w-full h-full border-0 min-h-[600px]"
-                      sandbox="allow-scripts allow-same-origin"
-                      title="Code Preview"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-gray-500 min-h-[400px]">
-                      <div className="text-center">
-                        <Code className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p>No previewable code found</p>
-                        <p className="text-sm">Try the Source Code tab to view the raw content</p>
-                      </div>
+            <TabsContent value="preview" className="flex-1 h-full">
+              <div className="h-full border rounded-lg overflow-hidden bg-white">
+                {previewContent ? (
+                  <iframe
+                    srcDoc={previewContent}
+                    className="w-full h-full border-0 min-h-[600px]"
+                    sandbox="allow-scripts allow-same-origin"
+                    title="Code Preview"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500 min-h-[400px]">
+                    <div className="text-center">
+                      <Code className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No previewable code found</p>
+                      <p className="text-sm">Try the Source Code tab to view the raw content</p>
                     </div>
-                  )}
-                </div>
-              </ScrollArea>
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
-            <TabsContent value="code" className="flex-1">
+            <TabsContent value="code" className="flex-1 h-full">
               <div className="h-full border rounded-lg overflow-hidden">
-                <ScrollArea className="h-full">
-                  <div className="bg-gray-900 text-gray-100 p-4">
-                    <pre className="text-sm whitespace-pre-wrap break-words">
-                      <code>{previewContent || code}</code>
+                <ScrollArea className="h-full w-full">
+                  <div className="bg-gray-900 text-gray-100 p-4 min-h-full">
+                    <pre className="text-sm whitespace-pre-wrap break-words min-h-[500px]">
+                      <code className="block">{previewContent || code}</code>
                     </pre>
                   </div>
                 </ScrollArea>
