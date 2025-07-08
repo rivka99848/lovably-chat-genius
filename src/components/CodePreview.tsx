@@ -4,6 +4,7 @@ import { X, Code, Eye, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Props {
   code: string;
@@ -124,33 +125,37 @@ ${actualCode}
             </TabsList>
 
             <TabsContent value="preview" className="flex-1">
-              <div className="h-full border rounded-lg overflow-hidden bg-white">
-                {previewContent ? (
-                  <iframe
-                    srcDoc={previewContent}
-                    className="w-full h-full border-0"
-                    sandbox="allow-scripts allow-same-origin"
-                    title="Code Preview"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <div className="text-center">
-                      <Code className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No previewable code found</p>
-                      <p className="text-sm">Try the Source Code tab to view the raw content</p>
+              <ScrollArea className="h-full">
+                <div className="h-full border rounded-lg overflow-hidden bg-white">
+                  {previewContent ? (
+                    <iframe
+                      srcDoc={previewContent}
+                      className="w-full h-full border-0 min-h-[600px]"
+                      sandbox="allow-scripts allow-same-origin"
+                      title="Code Preview"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-500 min-h-[400px]">
+                      <div className="text-center">
+                        <Code className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No previewable code found</p>
+                        <p className="text-sm">Try the Source Code tab to view the raw content</p>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </ScrollArea>
             </TabsContent>
 
             <TabsContent value="code" className="flex-1">
               <div className="h-full border rounded-lg overflow-hidden">
-                <div className="h-full bg-gray-900 text-gray-100 p-4 overflow-auto">
-                  <pre className="text-sm">
-                    <code>{previewContent || code}</code>
-                  </pre>
-                </div>
+                <ScrollArea className="h-full">
+                  <div className="bg-gray-900 text-gray-100 p-4">
+                    <pre className="text-sm whitespace-pre-wrap break-words">
+                      <code>{previewContent || code}</code>
+                    </pre>
+                  </div>
+                </ScrollArea>
               </div>
             </TabsContent>
           </Tabs>
