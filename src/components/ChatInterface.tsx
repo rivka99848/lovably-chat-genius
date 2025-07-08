@@ -348,9 +348,12 @@ const ChatInterface = () => {
     formData.append('timestamp', new Date().toISOString());
     formData.append('sessionId', currentSessionId);
     
-    // Add files to form data
+    // Add files to form data with detected format
     uploadedFiles.forEach((file, index) => {
+      const detectedFormat = detectFileType(file);
       formData.append(`file_${index}`, file);
+      formData.append(`file_${index}_format`, detectedFormat);
+      formData.append(`file_${index}_name`, file.name);
     });
 
     // Log all form data for debugging
