@@ -192,6 +192,76 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         // This is regular text - check if it needs to be split between explanation and code
         const separatedContent = separateExplanationFromCode(part);
         
+        // Handle mixed content with multiple sections
+        if ('sections' in separatedContent) {
+          return (
+            <div key={index}>
+              {separatedContent.sections.map((section, sectionIndex) => {
+                if (section.type === 'text') {
+                  return (
+                    <div key={sectionIndex} className="leading-relaxed text-base mb-4">
+                      {formatPlainText(section.content)}
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div key={sectionIndex} className="my-4">
+                      <div className={`rounded-lg border ${
+                        isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
+                      }`}>
+                        {/* Header */}
+                        <div className={`flex items-center justify-between px-4 py-3 border-b ${
+                          isDarkMode 
+                            ? 'border-gray-700 text-gray-300' 
+                            : 'border-gray-200 text-gray-600'
+                        }`}>
+                          <span className="text-sm font-medium">code</span>
+                          <div className="flex items-center space-x-2 space-x-reverse">
+                            {(section.content.includes('<') || section.content.includes('function') || section.content.includes('const')) && (
+                              <button
+                                onClick={() => setShowPreview(true)}
+                                className={`p-2 rounded text-sm transition-colors ${
+                                  isDarkMode 
+                                    ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                                    : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                                }`}
+                                title="תצוגה מקדימה"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => copyToClipboard(section.content)}
+                              className={`p-2 rounded text-sm transition-colors ${
+                                isDarkMode 
+                                  ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                                  : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                              }`}
+                              title="העתק קוד"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Code */}
+                        <div className="p-4 overflow-x-auto max-w-full">
+                          <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
+                            isDarkMode ? 'text-gray-100' : 'text-gray-800'
+                          }`}>
+                            <code className="block">{section.content}</code>
+                          </pre>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+              })}
+            </div>
+          );
+        }
+        
+        // Handle simple separation (backward compatibility)
         return (
           <div key={index}>
             {/* Explanation text */}
@@ -259,11 +329,13 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     });
   };
 
-  const separateExplanationFromCode = (text: string) => {
+  const separateExplanationFromCode = (text: string): 
+    | { explanation: string; code: string }
+    | { sections: Array<{type: 'text' | 'code', content: string}> } => {
     if (!text.trim()) return { explanation: text, code: '' };
     
     const lines = text.split('\n');
-    let codeStartIndex = -1;
+    const sections: Array<{type: 'text' | 'code', content: string}> = [];
     
     // מילות מפתח שמציינות התחלת קוד
     const codeIndicators = [
@@ -313,44 +385,99 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       /^<[^>]+>/,  // HTML tags
       /^\s*{/,     // JSON או object
       /^\s*\[/,    // Array
+      /^\/\//,     // שורת הערה
+      /^\/\*/,     // התחלת הערה רב-שורתית
+      /^\w+\(/,    // קריאה לפונקציה
+      /^\.[\w-]+/,  // CSS classes
+      /^@\w+/,     // CSS at-rules או decorators
+      /^\s*[\w-]+:\s*[\w-]+/,  // CSS properties
     ];
-    
-    // חפש את השורה הראשונה שמכילה קוד
+
+    let currentSection: {type: 'text' | 'code', content: string} = { type: 'text', content: '' };
+    let inCodeBlock = false;
+
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+      const line = lines[i];
+      const trimmedLine = line.trim();
       
-      // דלג על שורות ריקות
-      if (!line) continue;
+      // דלג על שורות ריקות - הוסף אותן לחלק הנוכחי
+      if (!trimmedLine) {
+        currentSection.content += line + '\n';
+        continue;
+      }
       
       // בדוק אם השורה מתחילה עם אחד ממחווני הקוד
-      const isCodeLine = codeIndicators.some(pattern => pattern.test(line));
-      
-      if (isCodeLine) {
-        codeStartIndex = i;
-        break;
-      }
+      const isCodeLine = codeIndicators.some(pattern => pattern.test(trimmedLine));
       
       // אם זה נראה כמו רשימה ממוספרת שמכילה קוד
-      const numberedListWithCode = line.match(/^\d+\.\s*(.+)$/);
+      let hasCodeInList = false;
+      const numberedListWithCode = trimmedLine.match(/^\d+\.\s*(.+)$/);
       if (numberedListWithCode) {
         const listContent = numberedListWithCode[1];
-        const hasCodeInList = codeIndicators.some(pattern => pattern.test(listContent));
-        if (hasCodeInList) {
-          codeStartIndex = i;
-          break;
+        hasCodeInList = codeIndicators.some(pattern => pattern.test(listContent));
+      }
+
+      const shouldBeCode = isCodeLine || hasCodeInList;
+
+      // אם החלק הנוכחי הוא טקסט והשורה הנוכחית היא קוד
+      if (currentSection.type === 'text' && shouldBeCode) {
+        // סיים את החלק הטקסטואלי הנוכחי
+        if (currentSection.content.trim()) {
+          sections.push({...currentSection, content: currentSection.content.trim()});
+        }
+        // התחל חלק קוד חדש
+        currentSection = { type: 'code', content: line + '\n' };
+        inCodeBlock = true;
+      }
+      // אם החלק הנוכחי הוא קוד והשורה הנוכחית לא נראית כמו קוד
+      else if (currentSection.type === 'code' && !shouldBeCode) {
+        // בדוק אם זו הפסקה זמנית (כמו הנחיה) או סוף הקוד
+        let nextCodeLineIndex = -1;
+        for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+          const nextLine = lines[j].trim();
+          if (nextLine && codeIndicators.some(pattern => pattern.test(nextLine))) {
+            nextCodeLineIndex = j;
+            break;
+          }
+        }
+
+        // אם יש עוד קוד בקרוב, השאר באותו חלק קוד
+        if (nextCodeLineIndex !== -1 && (nextCodeLineIndex - i) <= 3) {
+          currentSection.content += line + '\n';
+        } else {
+          // סיים את חלק הקוד
+          if (currentSection.content.trim()) {
+            sections.push({...currentSection, content: currentSection.content.trim()});
+          }
+          // התחל חלק טקסט חדש
+          currentSection = { type: 'text', content: line + '\n' };
+          inCodeBlock = false;
         }
       }
+      // אחרת, הוסף לחלק הנוכחי
+      else {
+        currentSection.content += line + '\n';
+      }
     }
-    
-    if (codeStartIndex === -1) {
-      // לא נמצא קוד, החזר הכל כהסבר
-      return { explanation: text, code: '' };
+
+    // הוסף את החלק האחרון
+    if (currentSection.content.trim()) {
+      sections.push({...currentSection, content: currentSection.content.trim()});
     }
-    
-    const explanation = lines.slice(0, codeStartIndex).join('\n').trim();
-    const code = lines.slice(codeStartIndex).join('\n').trim();
-    
-    return { explanation, code };
+
+    // אם נמצא רק חלק אחד, החזר כפי שהיה
+    if (sections.length <= 1) {
+      const hasAnyCode = sections.some(s => s.type === 'code');
+      if (!hasAnyCode) {
+        return { explanation: text, code: '' };
+      }
+      if (sections[0]?.type === 'code') {
+        return { explanation: '', code: text };
+      }
+    }
+
+    // החזר את החלקים המעורבים
+    return { sections };
   };
 
   const detectAndWrapCodeContent = (text: string) => {
