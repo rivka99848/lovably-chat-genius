@@ -270,58 +270,142 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     if (!text.trim()) return { explanation: text, code: '', afterExplanation: '' };
     
     const lines = text.split('\n');
-    let codeBlocks: Array<{start: number, end: number}> = [];
+    let codeStartIndex = -1;
+    let codeEndIndex = -1;
     
-    // זיהוי פשוט של בלוקי קוד
+    // מילות מפתח שמציינות התחלת קוד
     const codeIndicators = [
-      /^npm\s+/i, /^git\s+/i, /^cd\s+/i, /^node\s+/i,
-      /^import\s+/i, /^const\s+/i, /^function\s+/i, /^class\s+/i,
-      /^<[^>]+>/, /^\s*{/, /^\s*\[/, /^[\$#]\s+/
+      /^bash\s*$/i,
+      /^[\$#]\s+/,  // פקודות שמתחילות ב-$ או #
+      /^npm\s+/i,
+      /^npx\s+/i,
+      /^cd\s+/i,
+      /^git\s+/i,
+      /^node\s+/i,
+      /^python\s+/i,
+      /^pip\s+/i,
+      /^yarn\s+/i,
+      /^curl\s+/i,
+      /^mkdir\s+/i,
+      /^touch\s+/i,
+      /^echo\s+/i,
+      /^cat\s+/i,
+      /^ls\s+/i,
+      /^cp\s+/i,
+      /^mv\s+/i,
+      /^rm\s+/i,
+      /^chmod\s+/i,
+      /^sudo\s+/i,
+      /^apt\s+/i,
+      /^yum\s+/i,
+      /^brew\s+/i,
+      /^docker\s+/i,
+      /^kubectl\s+/i,
+      /^ssh\s+/i,
+      /^scp\s+/i,
+      /^rsync\s+/i,
+      /^tar\s+/i,
+      /^zip\s+/i,
+      /^unzip\s+/i,
+      /^wget\s+/i,
+      /^import\s+/i, // הצהרות import
+      /^from\s+.+\s+import/i,
+      /^const\s+/i,
+      /^let\s+/i,
+      /^var\s+/i,
+      /^function\s+/i,
+      /^class\s+/i,
+      /^interface\s+/i,
+      /^type\s+/i,
+      /^export\s+/i,
+      /^<[^>]+>/,  // HTML tags
+      /^\s*{/,     // JSON או object
+      /^\s*\[/,    // Array
     ];
     
-    let currentStart = -1;
-    let consecutiveLines = 0;
+    // מילות מפתח שמציינות סיום קוד והתחלת הסבר
+    const explanationIndicators = [
+      /^[א-ת].+:/,  // שורה בעברית שמסתיימת בנקודותיים
+      /^[א-ת].+[.!?]$/,  // שורה בעברית שמסתיימת בסימני פיסוק
+      /^-\s+[א-ת]/,  // רשימת מקפים בעברית
+      /^אם\s+/,
+      /^כדי\s+/,
+      /^לאחר\s+/,
+      /^עכשיו\s+/,
+      /^בשלב\s+/,
+      /^לבסוף\s+/,
+      /^חשוב\s+/,
+      /^שים\s+לב/,
+      /^הערה\s*/,
+      /^טיפ\s*/,
+      /^זכור\s+/,
+      /^בנוסף\s+/,
+      /^גם\s+/,
+      /^אפשר\s+/,
+      /^ניתן\s+/,
+    ];
     
+    // חפש את השורה הראשונה שמכילה קוד
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
+      
+      // דלג על שורות ריקות
       if (!line) continue;
       
+      // בדוק אם השורה מתחילה עם אחד ממחווני הקוד
       const isCodeLine = codeIndicators.some(pattern => pattern.test(line));
       
-      if (isCodeLine) {
-        if (currentStart === -1) {
-          currentStart = i;
-          consecutiveLines = 1;
-        } else {
-          consecutiveLines++;
+      if (isCodeLine && codeStartIndex === -1) {
+        codeStartIndex = i;
+        continue;
+      }
+      
+      // אם כבר מצאנו התחלת קוד, חפש את הסיום
+      if (codeStartIndex !== -1 && codeEndIndex === -1) {
+        // בדוק אם השורה מתחילה עם אחד ממחווני ההסבר
+        const isExplanationLine = explanationIndicators.some(pattern => pattern.test(line));
+        
+        if (isExplanationLine) {
+          codeEndIndex = i - 1;
+          break;
         }
-      } else if (currentStart !== -1) {
-        // סיים בלוק קוד אם יש לפחות 3 שורות
-        if (consecutiveLines >= 3) {
-          codeBlocks.push({ start: currentStart, end: i - 1 });
+        
+        // אם זה לא קוד ולא הסבר ברור, נמשיך עם הקוד
+        const stillCodeLine = codeIndicators.some(pattern => pattern.test(line));
+        if (!stillCodeLine && !line.match(/^\s*$/) && line.length > 0) {
+          // בדוק אם זה נראה כמו המשך קוד או הסבר חדש
+          if (line.match(/^[א-ת]/) && line.length > 20) {
+            codeEndIndex = i - 1;
+            break;
+          }
         }
-        currentStart = -1;
-        consecutiveLines = 0;
+      }
+      
+      // אם זה נראה כמו רשימה ממוספרת שמכילה קוד
+      const numberedListWithCode = line.match(/^\d+\.\s*(.+)$/);
+      if (numberedListWithCode && codeStartIndex === -1) {
+        const listContent = numberedListWithCode[1];
+        const hasCodeInList = codeIndicators.some(pattern => pattern.test(listContent));
+        if (hasCodeInList) {
+          codeStartIndex = i;
+        }
       }
     }
     
-    // בלוק קוד בסוף
-    if (currentStart !== -1 && consecutiveLines >= 3) {
-      codeBlocks.push({ start: currentStart, end: lines.length - 1 });
-    }
-    
-    if (codeBlocks.length === 0) {
+    if (codeStartIndex === -1) {
+      // לא נמצא קוד, החזר הכל כהסבר
       return { explanation: text, code: '', afterExplanation: '' };
     }
     
-    // איחד כל הבלוקים לאחד
-    const firstBlock = codeBlocks[0];
-    const lastBlock = codeBlocks[codeBlocks.length - 1];
+    // אם לא נמצא סיום קוד, הקוד ממשיך עד הסוף
+    if (codeEndIndex === -1) {
+      codeEndIndex = lines.length - 1;
+    }
     
-    const explanation = lines.slice(0, firstBlock.start).join('\n').trim();
-    const code = lines.slice(firstBlock.start, lastBlock.end + 1).join('\n').trim();
-    const afterExplanation = lastBlock.end < lines.length - 1 
-      ? lines.slice(lastBlock.end + 1).join('\n').trim() 
+    const explanation = lines.slice(0, codeStartIndex).join('\n').trim();
+    const code = lines.slice(codeStartIndex, codeEndIndex + 1).join('\n').trim();
+    const afterExplanation = codeEndIndex < lines.length - 1 
+      ? lines.slice(codeEndIndex + 1).join('\n').trim() 
       : '';
     
     return { explanation, code, afterExplanation };
