@@ -361,9 +361,10 @@ const ChatInterface = () => {
         let shouldProcessMessage = false;
         
         if (data === true) {
-          // השרת החזיר true - השליחה הצליחה
+          // השרת החזיר true - השליחה הצליחה, מעביר לממשק הבוט
           shouldProcessMessage = true;
           cleanContent = 'ההודעה נשלחה בהצלחה לשרת.';
+          navigate('/'); // העברה לממשק הבוט הראשי
         } else if (Array.isArray(data)) {
           console.log('Response is an array:', data);
           if (data.length === 0) {
