@@ -190,8 +190,10 @@ const ChatInterface = () => {
             userData = responseText;
           }
           
-          // אם זה true - המשתמש התחבר בהצלחה
-          if (userData === true || (typeof userData === 'object' && userData.success)) {
+          // אם זה true או array עם success: true - המשתמש התחבר בהצלחה
+          if (userData === true || 
+              (typeof userData === 'object' && userData.success) ||
+              (Array.isArray(userData) && userData.length > 0 && userData[0].success)) {
             const existingUser: User = {
               id: userData.id || userId,
               email,
