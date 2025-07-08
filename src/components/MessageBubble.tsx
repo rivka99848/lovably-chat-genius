@@ -122,7 +122,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const formatContent = (content: string) => {
-    // Split content by code blocks first
+    // Split content by code blocks
     const parts = content.split(/(```[\s\S]*?```)/g);
     
     return parts.map((part, index) => {
@@ -172,159 +172,54 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
           </div>
         );
       } else {
-        // This is regular text - intelligently separate explanation from code
-        return formatTextWithIntelligentSeparation(part, index);
-      }
-    });
-  };
-
-  const formatTextWithIntelligentSeparation = (text: string, partIndex: number) => {
-    // Smart separation: detect where explanation ends and code begins
-    const separationResult = intelligentlyDetectCodeSeparation(text);
-    
-    if (separationResult.hasCodeSection) {
-      return (
-        <div key={partIndex}>
-          {/* Explanation part */}
-          {separationResult.explanation && (
-            <div className="leading-relaxed text-base mb-4">
-              {formatPlainText(separationResult.explanation)}
-            </div>
-          )}
-          
-          {/* Code part */}
-          <div className="my-4">
-            <div className={`rounded-lg border ${
-              isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
-            }`}>
-              {/* Header */}
-              <div className={`flex items-center justify-between px-4 py-3 border-b ${
-                isDarkMode 
-                  ? 'border-gray-700 text-gray-300' 
-                  : 'border-gray-200 text-gray-600'
+        // This is regular text - check if it contains a lot of code patterns
+        const hasLotsOfCode = detectAndWrapCodeContent(part);
+        if (hasLotsOfCode.shouldWrapAsCode) {
+          return (
+            <div key={index} className="my-4">
+              <div className={`rounded-lg border ${
+                isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
               }`}>
-                <span className="text-sm font-medium">code</span>
-                <button
-                  onClick={() => copyToClipboard(separationResult.code)}
-                  className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
-                    isDarkMode 
-                      ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
-                      : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  <Copy className="w-4 h-4" />
-                  <span>Copy code</span>
-                </button>
-              </div>
-              
-              {/* Code */}
-              <div className="p-4 overflow-x-auto">
-                <pre className={`text-sm font-mono ${
-                  isDarkMode ? 'text-gray-100' : 'text-gray-800'
+                {/* Header */}
+                <div className={`flex items-center justify-between px-4 py-3 border-b ${
+                  isDarkMode 
+                    ? 'border-gray-700 text-gray-300' 
+                    : 'border-gray-200 text-gray-600'
                 }`}>
-                  <code>{separationResult.code}</code>
-                </pre>
+                  <span className="text-sm font-medium">code</span>
+                  <button
+                    onClick={() => copyToClipboard(hasLotsOfCode.cleanCode)}
+                    className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded text-sm transition-colors ${
+                      isDarkMode 
+                        ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
+                        : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    <Copy className="w-4 h-4" />
+                    <span>Copy code</span>
+                  </button>
+                </div>
+                
+                {/* Code */}
+                <div className="p-4 overflow-x-auto">
+                  <pre className={`text-sm font-mono ${
+                    isDarkMode ? 'text-gray-100' : 'text-gray-800'
+                  }`}>
+                    <code>{hasLotsOfCode.cleanCode}</code>
+                  </pre>
+                </div>
               </div>
             </div>
+          );
+        }
+        
+        return (
+          <div key={index} className="leading-relaxed text-base">
+            {formatPlainText(part)}
           </div>
-        </div>
-      );
-    }
-    
-    // Regular text without code
-    return (
-      <div key={partIndex} className="leading-relaxed text-base">
-        {formatPlainText(text)}
-      </div>
-    );
-  };
-
-  const intelligentlyDetectCodeSeparation = (text: string) => {
-    const lines = text.split('\n');
-    
-    // Look for common separation patterns
-    const separationIndicators = [
-      /^כדי\s+(ליצור|לבצע|לשלוח|להתקין|להריץ)/i, // Hebrew: "To create/do/send/install/run"
-      /^דוגמה/i, // Hebrew: "Example"
-      /^השתמש/i, // Hebrew: "Use"
-      /^הרץ/i, // Hebrew: "Run"
-      /^התקן/i, // Hebrew: "Install"
-      /^הקמת/i, // Hebrew: "Setup"
-      /^\*\*.*לדוגמה.*\*\*/i, // "**Example**"
-      /^\*\*.*קוד.*\*\*/i, // "**Code**"
-      /^To\s+(create|setup|install|run)/i, // English
-      /^Example/i,
-      /^Usage/i,
-      /^Run/i,
-      /^Install/i,
-    ];
-    
-    let separationIndex = -1;
-    let codeStartIndex = -1;
-    
-    // Find where explanation ends and code begins
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      
-      // Check for separation indicators
-      const isSeparator = separationIndicators.some(pattern => pattern.test(line));
-      if (isSeparator && separationIndex === -1) {
-        separationIndex = i;
-        continue;
+        );
       }
-      
-      // Look for code patterns after separator
-      const isCodeLine = (
-        line.startsWith('$') || 
-        line.startsWith('npm ') || 
-        line.startsWith('cd ') || 
-        line.startsWith('git ') ||
-        line.includes('import ') ||
-        line.includes('const ') ||
-        line.includes('function ') ||
-        line.includes('{') ||
-        line.includes('};') ||
-        line.includes('()') ||
-        line.match(/^\w+\s*:/)) && line.length > 5;
-      
-      if (isCodeLine && codeStartIndex === -1 && i > separationIndex) {
-        codeStartIndex = i;
-        break;
-      }
-    }
-    
-    // If we found both explanation and code sections
-    if (separationIndex >= 0 && codeStartIndex >= 0) {
-      const explanation = lines.slice(0, codeStartIndex).join('\n').trim();
-      const code = lines.slice(codeStartIndex).join('\n').trim();
-      
-      return {
-        hasCodeSection: true,
-        explanation,
-        code
-      };
-    }
-    
-    // Check if the whole thing is mostly code
-    const codeLines = lines.filter(line => {
-      const trimmed = line.trim();
-      return trimmed.startsWith('$') || 
-             trimmed.startsWith('npm ') || 
-             trimmed.includes('import ') ||
-             trimmed.includes('const ') ||
-             trimmed.includes('{') ||
-             trimmed.includes('()');
     });
-    
-    if (codeLines.length > lines.length * 0.4) {
-      return {
-        hasCodeSection: true,
-        explanation: '',
-        code: text.trim()
-      };
-    }
-    
-    return { hasCodeSection: false };
   };
 
   const detectAndWrapCodeContent = (text: string) => {
