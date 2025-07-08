@@ -463,10 +463,10 @@ const ChatInterface = () => {
     }
     
     setMessages([]);
-    localStorage.removeItem('lovable_chat_history');
+    // Don't remove chat history - keep all conversations saved
     toast({
       title: "שיחה חדשה",
-      description: "התחלנו שיחה חדשה."
+      description: "התחלנו שיחה חדשה. השיחה הקודמת נשמרה."
     });
   };
 
