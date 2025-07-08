@@ -272,172 +272,56 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     const lines = text.split('\n');
     let codeBlocks: Array<{start: number, end: number}> = [];
     
-    // מילות מפתח שמציינות התחלת קוד
+    // זיהוי פשוט של בלוקי קוד
     const codeIndicators = [
-      /^bash\s*$/i,
-      /^[\$#]\s+/,  // פקודות שמתחילות ב-$ או #
-      /^npm\s+/i,
-      /^npx\s+/i,
-      /^cd\s+/i,
-      /^git\s+/i,
-      /^node\s+/i,
-      /^python\s+/i,
-      /^pip\s+/i,
-      /^yarn\s+/i,
-      /^curl\s+/i,
-      /^mkdir\s+/i,
-      /^touch\s+/i,
-      /^echo\s+/i,
-      /^cat\s+/i,
-      /^ls\s+/i,
-      /^cp\s+/i,
-      /^mv\s+/i,
-      /^rm\s+/i,
-      /^chmod\s+/i,
-      /^sudo\s+/i,
-      /^apt\s+/i,
-      /^yum\s+/i,
-      /^brew\s+/i,
-      /^docker\s+/i,
-      /^kubectl\s+/i,
-      /^ssh\s+/i,
-      /^scp\s+/i,
-      /^rsync\s+/i,
-      /^tar\s+/i,
-      /^zip\s+/i,
-      /^unzip\s+/i,
-      /^wget\s+/i,
-      /^import\s+/i, // הצהרות import
-      /^from\s+.+\s+import/i,
-      /^const\s+/i,
-      /^let\s+/i,
-      /^var\s+/i,
-      /^function\s+/i,
-      /^class\s+/i,
-      /^interface\s+/i,
-      /^type\s+/i,
-      /^export\s+/i,
-      /^<[^>]+>/,  // HTML tags
-      /^\s*{/,     // JSON או object
-      /^\s*\[/,    // Array
+      /^npm\s+/i, /^git\s+/i, /^cd\s+/i, /^node\s+/i,
+      /^import\s+/i, /^const\s+/i, /^function\s+/i, /^class\s+/i,
+      /^<[^>]+>/, /^\s*{/, /^\s*\[/, /^[\$#]\s+/
     ];
     
-    // מילות מפתח שמציינות סיום קוד והתחלת הסבר
-    const explanationIndicators = [
-      /^[א-ת].+:/,  // שורה בעברית שמסתיימת בנקודותיים
-      /^[א-ת].+[.!?]$/,  // שורה בעברית שמסתיימת בסימני פיסוק
-      /^-\s+[א-ת]/,  // רשימת מקפים בעברית
-      /^אם\s+/,
-      /^כדי\s+/,
-      /^לאחר\s+/,
-      /^עכשיו\s+/,
-      /^בשלב\s+/,
-      /^לבסוף\s+/,
-      /^חשוב\s+/,
-      /^שים\s+לב/,
-      /^הערה\s*/,
-      /^טיפ\s*/,
-      /^זכור\s+/,
-      /^בנוסף\s+/,
-      /^גם\s+/,
-      /^אפשר\s+/,
-      /^ניתן\s+/,
-    ];
-    
-    // מצא את כל בלוקי הקוד
-    let currentCodeStart = -1;
-    let consecutiveCodeLines = 0;
+    let currentStart = -1;
+    let consecutiveLines = 0;
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
+      if (!line) continue;
       
-      // דלג על שורות ריקות
-      if (!line) {
-        if (currentCodeStart !== -1) {
-          consecutiveCodeLines++;
-        }
-        continue;
-      }
-      
-      // בדוק אם השורה מתחילה עם אחד ממחווני הקוד
       const isCodeLine = codeIndicators.some(pattern => pattern.test(line));
       
       if (isCodeLine) {
-        if (currentCodeStart === -1) {
-          currentCodeStart = i;
-          consecutiveCodeLines = 1;
+        if (currentStart === -1) {
+          currentStart = i;
+          consecutiveLines = 1;
         } else {
-          consecutiveCodeLines++;
+          consecutiveLines++;
         }
-      } else {
-        // בדוק אם השורה מתחילה עם אחד ממחווני ההסבר
-        const isExplanationLine = explanationIndicators.some(pattern => pattern.test(line));
-        
-        if (currentCodeStart !== -1) {
-          // סיים בלוק קוד אם:
-          // 1. זה הסבר ברור
-          // 2. יש לפחות 3 שורות קוד רצופות
-          if (isExplanationLine || consecutiveCodeLines >= 3) {
-            codeBlocks.push({ start: currentCodeStart, end: i - 1 });
-            currentCodeStart = -1;
-            consecutiveCodeLines = 0;
-          } else if (line.match(/^[א-ת]/) && line.length > 20) {
-            // זה נראה כמו הסבר חדש
-            codeBlocks.push({ start: currentCodeStart, end: i - 1 });
-            currentCodeStart = -1;
-            consecutiveCodeLines = 0;
-          } else {
-            // ממשיך להיחשב כחלק מהקוד
-            consecutiveCodeLines++;
-          }
+      } else if (currentStart !== -1) {
+        // סיים בלוק קוד אם יש לפחות 3 שורות
+        if (consecutiveLines >= 3) {
+          codeBlocks.push({ start: currentStart, end: i - 1 });
         }
+        currentStart = -1;
+        consecutiveLines = 0;
       }
     }
     
-    // אם יש בלוק קוד שלא הושלם
-    if (currentCodeStart !== -1 && consecutiveCodeLines >= 2) {
-      codeBlocks.push({ start: currentCodeStart, end: lines.length - 1 });
+    // בלוק קוד בסוף
+    if (currentStart !== -1 && consecutiveLines >= 3) {
+      codeBlocks.push({ start: currentStart, end: lines.length - 1 });
     }
     
-    // אם לא נמצאו בלוקי קוד משמעותיים
     if (codeBlocks.length === 0) {
       return { explanation: text, code: '', afterExplanation: '' };
     }
     
-    // איחד בלוקי קוד קרובים (פער של עד 2 שורות)
-    const mergedBlocks: Array<{start: number, end: number}> = [];
-    for (let i = 0; i < codeBlocks.length; i++) {
-      const current = codeBlocks[i];
-      const next = codeBlocks[i + 1];
-      
-      if (next && (next.start - current.end <= 3)) {
-        // איחד עם הבלוק הבא
-        current.end = next.end;
-        i++; // דלג על הבלוק הבא
-      }
-      mergedBlocks.push(current);
-    }
+    // איחד כל הבלוקים לאחד
+    const firstBlock = codeBlocks[0];
+    const lastBlock = codeBlocks[codeBlocks.length - 1];
     
-    // אם יש יותר מבלוק קוד אחד, איחד הכל לבלוק אחד
-    if (mergedBlocks.length > 1) {
-      const firstBlock = mergedBlocks[0];
-      const lastBlock = mergedBlocks[mergedBlocks.length - 1];
-      
-      const explanation = lines.slice(0, firstBlock.start).join('\n').trim();
-      const code = lines.slice(firstBlock.start, lastBlock.end + 1).join('\n').trim();
-      const afterExplanation = lastBlock.end < lines.length - 1 
-        ? lines.slice(lastBlock.end + 1).join('\n').trim() 
-        : '';
-      
-      return { explanation, code, afterExplanation };
-    }
-    
-    // בלוק קוד יחיד
-    const codeBlock = mergedBlocks[0];
-    const explanation = lines.slice(0, codeBlock.start).join('\n').trim();
-    const code = lines.slice(codeBlock.start, codeBlock.end + 1).join('\n').trim();
-    const afterExplanation = codeBlock.end < lines.length - 1 
-      ? lines.slice(codeBlock.end + 1).join('\n').trim() 
+    const explanation = lines.slice(0, firstBlock.start).join('\n').trim();
+    const code = lines.slice(firstBlock.start, lastBlock.end + 1).join('\n').trim();
+    const afterExplanation = lastBlock.end < lines.length - 1 
+      ? lines.slice(lastBlock.end + 1).join('\n').trim() 
       : '';
     
     return { explanation, code, afterExplanation };
