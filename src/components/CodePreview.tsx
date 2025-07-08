@@ -111,8 +111,8 @@ ${actualCode}
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+        <div className="flex-1 p-4 overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col overflow-hidden">
             <TabsList className="mb-4">
               <TabsTrigger value="preview" className="flex items-center">
                 <Eye className="w-4 h-4 mr-1" />
@@ -145,15 +145,15 @@ ${actualCode}
               </div>
             </TabsContent>
 
-            <TabsContent value="code" className="flex-1 h-full">
+            <TabsContent value="code" className="flex-1 overflow-hidden">
               <div className="h-full border rounded-lg overflow-hidden">
-                <ScrollArea className="h-full w-full">
-                  <div className="bg-gray-900 text-gray-100 p-4 min-h-full">
-                    <pre className="text-sm whitespace-pre-wrap break-words min-h-[500px]">
+                <div className="h-full bg-gray-900 text-gray-100 overflow-auto">
+                  <div className="p-4">
+                    <pre className="text-sm whitespace-pre-wrap break-words">
                       <code className="block">{previewContent || code}</code>
                     </pre>
                   </div>
-                </ScrollArea>
+                </div>
               </div>
             </TabsContent>
           </Tabs>
