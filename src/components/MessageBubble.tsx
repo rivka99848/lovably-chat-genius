@@ -253,6 +253,13 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                 </div>
               </div>
             )}
+            
+            {/* After explanation text */}
+            {separatedContent.afterExplanation && (
+              <div className="leading-relaxed text-base mt-4">
+                {formatPlainText(separatedContent.afterExplanation)}
+              </div>
+            )}
           </div>
         );
       }
@@ -260,10 +267,11 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const separateExplanationFromCode = (text: string) => {
-    if (!text.trim()) return { explanation: text, code: '' };
+    if (!text.trim()) return { explanation: text, code: '', afterExplanation: '' };
     
     const lines = text.split('\n');
     let codeStartIndex = -1;
+    let codeEndIndex = -1;
     
     // מילות מפתח שמציינות התחלת קוד
     const codeIndicators = [
@@ -300,7 +308,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       /^zip\s+/i,
       /^unzip\s+/i,
       /^wget\s+/i,
-      /^^import\s+/i, // הצהרות import
+      /^import\s+/i, // הצהרות import
       /^from\s+.+\s+import/i,
       /^const\s+/i,
       /^let\s+/i,
@@ -315,6 +323,28 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       /^\s*\[/,    // Array
     ];
     
+    // מילות מפתח שמציינות סיום קוד והתחלת הסבר
+    const explanationIndicators = [
+      /^[א-ת].+:/,  // שורה בעברית שמסתיימת בנקודותיים
+      /^[א-ת].+[.!?]$/,  // שורה בעברית שמסתיימת בסימני פיסוק
+      /^-\s+[א-ת]/,  // רשימת מקפים בעברית
+      /^אם\s+/,
+      /^כדי\s+/,
+      /^לאחר\s+/,
+      /^עכשיו\s+/,
+      /^בשלב\s+/,
+      /^לבסוף\s+/,
+      /^חשוב\s+/,
+      /^שים\s+לב/,
+      /^הערה\s*/,
+      /^טיפ\s*/,
+      /^זכור\s+/,
+      /^בנוסף\s+/,
+      /^גם\s+/,
+      /^אפשר\s+/,
+      /^ניתן\s+/,
+    ];
+    
     // חפש את השורה הראשונה שמכילה קוד
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -325,32 +355,60 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       // בדוק אם השורה מתחילה עם אחד ממחווני הקוד
       const isCodeLine = codeIndicators.some(pattern => pattern.test(line));
       
-      if (isCodeLine) {
+      if (isCodeLine && codeStartIndex === -1) {
         codeStartIndex = i;
-        break;
+        continue;
+      }
+      
+      // אם כבר מצאנו התחלת קוד, חפש את הסיום
+      if (codeStartIndex !== -1 && codeEndIndex === -1) {
+        // בדוק אם השורה מתחילה עם אחד ממחווני ההסבר
+        const isExplanationLine = explanationIndicators.some(pattern => pattern.test(line));
+        
+        if (isExplanationLine) {
+          codeEndIndex = i - 1;
+          break;
+        }
+        
+        // אם זה לא קוד ולא הסבר ברור, נמשיך עם הקוד
+        const stillCodeLine = codeIndicators.some(pattern => pattern.test(line));
+        if (!stillCodeLine && !line.match(/^\s*$/) && line.length > 0) {
+          // בדוק אם זה נראה כמו המשך קוד או הסבר חדש
+          if (line.match(/^[א-ת]/) && line.length > 20) {
+            codeEndIndex = i - 1;
+            break;
+          }
+        }
       }
       
       // אם זה נראה כמו רשימה ממוספרת שמכילה קוד
       const numberedListWithCode = line.match(/^\d+\.\s*(.+)$/);
-      if (numberedListWithCode) {
+      if (numberedListWithCode && codeStartIndex === -1) {
         const listContent = numberedListWithCode[1];
         const hasCodeInList = codeIndicators.some(pattern => pattern.test(listContent));
         if (hasCodeInList) {
           codeStartIndex = i;
-          break;
         }
       }
     }
     
     if (codeStartIndex === -1) {
       // לא נמצא קוד, החזר הכל כהסבר
-      return { explanation: text, code: '' };
+      return { explanation: text, code: '', afterExplanation: '' };
+    }
+    
+    // אם לא נמצא סיום קוד, הקוד ממשיך עד הסוף
+    if (codeEndIndex === -1) {
+      codeEndIndex = lines.length - 1;
     }
     
     const explanation = lines.slice(0, codeStartIndex).join('\n').trim();
-    const code = lines.slice(codeStartIndex).join('\n').trim();
+    const code = lines.slice(codeStartIndex, codeEndIndex + 1).join('\n').trim();
+    const afterExplanation = codeEndIndex < lines.length - 1 
+      ? lines.slice(codeEndIndex + 1).join('\n').trim() 
+      : '';
     
-    return { explanation, code };
+    return { explanation, code, afterExplanation };
   };
 
   const detectAndWrapCodeContent = (text: string) => {
