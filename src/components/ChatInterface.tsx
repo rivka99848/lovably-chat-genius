@@ -361,9 +361,9 @@ const ChatInterface = () => {
         let shouldProcessMessage = false;
         
         if (data === true) {
-          // השרת החזיר true - אנחנו צריכים לחכות להודעה או לעבד את התוכן
+          // השרת החזיר true - השליחה הצליחה
           shouldProcessMessage = true;
-          cleanContent = 'ממתין לתגובה מהשרת...';
+          cleanContent = 'ההודעה נשלחה בהצלחה לשרת.';
         } else if (Array.isArray(data)) {
           console.log('Response is an array:', data);
           if (data.length === 0) {
