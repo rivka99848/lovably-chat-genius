@@ -1,8 +1,7 @@
 
 import React, { useState } from 'react';
-import { Copy, Eye, Code, User, Bot } from 'lucide-react';
+import { Copy, Code, User, Bot } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import CodePreview from './CodePreview';
 
 interface Message {
   id: string;
@@ -18,7 +17,6 @@ interface Props {
 }
 
 const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
-  const [showPreview, setShowPreview] = useState(false);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -290,30 +288,9 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
               <Code className="w-4 h-4" />
             </button>
           )}
-
-          {contentTypes.hasVisualCode && (
-            <button
-              onClick={() => setShowPreview(true)}
-              className={`p-2 rounded-md transition-colors ${
-                isDarkMode 
-                  ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-              }`}
-              title="תצוגה מקדימה"
-            >
-              <Eye className="w-4 h-4" />
-            </button>
-          )}
         </div>
       )}
 
-      {/* Code Preview Modal */}
-      {showPreview && contentTypes.hasVisualCode && (
-        <CodePreview
-          code={processedContent}
-          onClose={() => setShowPreview(false)}
-        />
-      )}
     </div>
   );
 };
