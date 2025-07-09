@@ -748,7 +748,7 @@ const ChatInterface = () => {
       )}
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className={`flex-1 flex flex-col ${isDarkMode ? '' : 'bg-white/95'}`}>
         {/* Toggle Sidebar Button */}
         <div className={`p-4 border-b ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
           <button
@@ -764,7 +764,7 @@ const ChatInterface = () => {
           </button>
         </div>
         {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className={`flex-1 overflow-y-auto p-6 space-y-4 ${isDarkMode ? '' : 'bg-white text-gray-900'}`}>
           {messages.length === 0 ? (
             <div className="text-center py-12">
               <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
