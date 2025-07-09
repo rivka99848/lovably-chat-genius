@@ -250,22 +250,21 @@ const ChatInterface = () => {
     const fileName = file.name.toLowerCase();
     const mimeType = file.type.toLowerCase();
     
+    // Audio files - check file extension first to ensure correct format detection
+    if (fileName.endsWith('.mp3')) return 'mp3';
+    if (fileName.endsWith('.wav')) return 'wav';
+    if (fileName.endsWith('.weba')) return 'weba';
+    if (fileName.endsWith('.aac')) return 'aac';
+    if (fileName.endsWith('.ogg')) return 'ogg';
+    if (fileName.endsWith('.m4a')) return 'm4a';
+    
     // Video files
     if (mimeType.startsWith('video/') || fileName.endsWith('.mp4') || fileName.endsWith('.avi') || fileName.endsWith('.mov') || fileName.endsWith('.mkv') || fileName.endsWith('.wmv') || fileName.endsWith('.webm')) {
       if (fileName.endsWith('.webm')) return 'webm';
       return 'mp4';
     }
     
-    // Audio files - prioritize file extension over mime type
-    if (fileName.endsWith('.mp3')) return 'mp3';
-    if (fileName.endsWith('.wav')) return 'wav';
-    if (fileName.endsWith('.weba')) return 'weba';
-    if (fileName.endsWith('.webm')) return 'webm';
-    if (fileName.endsWith('.aac')) return 'aac';
-    if (fileName.endsWith('.ogg')) return 'ogg';
-    if (fileName.endsWith('.m4a')) return 'm4a';
-    
-    // Fallback to mime type check
+    // Fallback to mime type check for audio files without recognized extensions
     if (mimeType.startsWith('audio/')) {
       if (mimeType.includes('mpeg') || mimeType.includes('mp3')) return 'mp3';
       if (mimeType.includes('wav')) return 'wav';
