@@ -382,9 +382,18 @@ const ChatInterface = () => {
     // Add files to form data with detected format
     uploadedFiles.forEach((file, index) => {
       const detectedFormat = detectFileType(file);
-      formData.append(`file_${index}`, file);
+      
+      // Create corrected filename with proper extension
+      const originalName = file.name;
+      const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+      const correctedFileName = `${nameWithoutExt}.${detectedFormat}`;
+      
+      // Create new file with corrected name
+      const correctedFile = new File([file], correctedFileName, { type: file.type });
+      
+      formData.append(`file_${index}`, correctedFile);
       formData.append(`file_${index}_format`, detectedFormat);
-      formData.append(`file_${index}_name`, file.name);
+      formData.append(`file_${index}_name`, correctedFileName);
     });
 
     // Log all form data for debugging
