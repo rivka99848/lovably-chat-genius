@@ -383,6 +383,12 @@ const ChatInterface = () => {
     uploadedFiles.forEach((file, index) => {
       const detectedFormat = detectFileType(file);
       
+      console.log(`File ${index}:`, {
+        originalName: file.name,
+        originalType: file.type,
+        detectedFormat: detectedFormat
+      });
+      
       // Create corrected filename with proper extension
       const originalName = file.name;
       const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
@@ -392,6 +398,12 @@ const ChatInterface = () => {
       const correctedMimeType = detectedFormat === 'mp3' ? 'audio/mpeg' : 
                                detectedFormat === 'mp4' ? 'video/mp4' : file.type;
       const correctedFile = new File([file], correctedFileName, { type: correctedMimeType });
+      
+      console.log(`Corrected file ${index}:`, {
+        correctedFileName: correctedFileName,
+        correctedMimeType: correctedMimeType,
+        finalFormat: detectedFormat
+      });
       
       formData.append(`file_${index}`, correctedFile);
       formData.append(`file_${index}_format`, detectedFormat);
