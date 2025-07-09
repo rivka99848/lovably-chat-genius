@@ -251,7 +251,7 @@ const ChatInterface = () => {
     const mimeType = file.type.toLowerCase();
     
     // Audio files - check file extension first to ensure correct format detection
-    if (fileName.endsWith('.mp3')) return 'mp3';
+    if (fileName.endsWith('.mp3') || fileName.endsWith('.mpga')) return 'mp3';
     if (fileName.endsWith('.wav')) return 'wav';
     if (fileName.endsWith('.weba')) return 'weba';
     if (fileName.endsWith('.aac')) return 'aac';
