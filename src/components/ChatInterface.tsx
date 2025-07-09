@@ -46,6 +46,7 @@ const ChatInterface = () => {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [savedConversations, setSavedConversations] = useState<any[]>([]);
+  const [viewingConversation, setViewingConversation] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -525,9 +526,30 @@ const ChatInterface = () => {
     }
   };
 
+  const loadConversation = (conversation: any) => {
+    setMessages(conversation.messages);
+    setViewingConversation(conversation);
+    saveChatHistory(conversation.messages);
+    
+    toast({
+      title: "שיחה נטענה",
+      description: `נטענה השיחה: ${conversation.title}`
+    });
+  };
+
+  const returnToCurrentConversation = () => {
+    setViewingConversation(null);
+    loadChatHistory();
+    
+    toast({
+      title: "חזרה לשיחה נוכחית",
+      description: "חזרתם לשיחה הנוכחית"
+    });
+  };
+
   const startNewConversation = () => {
     // Save current conversation before starting new one
-    if (messages.length > 0) {
+    if (messages.length > 0 && !viewingConversation) {
       saveCurrentConversation();
       // Reload saved conversations to show the updated list
       if (user) {
@@ -536,6 +558,7 @@ const ChatInterface = () => {
     }
     
     setMessages([]);
+    setViewingConversation(null);
     // Don't remove chat history - keep all conversations saved
     toast({
       title: "שיחה חדשה",
@@ -704,7 +727,7 @@ const ChatInterface = () => {
             <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>שיחות אחרונות</h3>
             <div className="space-y-2">
               {/* Current conversation */}
-              {messages.length > 0 && (
+              {messages.length > 0 && !viewingConversation && (
                 <Card className={`p-3 cursor-pointer transition-colors border-green-500/50 ${
                   isDarkMode 
                     ? 'bg-green-600/20 border-green-600/30 hover:bg-green-600/30' 
@@ -719,14 +742,58 @@ const ChatInterface = () => {
                   </div>
                 </Card>
               )}
+
+              {/* Back to current conversation button when viewing saved conversation */}
+              {viewingConversation && (
+                <Card 
+                  onClick={returnToCurrentConversation}
+                  className={`p-3 cursor-pointer transition-colors border-blue-500/50 ${
+                    isDarkMode 
+                      ? 'bg-blue-600/20 border-blue-600/30 hover:bg-blue-600/30' 
+                      : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+                  }`}
+                >
+                  <div className={`text-sm font-medium ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                    ↩ חזרה לשיחה נוכחית
+                  </div>
+                  <div className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                    לחצו לחזרה לשיחה הפעילה
+                  </div>
+                </Card>
+              )}
+
+              {/* Currently viewing conversation indicator */}
+              {viewingConversation && (
+                <Card className={`p-3 border-purple-500/50 ${
+                  isDarkMode 
+                    ? 'bg-purple-600/20 border-purple-600/30' 
+                    : 'bg-purple-50 border-purple-200'
+                }`}>
+                  <div className={`text-sm truncate ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
+                    <span className="text-purple-400 text-xs">צופים כעת • </span>
+                    {viewingConversation.title}
+                  </div>
+                  <div className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                    {viewingConversation.messages.length} הודעות
+                  </div>
+                </Card>
+              )}
               
               {/* Saved conversations */}
               {savedConversations.map((conversation, index) => (
-                <Card key={conversation.id} className={`p-3 cursor-pointer transition-colors ${
-                  isDarkMode 
-                    ? 'bg-white/10 border-white/10 hover:bg-white/15' 
-                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                }`}>
+                <Card 
+                  key={conversation.id} 
+                  onClick={() => loadConversation(conversation)}
+                  className={`p-3 cursor-pointer transition-colors ${
+                    viewingConversation?.id === conversation.id 
+                      ? (isDarkMode 
+                          ? 'bg-purple-600/20 border-purple-600/30' 
+                          : 'bg-purple-50 border-purple-200') 
+                      : (isDarkMode 
+                          ? 'bg-white/10 border-white/10 hover:bg-white/15' 
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100')
+                  }`}
+                >
                   <div className={`text-sm truncate ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
                     {conversation.title}
                   </div>
