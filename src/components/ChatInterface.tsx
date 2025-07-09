@@ -388,8 +388,10 @@ const ChatInterface = () => {
       const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
       const correctedFileName = `${nameWithoutExt}.${detectedFormat}`;
       
-      // Create new file with corrected name
-      const correctedFile = new File([file], correctedFileName, { type: file.type });
+      // Create new file with corrected name and MIME type
+      const correctedMimeType = detectedFormat === 'mp3' ? 'audio/mpeg' : 
+                               detectedFormat === 'mp4' ? 'video/mp4' : file.type;
+      const correctedFile = new File([file], correctedFileName, { type: correctedMimeType });
       
       formData.append(`file_${index}`, correctedFile);
       formData.append(`file_${index}_format`, detectedFormat);
