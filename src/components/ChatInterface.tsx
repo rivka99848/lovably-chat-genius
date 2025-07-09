@@ -45,6 +45,7 @@ const ChatInterface = () => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [savedConversations, setSavedConversations] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,8 +72,10 @@ const ChatInterface = () => {
     // Check for existing user session
     const savedUser = localStorage.getItem('lovable_user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const userData = JSON.parse(savedUser);
+      setUser(userData);
       loadChatHistory();
+      loadSavedConversations(userData.id);
     } else {
       setShowAuth(true);
     }
@@ -105,6 +108,13 @@ const ChatInterface = () => {
 
   const saveChatHistory = (newMessages: Message[]) => {
     localStorage.setItem('lovable_chat_history', JSON.stringify(newMessages));
+  };
+
+  const loadSavedConversations = (userId: string) => {
+    const saved = localStorage.getItem(`lovable_conversations_${userId}`);
+    if (saved) {
+      setSavedConversations(JSON.parse(saved));
+    }
   };
 
   const authenticateUser = async (email: string, name: string, category: string, isSignUp: boolean, password?: string) => {
@@ -511,6 +521,10 @@ const ChatInterface = () => {
     // Save current conversation before starting new one
     if (messages.length > 0) {
       saveCurrentConversation();
+      // Reload saved conversations to show the updated list
+      if (user) {
+        loadSavedConversations(user.id);
+      }
     }
     
     setMessages([]);
@@ -678,23 +692,45 @@ const ChatInterface = () => {
           </div>
 
           {/* Chat History Summary */}
-          <div className="flex-1 p-4">
+          <div className="flex-1 p-4 overflow-y-auto">
             <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>שיחות אחרונות</h3>
             <div className="space-y-2">
-              {messages.length > 0 ? (
-                <Card className={`p-3 cursor-pointer transition-colors ${
+              {/* Current conversation */}
+              {messages.length > 0 && (
+                <Card className={`p-3 cursor-pointer transition-colors border-green-500/50 ${
                   isDarkMode 
-                    ? 'bg-white/10 border-white/10 hover:bg-white/15' 
-                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    ? 'bg-green-600/20 border-green-600/30 hover:bg-green-600/30' 
+                    : 'bg-green-50 border-green-200 hover:bg-green-100'
                 }`}>
                   <div className={`text-sm truncate ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
+                    <span className="text-green-400 text-xs">שיחה נוכחית • </span>
                     {generateChatTitle(messages[0]?.content || 'שיחה חדשה')}
                   </div>
                   <div className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
                     {messages.length} הודעות
                   </div>
                 </Card>
-              ) : (
+              )}
+              
+              {/* Saved conversations */}
+              {savedConversations.map((conversation, index) => (
+                <Card key={conversation.id} className={`p-3 cursor-pointer transition-colors ${
+                  isDarkMode 
+                    ? 'bg-white/10 border-white/10 hover:bg-white/15' 
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                }`}>
+                  <div className={`text-sm truncate ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
+                    {conversation.title}
+                  </div>
+                  <div className={`text-xs mt-1 flex justify-between ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                    <span>{conversation.messages.length} הודעות</span>
+                    <span>{new Date(conversation.date).toLocaleDateString('he-IL')}</span>
+                  </div>
+                </Card>
+              ))}
+              
+              {/* Empty state */}
+              {messages.length === 0 && savedConversations.length === 0 && (
                 <div className={`text-sm text-center py-8 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>
                   עדיין אין שיחות
                 </div>
