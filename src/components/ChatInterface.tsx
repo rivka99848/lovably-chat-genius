@@ -47,7 +47,7 @@ const ChatInterface = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [savedConversations, setSavedConversations] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -596,10 +596,10 @@ const ChatInterface = () => {
     <div className={`flex h-screen premium-gradient ${isDarkMode ? 'dark text-white' : 'text-gray-900'}`} dir="rtl">
       {/* Sidebar */}
       {isSidebarOpen && (
-        <div className={`w-80 border-l backdrop-blur-xl flex flex-col transition-all duration-300 ${
+        <div className={`w-80 border-l backdrop-blur-xl flex flex-col transition-all duration-300 bg-gray-900 ${
           isDarkMode 
-            ? 'bg-gray-900/90 border-gray-700/50' 
-            : 'bg-white/95 border-gray-200'
+            ? 'border-gray-700/50' 
+            : 'border-gray-200'
         }`}>
           {/* Header */}
           <div className={`p-6 border-b bg-gray-900 ${isDarkMode ? 'border-gray-700/50' : 'border-gray-200'}`}>
@@ -855,18 +855,24 @@ const ChatInterface = () => {
             </button>
             
             <div className="flex-1 relative">
-              <Input
-                ref={inputRef}
+              <textarea
+                ref={inputRef as React.RefObject<HTMLTextAreaElement>}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
                 placeholder={`שאלו את המומחה שלכם ב${user?.category} כל שאלה או העלו קבצים...`}
-                className={`pl-12 py-3 text-base text-right backdrop-blur-sm ${
+                className={`w-full min-h-[48px] max-h-32 pl-12 py-3 text-base text-right backdrop-blur-sm resize-none ${
                   isDarkMode 
                     ? 'bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-white placeholder-white/50' 
                     : 'bg-white/80 border-gray-200 focus:border-green-500 focus:ring-green-500 text-gray-900 placeholder-gray-500'
-                }`}
+                } rounded-lg border`}
                 disabled={isLoading}
+                rows={1}
               />
             </div>
             <button

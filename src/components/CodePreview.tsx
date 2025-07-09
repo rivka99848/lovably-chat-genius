@@ -20,17 +20,17 @@ const CodePreview: React.FC<Props> = ({ code, onClose }) => {
     const codeBlocks = code.match(/```[\s\S]*?```/g) || [];
     let combinedCode = '';
 
-    codeBlocks.forEach(block => {
+    codeBlocks.forEach((block: string) => {
       const codeContent = block.slice(3, -3).trim();
       const lines = codeContent.split('\n');
-      const language = lines[0].includes(' ') ? '' : lines[0];
+      const language = lines[0]?.includes(' ') ? '' : lines[0] || '';
       const actualCode = language ? lines.slice(1).join('\n') : codeContent;
       
-      if (language === 'html' || actualCode.includes('<html') || actualCode.includes('<!DOCTYPE')) {
-        combinedCode = actualCode;
-      } else if (actualCode.includes('<') && (actualCode.includes('div') || actualCode.includes('span'))) {
-        // Wrap HTML fragments
-        combinedCode = `
+        if (language === 'html' || actualCode.includes('<html') || actualCode.includes('<!DOCTYPE')) {
+          combinedCode = actualCode;
+        } else if (actualCode.includes('<') && (actualCode.includes('div') || actualCode.includes('span'))) {
+          // Wrap HTML fragments
+          combinedCode = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,9 +46,9 @@ const CodePreview: React.FC<Props> = ({ code, onClose }) => {
 ${actualCode}
 </body>
 </html>`;
-      } else if (actualCode.includes('function') || actualCode.includes('const') || actualCode.includes('class')) {
-        // JavaScript/React code - create a simple demo
-        combinedCode = `
+        } else if (actualCode.includes('function') || actualCode.includes('const') || actualCode.includes('class')) {
+          // JavaScript/React code - create a simple demo
+          combinedCode = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -75,7 +75,7 @@ ${actualCode}
     </script>
 </body>
 </html>`;
-      }
+        }
     });
 
     setPreviewContent(combinedCode);
