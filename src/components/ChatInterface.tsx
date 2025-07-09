@@ -602,7 +602,7 @@ const ChatInterface = () => {
             : 'bg-white/95 border-gray-200'
         }`}>
           {/* Header */}
-          <div className={`p-6 border-b ${isDarkMode ? 'border-gray-700/50' : 'border-gray-200'}`}>
+          <div className={`p-6 border-b bg-gray-900 ${isDarkMode ? 'border-gray-700/50' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
                 בוט מסונן
@@ -801,10 +801,10 @@ const ChatInterface = () => {
         </div>
 
         {/* Input Area */}
-        <div className={`border-t backdrop-blur-xl p-6 ${
+        <div className={`border-t backdrop-blur-xl p-6 bg-gray-900 ${
           isDarkMode 
-            ? 'border-white/10 bg-black/20' 
-            : 'border-gray-200 bg-white/50'
+            ? 'border-white/10' 
+            : 'border-gray-200'
         }`}>
           {uploadedFiles.length > 0 && (
             <div className={`mb-4 p-3 rounded-lg border ${
