@@ -874,7 +874,7 @@ const ChatInterface = () => {
                   }
                 }}
                 placeholder={`שאלו את המומחה שלכם ב${user?.category} כל שאלה או העלו קבצים...`}
-                className={`w-full min-h-[48px] max-h-32 pl-12 py-3 text-base text-right backdrop-blur-sm resize-none overflow-y-auto ${
+                className={`w-full min-h-[48px] max-h-32 pl-12 py-3 text-base text-right backdrop-blur-sm resize-none ${
                   isDarkMode 
                     ? 'bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-white placeholder-white/50' 
                     : 'bg-white/80 border-gray-200 focus:border-green-500 focus:ring-green-500 text-gray-900 placeholder-gray-500'
