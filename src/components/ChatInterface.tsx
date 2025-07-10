@@ -1011,6 +1011,36 @@ const ChatInterface = () => {
               </p>
             </div>
           )}
+          
+          {/* Footer Credit */}
+          <div className={`mt-4 pt-3 border-t text-center ${
+            isDarkMode 
+              ? 'border-white/10 text-white/40' 
+              : 'border-gray-200 text-gray-400'
+          }`}>
+            <div className="flex items-center justify-center gap-2 text-xs">
+              <span>פותח על ידי</span>
+              <a 
+                href="#" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className={`flex items-center gap-1 hover:opacity-80 transition-opacity ${
+                  isDarkMode ? 'text-white/60 hover:text-white/80' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <img 
+                  src="/path-to-your-logo.png" 
+                  alt="Developer Logo" 
+                  className="h-4 w-auto"
+                  onError={(e) => {
+                    // Hide image if it fails to load
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <span>Your Name</span>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
