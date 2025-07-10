@@ -16,6 +16,7 @@ import {
 import MessageBubble from './MessageBubble';
 import AuthModal from './AuthModal';
 import PlanUpgrade from './PlanUpgrade';
+import ContactForm from './ContactForm';
 
 interface Message {
   id: string;
@@ -683,6 +684,7 @@ const ChatInterface = () => {
                 >
                   <Crown className="w-5 h-5" />
                 </button>
+                <ContactForm showAsIcon={true} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
