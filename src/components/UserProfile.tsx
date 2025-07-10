@@ -35,6 +35,16 @@ interface Package {
   type: 'free' | 'pro' | 'enterprise';
 }
 
+interface Payment {
+  id: string;
+  packageName: string;
+  amount: number;
+  date: Date;
+  status: 'pending' | 'completed' | 'failed';
+  startDate?: Date;
+  endDate?: Date;
+}
+
 interface User {
   id: string;
   email: string;
@@ -43,6 +53,7 @@ interface User {
   plan: 'free' | 'pro' | 'enterprise';
   messagesUsed: number;
   messageLimit: number;
+  payments?: Payment[];
 }
 
 interface Props {
@@ -97,6 +108,8 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
   ]);
   const [isEditingPackage, setIsEditingPackage] = useState<string | null>(null);
   const [editedPackage, setEditedPackage] = useState<Package | null>(null);
+  const [payments, setPayments] = useState<Payment[]>(user.payments || []);
+  const [pendingPayments, setPendingPayments] = useState<Set<string>>(new Set());
 
   React.useEffect(() => {
     // Load saved conversations
@@ -165,34 +178,41 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
 
   const handlePayment = async (packageData: Package) => {
     try {
-      const response = await fetch('https://n8n.smartbiz.org.il/webhook/payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          userEmail: user.email,
-          packageId: packageData.id,
-          packageName: packageData.name,
-          packagePrice: packageData.price,
-          packageType: packageData.type,
-          timestamp: new Date().toISOString()
-        })
+      // Create pending payment
+      const paymentId = Date.now().toString();
+      const newPayment: Payment = {
+        id: paymentId,
+        packageName: packageData.name,
+        amount: packageData.price,
+        date: new Date(),
+        status: 'pending'
+      };
+      
+      setPayments(prev => [...prev, newPayment]);
+      setPendingPayments(prev => new Set([...prev, paymentId]));
+
+      // Navigate to payment page with package details
+      const paymentParams = new URLSearchParams({
+        userId: user.id,
+        userEmail: user.email,
+        packageId: packageData.id,
+        packageName: packageData.name,
+        packagePrice: packageData.price.toString(),
+        packageType: packageData.type,
+        paymentId: paymentId
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.paymentUrl) {
-          window.open(result.paymentUrl, '_blank');
-        }
-        toast({
-          title: "מעבר לתשלום",
-          description: "מועבר לדף התשלום..."
-        });
-      } else {
-        throw new Error('Payment request failed');
-      }
+      const paymentUrl = `https://www.matara.pro/nedarimplus/online/?mosad=2813479&${paymentParams.toString()}`;
+      window.open(paymentUrl, '_blank');
+      
+      toast({
+        title: "מעבר לתשלום",
+        description: "מועבר לדף התשלום..."
+      });
+
+      // Check payment status periodically
+      checkPaymentStatus(paymentId, packageData);
+      
     } catch (error) {
       toast({
         title: "שגיאה",
@@ -200,6 +220,99 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
         variant: "destructive"
       });
     }
+  };
+
+  const checkPaymentStatus = async (paymentId: string, packageData: Package) => {
+    const maxAttempts = 10;
+    let attempts = 0;
+    
+    const intervalId = setInterval(async () => {
+      attempts++;
+      
+      try {
+        const response = await fetch('https://n8n.smartbiz.org.il/webhook/payment-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            paymentId: paymentId,
+            userId: user.id
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          
+          if (result.status === 'completed') {
+            // Payment successful - update user plan
+            const updatedUser = {
+              ...user,
+              plan: packageData.type,
+              messageLimit: packageData.messageLimit,
+              messagesUsed: user.messagesUsed
+            };
+            
+            // Update payment status
+            setPayments(prev => prev.map(p => 
+              p.id === paymentId 
+                ? { 
+                    ...p, 
+                    status: 'completed',
+                    startDate: new Date(),
+                    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+                  }
+                : p
+            ));
+            
+            setPendingPayments(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(paymentId);
+              return newSet;
+            });
+            
+            onUpdateUser(updatedUser);
+            
+            toast({
+              title: "התשלום אושר!",
+              description: `החבילה ${packageData.name} הופעלה בהצלחה`
+            });
+            
+            clearInterval(intervalId);
+          } else if (result.status === 'failed') {
+            // Payment failed
+            setPayments(prev => prev.map(p => 
+              p.id === paymentId ? { ...p, status: 'failed' } : p
+            ));
+            
+            setPendingPayments(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(paymentId);
+              return newSet;
+            });
+            
+            toast({
+              title: "התשלום נכשל",
+              description: "אנא נסה שוב או פנה לתמיכה",
+              variant: "destructive"
+            });
+            
+            clearInterval(intervalId);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking payment status:', error);
+      }
+      
+      if (attempts >= maxAttempts) {
+        clearInterval(intervalId);
+        setPendingPayments(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(paymentId);
+          return newSet;
+        });
+      }
+    }, 5000); // Check every 5 seconds
   };
 
   const handleEditPackage = (pkg: Package) => {
@@ -650,6 +763,57 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Payment History */}
+          <div>
+            <h2 className="text-xl font-semibold flex items-center mb-4">
+              <CreditCard className="w-5 h-5 ml-2" />
+              היסטוריית תשלומים
+            </h2>
+
+            {payments.length > 0 ? (
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {payments.map((payment) => (
+                  <div key={payment.id} className={`p-4 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-gray-800/50 border-gray-700' 
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{payment.packageName}</div>
+                        <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          ₪{payment.amount} • {payment.date.toLocaleDateString('he-IL')}
+                        </div>
+                        {payment.startDate && payment.endDate && (
+                          <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                            תקף מ-{payment.startDate.toLocaleDateString('he-IL')} עד {payment.endDate.toLocaleDateString('he-IL')}
+                          </div>
+                        )}
+                      </div>
+                      <Badge className={
+                        payment.status === 'completed' 
+                          ? 'bg-green-600/20 text-green-400 border-green-600/30'
+                          : payment.status === 'pending'
+                          ? 'bg-yellow-600/20 text-yellow-400 border-yellow-600/30'
+                          : 'bg-red-600/20 text-red-400 border-red-600/30'
+                      }>
+                        {payment.status === 'completed' ? 'הושלם' : 
+                         payment.status === 'pending' ? 'ממתין' : 'נכשל'}
+                        {pendingPayments.has(payment.id) && (
+                          <div className="w-2 h-2 bg-current rounded-full animate-pulse mr-1" />
+                        )}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                אין תשלומים עדיין
+              </div>
+            )}
           </div>
 
           {/* Account Stats */}
