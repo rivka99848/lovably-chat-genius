@@ -712,6 +712,9 @@ const ChatInterface = () => {
                       <CreditCard className="ml-2 h-4 w-4" />
                       שדרוג
                     </DropdownMenuItem>
+                    <DropdownMenuItem asChild dir="rtl">
+                      <ContactForm />
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
