@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, Mail, Crown, Settings, Save, ArrowRight, Edit3, Shield, Bell, Palette, Globe, MessageCircle, Trash2 } from 'lucide-react';
+import { User, Mail, Crown, Settings, Save, ArrowRight, Edit3, Shield, Bell, Palette, Globe, MessageCircle, Trash2, Plus, Package, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -24,6 +24,15 @@ interface SavedConversation {
   messages: Message[];
   date: Date;
   category: string;
+}
+
+interface Package {
+  id: string;
+  name: string;
+  price: number;
+  messageLimit: number;
+  features: string[];
+  type: 'free' | 'pro' | 'enterprise';
 }
 
 interface User {
@@ -60,6 +69,34 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
   const [autoSave, setAutoSave] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
+  const [packages, setPackages] = useState<Package[]>([
+    {
+      id: '1',
+      name: 'חבילה חינם',
+      price: 0,
+      messageLimit: 50,
+      features: ['50 הודעות חינם', 'תמיכה בסיסית'],
+      type: 'free'
+    },
+    {
+      id: '2', 
+      name: 'חבילה מקצועית',
+      price: 29,
+      messageLimit: 500,
+      features: ['500 הודעות', 'תמיכה מועדפת', 'גישה מוקדמת לתכונות'],
+      type: 'pro'
+    },
+    {
+      id: '3',
+      name: 'חבילה ארגונית',
+      price: 99,
+      messageLimit: 2000,
+      features: ['2000 הודעות', 'תמיכה 24/7', 'ניהול צוות'],
+      type: 'enterprise'
+    }
+  ]);
+  const [isEditingPackage, setIsEditingPackage] = useState<string | null>(null);
+  const [editedPackage, setEditedPackage] = useState<Package | null>(null);
 
   React.useEffect(() => {
     // Load saved conversations
@@ -124,6 +161,86 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
       title: "השיחה נטענה",
       description: "השיחה נטענה בהצלחה"
     });
+  };
+
+  const handlePayment = async (packageData: Package) => {
+    try {
+      const response = await fetch('https://n8n.smartbiz.org.il/webhook/payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          userEmail: user.email,
+          packageId: packageData.id,
+          packageName: packageData.name,
+          packagePrice: packageData.price,
+          packageType: packageData.type,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.paymentUrl) {
+          window.open(result.paymentUrl, '_blank');
+        }
+        toast({
+          title: "מעבר לתשלום",
+          description: "מועבר לדף התשלום..."
+        });
+      } else {
+        throw new Error('Payment request failed');
+      }
+    } catch (error) {
+      toast({
+        title: "שגיאה",
+        description: "נכשל בעיבוד התשלום",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEditPackage = (pkg: Package) => {
+    setIsEditingPackage(pkg.id);
+    setEditedPackage({ ...pkg });
+  };
+
+  const handleSavePackage = () => {
+    if (!editedPackage) return;
+    
+    setPackages(packages.map(pkg => 
+      pkg.id === editedPackage.id ? editedPackage : pkg
+    ));
+    setIsEditingPackage(null);
+    setEditedPackage(null);
+    
+    toast({
+      title: "החבילה עודכנה",
+      description: "פרטי החבילה נשמרו בהצלחה"
+    });
+  };
+
+  const handleDeletePackage = (packageId: string) => {
+    setPackages(packages.filter(pkg => pkg.id !== packageId));
+    toast({
+      title: "החבילה נמחקה",
+      description: "החבילה הוסרה בהצלחה"
+    });
+  };
+
+  const handleAddPackage = () => {
+    const newPackage: Package = {
+      id: Date.now().toString(),
+      name: 'חבילה חדשה',
+      price: 0,
+      messageLimit: 100,
+      features: ['תכונה חדשה'],
+      type: 'free'
+    };
+    setPackages([...packages, newPackage]);
+    handleEditPackage(newPackage);
   };
 
   const getPlanColor = (plan: string) => {
@@ -397,6 +514,141 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                   onCheckedChange={setAutoSave}
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Package Management */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold flex items-center">
+                <Package className="w-5 h-5 ml-2" />
+                ניהול חבילות
+              </h2>
+              <Button
+                onClick={handleAddPackage}
+                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+              >
+                <Plus className="w-4 h-4 ml-1" />
+                הוסף חבילה
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {packages.map((pkg) => (
+                <div key={pkg.id} className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-800/50 border-gray-700' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  {isEditingPackage === pkg.id && editedPackage ? (
+                    <div className="space-y-3">
+                      <Input
+                        value={editedPackage.name}
+                        onChange={(e) => setEditedPackage({...editedPackage, name: e.target.value})}
+                        placeholder="שם החבילה"
+                        className={isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}
+                      />
+                      <Input
+                        type="number"
+                        value={editedPackage.price}
+                        onChange={(e) => setEditedPackage({...editedPackage, price: Number(e.target.value)})}
+                        placeholder="מחיר"
+                        className={isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}
+                      />
+                      <Input
+                        type="number"
+                        value={editedPackage.messageLimit}
+                        onChange={(e) => setEditedPackage({...editedPackage, messageLimit: Number(e.target.value)})}
+                        placeholder="מגבלת הודעות"
+                        className={isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}
+                      />
+                      <Select 
+                        value={editedPackage.type} 
+                        onValueChange={(value: 'free' | 'pro' | 'enterprise') => 
+                          setEditedPackage({...editedPackage, type: value})
+                        }
+                      >
+                        <SelectTrigger className={isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="free">חינם</SelectItem>
+                          <SelectItem value="pro">מקצועי</SelectItem>
+                          <SelectItem value="enterprise">ארגוני</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-2">
+                        <Button onClick={handleSavePackage} size="sm" className="flex-1">
+                          שמור
+                        </Button>
+                        <Button 
+                          onClick={() => {setIsEditingPackage(null); setEditedPackage(null);}} 
+                          variant="ghost" 
+                          size="sm"
+                        >
+                          ביטול
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold">{pkg.name}</h3>
+                        <Badge className={getPlanColor(pkg.type)}>
+                          {getPlanName(pkg.type)}
+                        </Badge>
+                      </div>
+                      
+                      <div className={`text-2xl font-bold mb-2 ${
+                        pkg.price === 0 ? 'text-green-400' : 'text-blue-400'
+                      }`}>
+                        {pkg.price === 0 ? 'חינם' : `₪${pkg.price}`}
+                      </div>
+                      
+                      <div className={`text-sm mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {pkg.messageLimit} הודעות
+                      </div>
+                      
+                      <div className="space-y-1 mb-4">
+                        {pkg.features.map((feature, index) => (
+                          <div key={index} className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            • {feature}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        {pkg.price > 0 && (
+                          <Button
+                            onClick={() => handlePayment(pkg)}
+                            size="sm"
+                            className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+                          >
+                            <CreditCard className="w-3 h-3 ml-1" />
+                            רכישה
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() => handleEditPackage(pkg)}
+                          variant="ghost"
+                          size="sm"
+                          className="text-blue-400 hover:bg-blue-600/20"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          onClick={() => handleDeletePackage(pkg.id)}
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-400 hover:bg-red-600/20"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
