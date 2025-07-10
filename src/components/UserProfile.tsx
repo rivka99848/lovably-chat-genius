@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, Mail, Crown, Settings, Save, ArrowRight, Edit3, Shield, Bell, Palette, Globe, MessageCircle, Trash2, Plus, Package, CreditCard } from 'lucide-react';
+import { User, Mail, Crown, Settings, Save, ArrowRight, Edit3, Shield, Bell, Palette, Globe, MessageCircle, Trash2, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
+import PlanUpgrade from '@/components/PlanUpgrade';
 
 interface Message {
   id: string;
@@ -80,36 +81,8 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
   const [autoSave, setAutoSave] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
-  const [packages, setPackages] = useState<Package[]>([
-    {
-      id: '1',
-      name: 'חבילה חינם',
-      price: 0,
-      messageLimit: 50,
-      features: ['50 הודעות חינם', 'תמיכה בסיסית'],
-      type: 'free'
-    },
-    {
-      id: '2', 
-      name: 'חבילה מקצועית',
-      price: 29,
-      messageLimit: 500,
-      features: ['500 הודעות', 'תמיכה מועדפת', 'גישה מוקדמת לתכונות'],
-      type: 'pro'
-    },
-    {
-      id: '3',
-      name: 'חבילה ארגונית',
-      price: 99,
-      messageLimit: 2000,
-      features: ['2000 הודעות', 'תמיכה 24/7', 'ניהול צוות'],
-      type: 'enterprise'
-    }
-  ]);
-  const [isEditingPackage, setIsEditingPackage] = useState<string | null>(null);
-  const [editedPackage, setEditedPackage] = useState<Package | null>(null);
   const [payments, setPayments] = useState<Payment[]>(user.payments || []);
-  const [pendingPayments, setPendingPayments] = useState<Set<string>>(new Set());
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   React.useEffect(() => {
     // Load saved conversations
@@ -174,186 +147,6 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
       title: "השיחה נטענה",
       description: "השיחה נטענה בהצלחה"
     });
-  };
-
-  const handlePayment = async (packageData: Package) => {
-    try {
-      // Create pending payment
-      const paymentId = Date.now().toString();
-      const newPayment: Payment = {
-        id: paymentId,
-        packageName: packageData.name,
-        amount: packageData.price,
-        date: new Date(),
-        status: 'pending'
-      };
-      
-      setPayments(prev => [...prev, newPayment]);
-      setPendingPayments(prev => new Set([...prev, paymentId]));
-
-      // Navigate to payment page with package details
-      const paymentParams = new URLSearchParams({
-        userId: user.id,
-        userEmail: user.email,
-        packageId: packageData.id,
-        packageName: packageData.name,
-        packagePrice: packageData.price.toString(),
-        packageType: packageData.type,
-        paymentId: paymentId
-      });
-
-      const paymentUrl = `https://www.matara.pro/nedarimplus/online/?mosad=2813479&${paymentParams.toString()}`;
-      window.open(paymentUrl, '_blank');
-      
-      toast({
-        title: "מעבר לתשלום",
-        description: "מועבר לדף התשלום..."
-      });
-
-      // Check payment status periodically
-      checkPaymentStatus(paymentId, packageData);
-      
-    } catch (error) {
-      toast({
-        title: "שגיאה",
-        description: "נכשל בעיבוד התשלום",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const checkPaymentStatus = async (paymentId: string, packageData: Package) => {
-    const maxAttempts = 10;
-    let attempts = 0;
-    
-    const intervalId = setInterval(async () => {
-      attempts++;
-      
-      try {
-        const response = await fetch('https://n8n.smartbiz.org.il/webhook/payment-status', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            paymentId: paymentId,
-            userId: user.id
-          })
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          
-          if (result.status === 'completed') {
-            // Payment successful - update user plan
-            const updatedUser = {
-              ...user,
-              plan: packageData.type,
-              messageLimit: packageData.messageLimit,
-              messagesUsed: user.messagesUsed
-            };
-            
-            // Update payment status
-            setPayments(prev => prev.map(p => 
-              p.id === paymentId 
-                ? { 
-                    ...p, 
-                    status: 'completed',
-                    startDate: new Date(),
-                    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
-                  }
-                : p
-            ));
-            
-            setPendingPayments(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(paymentId);
-              return newSet;
-            });
-            
-            onUpdateUser(updatedUser);
-            
-            toast({
-              title: "התשלום אושר!",
-              description: `החבילה ${packageData.name} הופעלה בהצלחה`
-            });
-            
-            clearInterval(intervalId);
-          } else if (result.status === 'failed') {
-            // Payment failed
-            setPayments(prev => prev.map(p => 
-              p.id === paymentId ? { ...p, status: 'failed' } : p
-            ));
-            
-            setPendingPayments(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(paymentId);
-              return newSet;
-            });
-            
-            toast({
-              title: "התשלום נכשל",
-              description: "אנא נסה שוב או פנה לתמיכה",
-              variant: "destructive"
-            });
-            
-            clearInterval(intervalId);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking payment status:', error);
-      }
-      
-      if (attempts >= maxAttempts) {
-        clearInterval(intervalId);
-        setPendingPayments(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(paymentId);
-          return newSet;
-        });
-      }
-    }, 5000); // Check every 5 seconds
-  };
-
-  const handleEditPackage = (pkg: Package) => {
-    setIsEditingPackage(pkg.id);
-    setEditedPackage({ ...pkg });
-  };
-
-  const handleSavePackage = () => {
-    if (!editedPackage) return;
-    
-    setPackages(packages.map(pkg => 
-      pkg.id === editedPackage.id ? editedPackage : pkg
-    ));
-    setIsEditingPackage(null);
-    setEditedPackage(null);
-    
-    toast({
-      title: "החבילה עודכנה",
-      description: "פרטי החבילה נשמרו בהצלחה"
-    });
-  };
-
-  const handleDeletePackage = (packageId: string) => {
-    setPackages(packages.filter(pkg => pkg.id !== packageId));
-    toast({
-      title: "החבילה נמחקה",
-      description: "החבילה הוסרה בהצלחה"
-    });
-  };
-
-  const handleAddPackage = () => {
-    const newPackage: Package = {
-      id: Date.now().toString(),
-      name: 'חבילה חדשה',
-      price: 0,
-      messageLimit: 100,
-      features: ['תכונה חדשה'],
-      type: 'free'
-    };
-    setPackages([...packages, newPackage]);
-    handleEditPackage(newPackage);
   };
 
   const getPlanColor = (plan: string) => {
@@ -488,14 +281,25 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                 <Label className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
                   חבילה נוכחית
                 </Label>
-                <div className="flex items-center space-x-2 space-x-reverse">
-                  <Badge className={getPlanColor(user.plan)}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <Badge className={getPlanColor(user.plan)}>
+                      <Crown className="w-3 h-3 ml-1" />
+                      {getPlanName(user.plan)}
+                    </Badge>
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {user.messagesUsed}/{user.messageLimit} הודעות
+                    </span>
+                  </div>
+                  <Button
+                    onClick={() => setShowUpgrade(true)}
+                    variant="outline"
+                    size="sm"
+                    className="bg-gradient-to-r from-green-600/20 to-blue-600/20 hover:from-green-600/30 hover:to-blue-600/30 border-green-600/30"
+                  >
                     <Crown className="w-3 h-3 ml-1" />
-                    {getPlanName(user.plan)}
-                  </Badge>
-                  <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {user.messagesUsed}/{user.messageLimit} הודעות
-                  </span>
+                    שדרוג
+                  </Button>
                 </div>
               </div>
             </div>
@@ -630,141 +434,6 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
             </div>
           </div>
 
-          {/* Package Management */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold flex items-center">
-                <Package className="w-5 h-5 ml-2" />
-                ניהול חבילות
-              </h2>
-              <Button
-                onClick={handleAddPackage}
-                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-              >
-                <Plus className="w-4 h-4 ml-1" />
-                הוסף חבילה
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {packages.map((pkg) => (
-                <div key={pkg.id} className={`p-4 rounded-lg border ${
-                  isDarkMode 
-                    ? 'bg-gray-800/50 border-gray-700' 
-                    : 'bg-gray-50 border-gray-200'
-                }`}>
-                  {isEditingPackage === pkg.id && editedPackage ? (
-                    <div className="space-y-3">
-                      <Input
-                        value={editedPackage.name}
-                        onChange={(e) => setEditedPackage({...editedPackage, name: e.target.value})}
-                        placeholder="שם החבילה"
-                        className={isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}
-                      />
-                      <Input
-                        type="number"
-                        value={editedPackage.price}
-                        onChange={(e) => setEditedPackage({...editedPackage, price: Number(e.target.value)})}
-                        placeholder="מחיר"
-                        className={isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}
-                      />
-                      <Input
-                        type="number"
-                        value={editedPackage.messageLimit}
-                        onChange={(e) => setEditedPackage({...editedPackage, messageLimit: Number(e.target.value)})}
-                        placeholder="מגבלת הודעות"
-                        className={isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}
-                      />
-                      <Select 
-                        value={editedPackage.type} 
-                        onValueChange={(value: 'free' | 'pro' | 'enterprise') => 
-                          setEditedPackage({...editedPackage, type: value})
-                        }
-                      >
-                        <SelectTrigger className={isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="free">חינם</SelectItem>
-                          <SelectItem value="pro">מקצועי</SelectItem>
-                          <SelectItem value="enterprise">ארגוני</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="flex gap-2">
-                        <Button onClick={handleSavePackage} size="sm" className="flex-1">
-                          שמור
-                        </Button>
-                        <Button 
-                          onClick={() => {setIsEditingPackage(null); setEditedPackage(null);}} 
-                          variant="ghost" 
-                          size="sm"
-                        >
-                          ביטול
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold">{pkg.name}</h3>
-                        <Badge className={getPlanColor(pkg.type)}>
-                          {getPlanName(pkg.type)}
-                        </Badge>
-                      </div>
-                      
-                      <div className={`text-2xl font-bold mb-2 ${
-                        pkg.price === 0 ? 'text-green-400' : 'text-blue-400'
-                      }`}>
-                        {pkg.price === 0 ? 'חינם' : `₪${pkg.price}`}
-                      </div>
-                      
-                      <div className={`text-sm mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {pkg.messageLimit} הודעות
-                      </div>
-                      
-                      <div className="space-y-1 mb-4">
-                        {pkg.features.map((feature, index) => (
-                          <div key={index} className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            • {feature}
-                          </div>
-                        ))}
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        {pkg.price > 0 && (
-                          <Button
-                            onClick={() => handlePayment(pkg)}
-                            size="sm"
-                            className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-                          >
-                            <CreditCard className="w-3 h-3 ml-1" />
-                            רכישה
-                          </Button>
-                        )}
-                        <Button
-                          onClick={() => handleEditPackage(pkg)}
-                          variant="ghost"
-                          size="sm"
-                          className="text-blue-400 hover:bg-blue-600/20"
-                        >
-                          <Edit3 className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          onClick={() => handleDeletePackage(pkg.id)}
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-400 hover:bg-red-600/20"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Payment History */}
           <div>
             <h2 className="text-xl font-semibold flex items-center mb-4">
@@ -801,9 +470,6 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                       }>
                         {payment.status === 'completed' ? 'הושלם' : 
                          payment.status === 'pending' ? 'ממתין' : 'נכשל'}
-                        {pendingPayments.has(payment.id) && (
-                          <div className="w-2 h-2 bg-current rounded-full animate-pulse mr-1" />
-                        )}
                       </Badge>
                     </div>
                   </div>
@@ -851,6 +517,14 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
           </div>
         </div>
       </Card>
+
+      <PlanUpgrade
+        isOpen={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        user={user}
+        onUpdateUser={onUpdateUser}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 };

@@ -636,14 +636,17 @@ const ChatInterface = () => {
   }
 
   if (showPlanUpgrade) {
-    return <PlanUpgrade user={user} onClose={() => setShowPlanUpgrade(false)} onUpgrade={(plan) => {
-      if (user) {
-        const updatedUser = { ...user, plan, messageLimit: plan === 'pro' ? 500 : 2000 };
+    return <PlanUpgrade 
+      isOpen={true}
+      onClose={() => setShowPlanUpgrade(false)} 
+      user={user}
+      onUpdateUser={(updatedUser) => {
         setUser(updatedUser);
         localStorage.setItem('lovable_user', JSON.stringify(updatedUser));
-      }
-      setShowPlanUpgrade(false);
-    }} />;
+        setShowPlanUpgrade(false);
+      }}
+      isDarkMode={isDarkMode}
+    />;
   }
 
   return (
