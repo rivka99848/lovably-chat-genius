@@ -944,6 +944,7 @@ const ChatInterface = () => {
               multiple
               onChange={handleFileUpload}
               className="hidden"
+              accept=".mp3,.txt,.md,.csv,.tsv,.json,.xml,.yml,.yaml,.html,.htm,.ini,.log,.js,.py,.jpeg,.jpg,.png,.webp"
             />
             
             <button
