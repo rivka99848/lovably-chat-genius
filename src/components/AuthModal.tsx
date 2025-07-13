@@ -106,11 +106,12 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
 
   return (
     <div className={`min-h-screen premium-gradient flex items-center justify-center p-6 ${isDarkMode ? 'dark' : ''}`} dir="rtl">
-      <Card className={`w-full max-w-md p-8 shadow-2xl backdrop-blur-xl ${
-        isDarkMode 
-          ? 'bg-gray-900/90 border-gray-700/50 text-white' 
-          : 'bg-white/95 border-gray-200 text-gray-900'
-      }`}>
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <Card className={`p-8 shadow-2xl backdrop-blur-xl ${
+          isDarkMode 
+            ? 'bg-gray-900/90 border-gray-700/50 text-white' 
+            : 'bg-white/95 border-gray-200 text-gray-900'
+        }`}>
         <div className="text-center mb-8">
           <div className="flex justify-between items-center mb-4">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-full">
@@ -344,7 +345,8 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             </div>
           </div>
         </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 };
