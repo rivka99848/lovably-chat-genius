@@ -21,31 +21,54 @@ const categories = [
 
 const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   const [isSignUp, setIsSignUp] = useState(true);
-  const [currentStep, setCurrentStep] = useState(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
+  const sendWebhook = async (userData: any) => {
+    if (!webhookUrl) return;
+    
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...userData,
+          timestamp: new Date().toISOString(),
+          action: 'user_registration'
+        }),
+      });
+    } catch (error) {
+      console.error('Webhook error:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isSignUp && currentStep === 1) {
-      if (!email || !password) return;
-      setCurrentStep(2);
-      return;
-    }
-
     if (!email || !password || (isSignUp && (!name || !selectedCategory))) return;
 
     setIsLoading(true);
     setError('');
 
     try {
+      if (isSignUp && webhookUrl) {
+        await sendWebhook({
+          email,
+          name,
+          category: selectedCategory,
+          isSignUp: true
+        });
+      }
+      
       await onAuth(email, name, selectedCategory, isSignUp, password);
     } catch (err: any) {
       setError(err.message || 'שגיאה בהתחברות');
@@ -68,23 +91,17 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   };
 
   const resetForm = () => {
-    setCurrentStep(1);
     setEmail('');
     setPassword('');
     setName('');
     setSelectedCategory('');
+    setWebhookUrl('');
     setError('');
   };
 
   const switchMode = () => {
     setIsSignUp(!isSignUp);
     resetForm();
-  };
-
-  const goBack = () => {
-    if (currentStep === 2) {
-      setCurrentStep(1);
-    }
   };
 
   return (
@@ -114,10 +131,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             ברוכים הבאים לבוט המסונן שלנו
           </h1>
           <p className={isDarkMode ? 'text-white/70' : 'text-gray-600'}>
-            {isSignUp 
-              ? (currentStep === 1 ? 'הזינו את פרטי ההרשמה שלכם' : 'השלימו את פרטי הפרופיל שלכם')
-              : 'התחברו כדי להמשיך'
-            }
+            {isSignUp ? 'הזינו את כל פרטי ההרשמה שלכם' : 'התחברו כדי להמשיך'}
           </p>
         </div>
 
@@ -132,58 +146,54 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {(!isSignUp || currentStep === 1) && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="email" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>כתובת אימייל</Label>
-                <div className="relative">
-                  <Mail className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="הכניסו את האימייל שלכם"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={`pr-10 py-3 text-right backdrop-blur-sm ${
-                      isDarkMode 
-                        ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
-                        : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
-                    }`}
-                    required
-                  />
-                </div>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="email" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>כתובת אימייל</Label>
+            <div className="relative">
+              <Mail className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
+              <Input
+                id="email"
+                type="email"
+                placeholder="הכניסו את האימייל שלכם"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={`pr-10 py-3 text-right backdrop-blur-sm ${
+                  isDarkMode 
+                    ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
+                    : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
+                }`}
+                required
+              />
+            </div>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>סיסמה</Label>
-                <div className="relative">
-                  <Lock className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="הכניסו את הסיסמה שלכם"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={`pr-10 pl-10 py-3 text-right backdrop-blur-sm ${
-                      isDarkMode 
-                        ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
-                        : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
-                    }`}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className={`absolute left-3 top-3 ${isDarkMode ? 'text-white/40 hover:text-white/60' : 'text-gray-400 hover:text-gray-600'}`}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="password" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>סיסמה</Label>
+            <div className="relative">
+              <Lock className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="הכניסו את הסיסמה שלכם"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`pr-10 pl-10 py-3 text-right backdrop-blur-sm ${
+                  isDarkMode 
+                    ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
+                    : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
+                }`}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className={`absolute left-3 top-3 ${isDarkMode ? 'text-white/40 hover:text-white/60' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
 
-          {isSignUp && currentStep === 2 && (
+          {isSignUp && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="name" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>שם מלא</Label>
@@ -231,43 +241,41 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
                   הקטגוריה הזו תהיה קבועה עבור החשבון שלכם
                 </p>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="webhook" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>Webhook URL (אופציונלי)</Label>
+                <Input
+                  id="webhook"
+                  type="url"
+                  placeholder="https://hooks.zapier.com/hooks/catch/..."
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  className={`py-3 text-right backdrop-blur-sm ${
+                    isDarkMode 
+                      ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
+                      : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
+                  }`}
+                />
+                <p className={`text-xs ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                  יישלח נתוני ההרשמה ל-webhook זה
+                </p>
+              </div>
             </>
           )}
 
           <div className="space-y-3">
-            {isSignUp && currentStep === 2 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={goBack}
-                className={`w-full py-3 ${
-                  isDarkMode 
-                    ? 'bg-transparent border-white/20 text-white hover:bg-white/10' 
-                    : 'bg-transparent border-gray-200 text-gray-900 hover:bg-gray-50'
-                }`}
-                disabled={isLoading}
-              >
-                חזור
-              </Button>
-            )}
-
             <Button
               type="submit"
               className="w-full py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium border-0"
-              disabled={isLoading || !email || !password || (isSignUp && currentStep === 2 && (!name || !selectedCategory))}
+              disabled={isLoading || !email || !password || (isSignUp && (!name || !selectedCategory))}
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2"></div>
-                  {isSignUp 
-                    ? (currentStep === 1 ? 'בודק...' : 'יוצר חשבון...')
-                    : 'מתחבר...'
-                  }
+                  {isSignUp ? 'יוצר חשבון...' : 'מתחבר...'}
                 </div>
               ) : (
-                isSignUp 
-                  ? (currentStep === 1 ? 'המשך' : 'צור חשבון')
-                  : 'התחבר'
+                isSignUp ? 'צור חשבון' : 'התחבר'
               )}
             </Button>
 
