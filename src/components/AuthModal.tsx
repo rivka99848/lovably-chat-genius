@@ -25,29 +25,30 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [webhookUrl, setWebhookUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
+  const WEBHOOK_URL = 'https://n8n.smartbiz.org.il/webhook/login';
+
   const sendWebhook = async (userData: any) => {
-    if (!webhookUrl) return;
-    
     try {
-      await fetch(webhookUrl, {
+      await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        mode: 'no-cors',
         body: JSON.stringify({
           ...userData,
           timestamp: new Date().toISOString(),
           action: 'user_registration'
         }),
       });
+      console.log('נתונים נשלחו לוובהוק בהצלחה');
     } catch (error) {
-      console.error('Webhook error:', error);
+      console.error('שגיאה בשליחת הוובהוק:', error);
     }
   };
 
@@ -60,7 +61,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
     setError('');
 
     try {
-      if (isSignUp && webhookUrl) {
+      if (isSignUp) {
         await sendWebhook({
           email,
           name,
@@ -95,7 +96,6 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
     setPassword('');
     setName('');
     setSelectedCategory('');
-    setWebhookUrl('');
     setError('');
   };
 
@@ -243,24 +243,6 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="webhook" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>Webhook URL (אופציונלי)</Label>
-                <Input
-                  id="webhook"
-                  type="url"
-                  placeholder="https://hooks.zapier.com/hooks/catch/..."
-                  value={webhookUrl}
-                  onChange={(e) => setWebhookUrl(e.target.value)}
-                  className={`py-3 text-right backdrop-blur-sm ${
-                    isDarkMode 
-                      ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
-                      : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
-                  }`}
-                />
-                <p className={`text-xs ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
-                  יישלח נתוני ההרשמה ל-webhook זה
-                </p>
-              </div>
             </>
           )}
 
