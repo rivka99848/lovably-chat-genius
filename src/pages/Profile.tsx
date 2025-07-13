@@ -7,6 +7,7 @@ interface User {
   id: string;
   email: string;
   name: string;
+  phone?: string;
   category: string;
   plan: 'free' | 'pro' | 'enterprise';
   messagesUsed: number;
