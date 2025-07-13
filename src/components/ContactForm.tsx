@@ -8,18 +8,27 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { MessageCircle, Upload, X } from 'lucide-react';
 
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  category: string;
+  plan: 'free' | 'pro' | 'enterprise';
+  messagesUsed: number;
+  messageLimit: number;
+}
+
 interface ContactFormProps {
   trigger?: React.ReactNode;
   showAsIcon?: boolean;
+  user: User;
 }
 
-const ContactForm = ({ trigger, showAsIcon = false }: ContactFormProps) => {
+const ContactForm = ({ trigger, showAsIcon = false, user }: ContactFormProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
     category: '',
     content: ''
   });
@@ -51,9 +60,6 @@ const ContactForm = ({ trigger, showAsIcon = false }: ContactFormProps) => {
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      phone: '',
-      email: '',
       category: '',
       content: ''
     });
@@ -63,7 +69,7 @@ const ContactForm = ({ trigger, showAsIcon = false }: ContactFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.category || !formData.content) {
+    if (!formData.category || !formData.content) {
       toast({
         title: "שגיאה",
         description: "אנא מלא את כל השדות הנדרשים",
@@ -77,10 +83,10 @@ const ContactForm = ({ trigger, showAsIcon = false }: ContactFormProps) => {
     try {
       const submitData = new FormData();
       
-      // Add form fields
-      submitData.append('name', formData.name);
-      submitData.append('phone', formData.phone);
-      submitData.append('email', formData.email);
+      // Add form fields with user data
+      submitData.append('name', user.name);
+      submitData.append('phone', user.phone || '');
+      submitData.append('email', user.email);
       submitData.append('category', formData.category);
       submitData.append('content', formData.content);
       submitData.append('timestamp', new Date().toISOString());
@@ -145,36 +151,24 @@ const ContactForm = ({ trigger, showAsIcon = false }: ContactFormProps) => {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">שם מלא *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              placeholder="הזן את שמך המלא"
-              required
-            />
+            <Label>שם מלא</Label>
+            <div className="p-2 bg-muted rounded-md text-sm">
+              {user.name}
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">טלפון</Label>
-            <Input
-              id="phone"
-              value={formData.phone}
-              onChange={(e) => handleInputChange('phone', e.target.value)}
-              placeholder="הזן מספר טלפון"
-            />
+            <Label>טלפון</Label>
+            <div className="p-2 bg-muted rounded-md text-sm">
+              {user.phone || 'לא צוין'}
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">כתובת מייל *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
-              placeholder="הזן כתובת מייל"
-              required
-            />
+            <Label>כתובת מייל</Label>
+            <div className="p-2 bg-muted rounded-md text-sm">
+              {user.email}
+            </div>
           </div>
 
           <div className="space-y-2">

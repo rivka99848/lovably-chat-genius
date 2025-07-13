@@ -687,7 +687,7 @@ const ChatInterface = () => {
                 >
                   <Crown className="w-5 h-5" />
                 </button>
-                <ContactForm showAsIcon={true} />
+                <ContactForm showAsIcon={true} user={user} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -716,7 +716,7 @@ const ChatInterface = () => {
                       שדרוג
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild dir="rtl">
-                      <ContactForm />
+                      <ContactForm user={user} />
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

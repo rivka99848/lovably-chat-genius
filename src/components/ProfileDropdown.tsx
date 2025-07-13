@@ -13,11 +13,19 @@ import { Settings, CreditCard, LogOut, User } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import ContactForm from './ContactForm';
 
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  category: string;
+  plan: 'free' | 'pro' | 'enterprise';
+  messagesUsed: number;
+  messageLimit: number;
+}
+
 interface ProfileDropdownProps {
-  user: {
-    name: string;
-    email: string;
-  };
+  user: User;
 }
 
 const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
@@ -68,7 +76,7 @@ const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
           שדרוג
         </DropdownMenuItem>
         <DropdownMenuItem asChild dir="rtl">
-          <ContactForm />
+          <ContactForm user={user} />
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} dir="rtl" className="text-orange-600 hover:text-orange-700 hover:bg-orange-50">
