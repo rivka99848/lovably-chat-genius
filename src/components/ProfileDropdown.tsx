@@ -25,11 +25,16 @@ interface User {
 }
 
 interface ProfileDropdownProps {
-  user: User;
+  user?: User; // Make user optional
 }
 
 const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
   const navigate = useNavigate();
+
+  // Don't render if no user data is available
+  if (!user) {
+    return null;
+  }
 
   const handleSettingsClick = () => {
     console.log('Settings clicked');

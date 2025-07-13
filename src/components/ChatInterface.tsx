@@ -687,7 +687,7 @@ const ChatInterface = () => {
                 >
                   <Crown className="w-5 h-5" />
                 </button>
-                <ContactForm showAsIcon={true} user={user} />
+                {user && <ContactForm showAsIcon={true} user={user} />}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -715,9 +715,11 @@ const ChatInterface = () => {
                       <CreditCard className="ml-2 h-4 w-4" />
                       שדרוג
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild dir="rtl">
-                      <ContactForm user={user} />
-                    </DropdownMenuItem>
+                    {user && (
+                      <DropdownMenuItem asChild dir="rtl">
+                        <ContactForm user={user} />
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

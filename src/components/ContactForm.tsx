@@ -22,10 +22,14 @@ interface User {
 interface ContactFormProps {
   trigger?: React.ReactNode;
   showAsIcon?: boolean;
-  user: User;
+  user?: User; // Make user optional
 }
 
 const ContactForm = ({ trigger, showAsIcon = false, user }: ContactFormProps) => {
+  // Don't render if no user data is available
+  if (!user) {
+    return null;
+  }
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
