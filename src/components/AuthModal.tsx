@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, User, Sparkles, Lock, Eye, EyeOff, Moon, Sun } from 'lucide-react';
+import { Mail, User, Sparkles, Lock, Eye, EyeOff, Moon, Sun, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -24,6 +24,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -55,7 +56,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password || (isSignUp && (!name || !selectedCategory))) return;
+    if (!email || !password || (isSignUp && (!name || !phone || !selectedCategory))) return;
 
     setIsLoading(true);
     setError('');
@@ -65,6 +66,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
         await sendWebhook({
           email,
           name,
+          phone,
           category: selectedCategory,
           isSignUp: true
         });
@@ -95,6 +97,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
     setEmail('');
     setPassword('');
     setName('');
+    setPhone('');
     setSelectedCategory('');
     setError('');
   };
@@ -217,6 +220,26 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="phone" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>מספר טלפון</Label>
+                <div className="relative">
+                  <Phone className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="הכניסו את מספר הטלפון שלכם"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className={`pr-10 py-3 text-right backdrop-blur-sm ${
+                      isDarkMode 
+                        ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
+                        : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
+                    }`}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="category" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>קטגוריה מקצועית</Label>
                 <Select value={selectedCategory} onValueChange={setSelectedCategory} required>
                   <SelectTrigger className={`text-right backdrop-blur-sm ${
@@ -250,7 +273,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             <Button
               type="submit"
               className="w-full py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium border-0"
-              disabled={isLoading || !email || !password || (isSignUp && (!name || !selectedCategory))}
+              disabled={isLoading || !email || !password || (isSignUp && (!name || !phone || !selectedCategory))}
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
