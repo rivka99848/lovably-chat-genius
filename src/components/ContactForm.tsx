@@ -154,26 +154,6 @@ const ContactForm = ({ trigger, showAsIcon = false, user }: ContactFormProps) =>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>שם מלא</Label>
-            <div className="p-2 bg-muted rounded-md text-sm">
-              {user.name}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>טלפון</Label>
-            <div className="p-2 bg-muted rounded-md text-sm">
-              {user.phone || 'לא צוין'}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>כתובת מייל</Label>
-            <div className="p-2 bg-muted rounded-md text-sm">
-              {user.email}
-            </div>
-          </div>
 
           <div className="space-y-2">
             <Label htmlFor="category">קטגוריית הפניה *</Label>
