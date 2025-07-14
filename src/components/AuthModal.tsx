@@ -21,6 +21,7 @@ const categories = [
 
 const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   const [isSignUp, setIsSignUp] = useState(true);
+  const [isPasswordReset, setIsPasswordReset] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -50,6 +51,26 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
       console.log('נתונים נשלחו לוובהוק בהצלחה');
     } catch (error) {
       console.error('שגיאה בשליחת הוובהוק:', error);
+    }
+  };
+
+  const sendPasswordResetWebhook = async (resetEmail: string) => {
+    try {
+      await fetch('https://n8n.smartbiz.org.il/webhook/איפוס סיסמא', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        mode: 'no-cors',
+        body: JSON.stringify({
+          email: resetEmail,
+          timestamp: new Date().toISOString(),
+          action: 'password_reset'
+        }),
+      });
+      console.log('בקשת איפוס סיסמא נשלחה בהצלחה');
+    } catch (error) {
+      console.error('שגיאה בשליחת בקשת איפוס סיסמא:', error);
     }
   };
 
@@ -104,6 +125,37 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
 
   const switchMode = () => {
     setIsSignUp(!isSignUp);
+    setIsPasswordReset(false);
+    resetForm();
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email) return;
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await sendPasswordResetWebhook(email);
+      setError('הוראות איפוס הסיסמא נשלחו לכתובת המייל שלכם');
+    } catch (err: any) {
+      setError('שגיאה בשליחת בקשת איפוס הסיסמא');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const goToPasswordReset = () => {
+    setIsPasswordReset(true);
+    setIsSignUp(false);
+    resetForm();
+  };
+
+  const goBackToLogin = () => {
+    setIsPasswordReset(false);
+    setIsSignUp(false);
     resetForm();
   };
 
@@ -132,10 +184,14 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             </button>
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent mb-2">
-            ברוכים הבאים לבוט המסונן שלנו
+            {isPasswordReset ? 'איפוס סיסמא' : 'ברוכים הבאים לבוט המסונן שלנו'}
           </h1>
           <p className={isDarkMode ? 'text-white/70' : 'text-gray-600'}>
-            {isSignUp ? 'הזינו את כל פרטי ההרשמה שלכם' : 'התחברו כדי להמשיך'}
+            {isPasswordReset 
+              ? 'הזינו את כתובת המייל שלכם ונשלח לכם הוראות איפוס' 
+              : isSignUp 
+              ? 'הזינו את כל פרטי ההרשמה שלכם' 
+              : 'התחברו כדי להמשיך'}
           </p>
         </div>
 
@@ -149,7 +205,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={isPasswordReset ? handlePasswordReset : handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="email" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>כתובת אימייל</Label>
             <div className="relative">
@@ -170,32 +226,52 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>סיסמה</Label>
-            <div className="relative">
-              <Lock className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="הכניסו את הסיסמה שלכם"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={`pr-10 pl-10 py-3 text-right backdrop-blur-sm ${
-                  isDarkMode 
-                    ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
-                    : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
-                }`}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className={`absolute left-3 top-3 ${isDarkMode ? 'text-white/40 hover:text-white/60' : 'text-gray-400 hover:text-gray-600'}`}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
+          {!isPasswordReset && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="password" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>סיסמה</Label>
+                <div className="relative">
+                  <Lock className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="הכניסו את הסיסמה שלכם"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`pr-10 pl-10 py-3 text-right backdrop-blur-sm ${
+                      isDarkMode 
+                        ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
+                        : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
+                    }`}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className={`absolute left-3 top-3 ${isDarkMode ? 'text-white/40 hover:text-white/60' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                
+                {!isSignUp && (
+                  <div className="text-left">
+                    <button
+                      type="button"
+                      onClick={goToPasswordReset}
+                      className={`text-sm transition-colors ${
+                        isDarkMode 
+                          ? 'text-blue-400 hover:text-blue-300' 
+                          : 'text-blue-600 hover:text-blue-700'
+                      }`}
+                    >
+                      שכחתי סיסמא
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {isSignUp && (
             <>
@@ -273,15 +349,15 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             <Button
               type="submit"
               className="w-full py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium border-0"
-              disabled={isLoading || !email || !password || (isSignUp && (!name || !phone || !selectedCategory))}
+              disabled={isLoading || !email || (!isPasswordReset && !password) || (isSignUp && (!name || !phone || !selectedCategory))}
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2"></div>
-                  {isSignUp ? 'יוצר חשבון...' : 'מתחבר...'}
+                  {isPasswordReset ? 'שולח מייל...' : isSignUp ? 'יוצר חשבון...' : 'מתחבר...'}
                 </div>
               ) : (
-                isSignUp ? 'צור חשבון' : 'התחבר'
+                isPasswordReset ? 'שלח מייל לאיפוס' : isSignUp ? 'צור חשבון' : 'התחבר'
               )}
             </Button>
 
@@ -324,18 +400,45 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           </div>
         </form>
 
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={switchMode}
-            className={`text-sm transition-colors ${
-              isDarkMode 
-                ? 'text-white/60 hover:text-green-400' 
-                : 'text-gray-600 hover:text-green-600'
-            }`}
-          >
-            {isSignUp ? 'יש לכם כבר חשבון? התחברו' : 'אין לכם חשבון? הירשמו'}
-          </button>
+        <div className="mt-6 text-center space-y-2">
+          {!isPasswordReset ? (
+            <button
+              type="button"
+              onClick={switchMode}
+              className={`text-sm transition-colors ${
+                isDarkMode 
+                  ? 'text-white/60 hover:text-green-400' 
+                  : 'text-gray-600 hover:text-green-600'
+              }`}
+            >
+              {isSignUp ? 'יש לכם כבר חשבון? התחברו' : 'אין לכם חשבון? הירשמו'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={goBackToLogin}
+              className={`text-sm transition-colors ${
+                isDarkMode 
+                  ? 'text-white/60 hover:text-green-400' 
+                  : 'text-gray-600 hover:text-green-600'
+              }`}
+            >
+              חזרה להתחברות
+            </button>
+          )}
+          
+          <div>
+            <a
+              href="mailto:support@example.com?subject=בקשה לטופס אישי&body=שלום, אני מעוניין/ת לקבל קישור לטופס אישי לשיחה במייל."
+              className={`text-sm transition-colors underline ${
+                isDarkMode 
+                  ? 'text-blue-400 hover:text-blue-300' 
+                  : 'text-blue-600 hover:text-blue-700'
+              }`}
+            >
+              קישור לטופס אישי לשיחה במייל
+            </a>
+          </div>
         </div>
 
         <div className={`mt-8 pt-6 border-t ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
