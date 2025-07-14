@@ -427,18 +427,6 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             </button>
           )}
           
-          <div>
-            <a
-              href="mailto:support@example.com?subject=בקשה לטופס אישי&body=שלום, אני מעוניין/ת לקבל קישור לטופס אישי לשיחה במייל."
-              className={`text-sm transition-colors underline ${
-                isDarkMode 
-                  ? 'text-blue-400 hover:text-blue-300' 
-                  : 'text-blue-600 hover:text-blue-700'
-              }`}
-            >
-              קישור לטופס אישי לשיחה במייל
-            </a>
-          </div>
         </div>
 
         <div className={`mt-8 pt-6 border-t ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
