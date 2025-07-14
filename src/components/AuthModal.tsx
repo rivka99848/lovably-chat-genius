@@ -66,18 +66,31 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
         resetLink: resetLink
       });
       
+      const requestData = {
+        user: {
+          email: resetEmail,
+          resetToken: resetToken,
+          resetLink: resetLink
+        },
+        request: {
+          timestamp: new Date().toISOString(),
+          action: "password_reset",
+          source: "auth_modal"
+        }
+      };
+      
+      console.log('שולח בקשה לוובהוק:', {
+        url: 'https://n8n.smartbiz.org.il/webhook/password',
+        data: requestData
+      });
+      
       const response = await fetch('https://n8n.smartbiz.org.il/webhook/password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         mode: 'no-cors',
-        body: JSON.stringify({
-          email: resetEmail,
-          resetLink: resetLink,
-          timestamp: new Date().toISOString(),
-          action: 'password_reset'
-        }),
+        body: JSON.stringify(requestData),
       });
       
       console.log('תשובה מהוובהוק:', {
