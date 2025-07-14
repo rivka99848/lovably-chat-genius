@@ -52,10 +52,36 @@ const ResetPassword: React.FC = () => {
     setMessage('');
 
     try {
-      // כאן תוכל להוסיף את הלוגיקה לעדכון הסיסמה בשרת
-      // לעת עתה נציג הודעת הצלחה
+      // שליחת נתונים לוובהוק
+      const requestData = {
+        "event": "password_reset_completed",
+        "user": {
+          "email": email,
+          "token": token,
+          "new_password": password
+        },
+        "request_info": {
+          "timestamp": new Date().toISOString(),
+          "action": "password_update",
+          "source": "reset_password_page",
+          "user_agent": navigator.userAgent,
+          "origin": window.location.origin
+        },
+        "webhook_version": "1.0"
+      };
+
+      console.log('JSON Data to send:', JSON.stringify(requestData, null, 2));
       
-      await new Promise(resolve => setTimeout(resolve, 2000)); // סימולציה של קריאה לשרת
+      const response = await fetch('https://n8n.smartbiz.org.il/webhook/c23a573f-06bf-4393-af56-e5388709a5ca', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestData, null, 2),
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 1000)); // קצת זמן לעיבוד
       
       setIsSuccess(true);
       setMessage('הסיסמה עודכנה בהצלחה!');
@@ -66,6 +92,7 @@ const ResetPassword: React.FC = () => {
       }, 3000);
       
     } catch (error) {
+      console.error('Error updating password:', error);
       setMessage('אירעה שגיאה בעדכון הסיסמה. אנא נסו שוב.');
     } finally {
       setIsLoading(false);
