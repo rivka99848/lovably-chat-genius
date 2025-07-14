@@ -265,7 +265,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
                           : 'text-blue-600 hover:text-blue-700'
                       }`}
                     >
-                      קישור לטופס אישי לשיחה במייל
+                      שכחתי סיסמא
                     </button>
                   </div>
                 )}
