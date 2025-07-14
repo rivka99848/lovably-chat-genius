@@ -56,7 +56,11 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
 
   const sendPasswordResetWebhook = async (resetEmail: string) => {
     try {
-      await fetch('https://n8n.smartbiz.org.il/webhook/איפוס סיסמא', {
+      // יצירת קישור אישי לאיפוס סיסמה
+      const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const resetLink = `${window.location.origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(resetEmail)}`;
+      
+      await fetch('https://n8n.smartbiz.org.il/webhook/1234567890', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,6 +68,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
         mode: 'no-cors',
         body: JSON.stringify({
           email: resetEmail,
+          resetLink: resetLink,
           timestamp: new Date().toISOString(),
           action: 'password_reset'
         }),
