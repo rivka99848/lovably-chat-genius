@@ -56,13 +56,13 @@ const ContactForm = ({ trigger, showAsIcon = false, user }: ContactFormProps) =>
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     
-    // Check for audio files if user is on free plan
+    // Check if user is on free plan - only allow image files
     if (user.plan === 'free') {
-      const audioFiles = files.filter(file => file.type.startsWith('audio/'));
-      if (audioFiles.length > 0) {
+      const nonImageFiles = files.filter(file => !file.type.startsWith('image/'));
+      if (nonImageFiles.length > 0) {
         toast({
           title: "שגיאה",
-          description: "העלאת קבצי שמע זמינה רק למשתמשי Pro ו-Enterprise",
+          description: "משתמשי התוכנית החינמית יכולים להעלות רק קבצי תמונה",
           variant: "destructive",
         });
         return;
