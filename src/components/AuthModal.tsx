@@ -85,7 +85,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
       
       console.log('JSON Data to send:', JSON.stringify(requestData, null, 2));
       
-      const response = await fetch('https://n8n.smartbiz.org.il/webhook/password', {
+      const response = await fetch('https://n8n.smartbiz.org.il/webhook/c23a573f-06bf-4393-af56-e5388709a5ca', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
