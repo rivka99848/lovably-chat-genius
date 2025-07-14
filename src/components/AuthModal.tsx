@@ -60,7 +60,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
       const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       const resetLink = `${window.location.origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(resetEmail)}`;
       
-      await fetch('https://n8n.smartbiz.org.il/webhook/1234567890', {
+      await fetch('https://n8n.smartbiz.org.il/webhook/password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
