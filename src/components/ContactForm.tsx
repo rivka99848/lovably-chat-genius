@@ -55,6 +55,20 @@ const ContactForm = ({ trigger, showAsIcon = false, user }: ContactFormProps) =>
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
+    
+    // Check for audio files if user is on free plan
+    if (user.plan === 'free') {
+      const audioFiles = files.filter(file => file.type.startsWith('audio/'));
+      if (audioFiles.length > 0) {
+        toast({
+          title: "שגיאה",
+          description: "העלאת קבצי שמע זמינה רק למשתמשי Pro ו-Enterprise",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     setUploadedFiles(prev => [...prev, ...files]);
   };
 
