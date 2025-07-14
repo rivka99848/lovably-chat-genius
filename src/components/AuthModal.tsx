@@ -89,7 +89,6 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        mode: 'no-cors',
         body: JSON.stringify(requestData),
       });
       
@@ -99,7 +98,20 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
         type: response.type
       });
       
-      console.log('בקשת איפוס סיסמא נשלחה בהצלחה');
+      if (response.ok) {
+        const result = await response.text();
+        console.log('תוכן התשובה:', result);
+        
+        if (result === 'true') {
+          setError('הוראות איפוס הסיסמא נשלחו לכתובת המייל שלכם');
+        } else if (result === 'false') {
+          setError('כתובת המייל לא נמצאה במערכת. אנא ודאו שהכתובת נכונה או הירשמו מחדש.');
+        } else {
+          setError('הוראות איפוס הסיסמא נשלחו לכתובת המייל שלכם');
+        }
+      } else {
+        throw new Error(`שגיאת שרת: ${response.status}`);
+      }
     } catch (error) {
       console.error('שגיאה בשליחת בקשת איפוס סיסמא:', error);
       throw error;
@@ -171,7 +183,6 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
 
     try {
       await sendPasswordResetWebhook(email);
-      setError('הוראות איפוס הסיסמא נשלחו לכתובת המייל שלכם');
     } catch (err: any) {
       setError('שגיאה בשליחת בקשת איפוס הסיסמא');
     } finally {
