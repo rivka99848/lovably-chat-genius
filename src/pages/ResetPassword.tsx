@@ -33,6 +33,8 @@ const ResetPassword: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('הטופס נשלח - בודק תקינות הנתונים...');
+    
     if (!password || !confirmPassword) {
       setMessage('אנא מלאו את כל השדות');
       return;
@@ -48,6 +50,7 @@ const ResetPassword: React.FC = () => {
       return;
     }
 
+    console.log('תקינות הנתונים עברה - מתחיל לשלוח וובהוק...');
     setIsLoading(true);
     setMessage('');
 
