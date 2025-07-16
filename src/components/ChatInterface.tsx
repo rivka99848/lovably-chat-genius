@@ -98,6 +98,13 @@ const ChatInterface = () => {
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
+  // Maintain focus on input field after loading changes
+  useEffect(() => {
+    if (!isLoading && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isLoading]);
+
   // Auto-resize textarea based on content
   useEffect(() => {
     if (inputRef.current) {
@@ -439,13 +446,6 @@ const ChatInterface = () => {
     setInputValue('');
     setUploadedFiles([]);
     setIsLoading(true);
-
-    // Focus back to input after a short delay to ensure it's ready
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, 100);
 
     try {
       console.log('Sending request to chatbot webhook:', CHATBOT_WEBHOOK_URL, 'with sessionId:', currentSessionId);
