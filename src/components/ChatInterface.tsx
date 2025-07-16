@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun, LogOut, CreditCard, Menu, X } from 'lucide-react';
+import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun, LogOut, CreditCard, Menu, X, Search, MoreVertical, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,6 +48,7 @@ const ChatInterface = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [savedConversations, setSavedConversations] = useState<any[]>([]);
   const [viewingConversation, setViewingConversation] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -279,6 +280,20 @@ const ChatInterface = () => {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     
+    // Check file size limits based on user plan
+    const maxSize = user?.plan === 'free' ? 25 * 1024 * 1024 : 100 * 1024 * 1024; // 25MB for free, 100MB for paid
+    const oversizedFiles = files.filter(file => file.size > maxSize);
+    
+    if (oversizedFiles.length > 0) {
+      const maxSizeMB = user?.plan === 'free' ? 25 : 100;
+      toast({
+        title: "קבצים גדולים מדי",
+        description: `הגבלת העלאה: ${maxSizeMB}MB למשתמש ${user?.plan === 'free' ? 'חינמי' : 'בתשלום'}`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Detect file types and show appropriate messages
     const audioVideoFiles = files.filter(file => {
       const type = detectFileType(file);
@@ -424,6 +439,13 @@ const ChatInterface = () => {
     setInputValue('');
     setUploadedFiles([]);
     setIsLoading(true);
+
+    // Focus back to input after a short delay to ensure it's ready
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 100);
 
     try {
       console.log('Sending request to chatbot webhook:', CHATBOT_WEBHOOK_URL, 'with sessionId:', currentSessionId);
@@ -596,6 +618,24 @@ const ChatInterface = () => {
     }
   };
 
+  const deleteConversation = (conversationId: string) => {
+    if (!user) return;
+    
+    const filtered = savedConversations.filter(conv => conv.id !== conversationId);
+    setSavedConversations(filtered);
+    localStorage.setItem(`lovable_conversations_${user.id}`, JSON.stringify(filtered));
+    
+    toast({
+      title: "שיחה נמחקה",
+      description: "השיחה נמחקה בהצלחה"
+    });
+  };
+
+  const filteredConversations = savedConversations.filter(conv => 
+    conv.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    conv.messages.some((msg: any) => msg.content.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   const handleSettingsClick = () => {
     console.log('Settings clicked');
     navigate('/profile');
@@ -744,7 +784,7 @@ const ChatInterface = () => {
           </div>
 
           {/* New Conversation Button */}
-          <div className="p-4">
+          <div className="p-4 space-y-3">
             <Button
               onClick={startNewConversation}
               className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 border-0 text-white"
@@ -752,6 +792,24 @@ const ChatInterface = () => {
               <Plus className="w-4 h-4 ml-2" />
               שיחה חדשה
             </Button>
+            
+            {/* Search conversations */}
+            <div className="relative">
+              <Search className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${
+                isDarkMode ? 'text-white/40' : 'text-gray-400'
+              }`} />
+              <Input
+                type="text"
+                placeholder="חיפוש שיחות..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={`pr-10 ${
+                  isDarkMode 
+                    ? 'bg-white/10 border-white/20 text-white placeholder-white/50' 
+                    : 'bg-white border-gray-200 text-gray-900 placeholder-gray-500'
+                }`}
+              />
+            </div>
           </div>
 
           {/* Chat History Summary */}
@@ -812,11 +870,10 @@ const ChatInterface = () => {
               )}
               
               {/* Saved conversations */}
-              {savedConversations.map((conversation, index) => (
+              {filteredConversations.map((conversation, index) => (
                 <Card 
                   key={conversation.id} 
-                  onClick={() => loadConversation(conversation)}
-                  className={`p-3 cursor-pointer transition-colors ${
+                  className={`p-3 transition-colors group ${
                     viewingConversation?.id === conversation.id 
                       ? (isDarkMode 
                           ? 'bg-purple-600/20 border-purple-600/30' 
@@ -826,12 +883,44 @@ const ChatInterface = () => {
                           : 'bg-gray-50 border-gray-200 hover:bg-gray-100')
                   }`}
                 >
-                  <div className={`text-sm truncate ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
-                    {conversation.title}
-                  </div>
-                  <div className={`text-xs mt-1 flex justify-between ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
-                    <span>{conversation.messages.length} הודעות</span>
-                    <span>{new Date(conversation.date).toLocaleDateString('he-IL')}</span>
+                  <div className="flex items-center justify-between">
+                    <div 
+                      className="flex-1 cursor-pointer"
+                      onClick={() => loadConversation(conversation)}
+                    >
+                      <div className={`text-sm truncate ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
+                        {conversation.title}
+                      </div>
+                      <div className={`text-xs mt-1 flex justify-between ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                        <span>{conversation.messages.length} הודעות</span>
+                        <span>{new Date(conversation.date).toLocaleDateString('he-IL')}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Delete button */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
+                            isDarkMode 
+                              ? 'hover:bg-white/10 text-white/60' 
+                              : 'hover:bg-gray-200 text-gray-500'
+                          }`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800">
+                        <DropdownMenuItem 
+                          onClick={() => deleteConversation(conversation.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="w-4 h-4 ml-2" />
+                          מחק שיחה
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </Card>
               ))}
@@ -840,6 +929,13 @@ const ChatInterface = () => {
               {messages.length === 0 && savedConversations.length === 0 && (
                 <div className={`text-sm text-center py-8 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>
                   עדיין אין שיחות
+                </div>
+              )}
+              
+              {/* No search results */}
+              {searchQuery && filteredConversations.length === 0 && savedConversations.length > 0 && (
+                <div className={`text-sm text-center py-8 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>
+                  לא נמצאו שיחות התואמות את החיפוש
                 </div>
               )}
             </div>
@@ -971,6 +1067,12 @@ const ChatInterface = () => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage();
+                    // Keep focus on input after sending
+                    setTimeout(() => {
+                      if (inputRef.current) {
+                        inputRef.current.focus();
+                      }
+                    }, 100);
                   }
                 }}
                 placeholder={`שאלו את המומחה שלכם ב${user?.category} כל שאלה או העלו קבצים...`}
@@ -1018,35 +1120,6 @@ const ChatInterface = () => {
             </div>
           )}
           
-          {/* Footer Credit */}
-          <div className={`mt-4 pt-3 border-t text-center ${
-            isDarkMode 
-              ? 'border-white/10 text-white/40' 
-              : 'border-gray-200 text-gray-400'
-          }`}>
-            <div className="flex items-center justify-center gap-2 text-xs">
-              <span>פותח על ידי</span>
-              <a 
-                href="#" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className={`flex items-center gap-1 hover:opacity-80 transition-opacity ${
-                  isDarkMode ? 'text-white/60 hover:text-white/80' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <img 
-                  src="/path-to-your-logo.png" 
-                  alt="Developer Logo" 
-                  className="h-4 w-auto"
-                  onError={(e) => {
-                    // Hide image if it fails to load
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <span>Your Name</span>
-              </a>
-            </div>
-          </div>
         </div>
       </div>
     </div>
