@@ -541,12 +541,14 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         </div>
       )}
 
-      {/* Message Content */}
-      <div className={`text-base leading-relaxed ${
-        isDarkMode ? 'text-gray-100' : 'text-gray-800'
-      } mb-3`}>
-        {formatContent(processedContent)}
-      </div>
+      {/* Message Content - Only show if no image */}
+      {!imageUrl && (
+        <div className={`text-base leading-relaxed ${
+          isDarkMode ? 'text-gray-100' : 'text-gray-800'
+        } mb-3`}>
+          {formatContent(processedContent)}
+        </div>
+      )}
 
       {/* Action Buttons for Bot Messages */}
       {!message.isUser && (
