@@ -30,13 +30,9 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
   const downloadImage = async (url: string, filename: string = 'image.png') => {
     try {
-      // Add CORS support for external images
       const response = await fetch(url, {
-        mode: 'cors',
-        credentials: 'omit',
-        headers: {
-          'Access-Control-Allow-Origin': '*'
-        }
+        method: 'GET',
+        mode: 'cors'
       });
       
       if (!response.ok) {
@@ -47,23 +43,25 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = filename;
+      link.download = filename || 'image.png';
       link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 100);
+      
       toast({
         title: "הורדה הושלמה!",
-        description: "התמונה הורדה בהצלחה.",
+        description: "התמונה הורדה בהצלחה למחשב.",
       });
     } catch (error) {
       console.error('Download error:', error);
-      // Fallback: open image in new tab
-      window.open(url, '_blank');
       toast({
-        title: "הורדה ישירה",
-        description: "התמונה נפתחה בטאב חדש - לחץ ימין + שמור בשם",
+        title: "שגיאה בהורדה",
+        description: "לא ניתן להוריד את התמונה. נסה שוב.",
+        variant: "destructive",
       });
     }
   };
