@@ -30,12 +30,25 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
   const downloadImage = async (url: string, filename: string = 'image.png') => {
     try {
-      const response = await fetch(url);
+      // Add CORS support for external images
+      const response = await fetch(url, {
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = filename;
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -45,10 +58,12 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         description: "התמונה הורדה בהצלחה.",
       });
     } catch (error) {
+      console.error('Download error:', error);
+      // Fallback: open image in new tab
+      window.open(url, '_blank');
       toast({
-        title: "שגיאה בהורדה",
-        description: "לא ניתן להוריד את התמונה.",
-        variant: "destructive",
+        title: "הורדה ישירה",
+        description: "התמונה נפתחה בטאב חדש - לחץ ימין + שמור בשם",
       });
     }
   };
@@ -514,10 +529,10 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
               </span>
               <button
                 onClick={() => downloadImage(imageUrl)}
-                className={`p-2 rounded-md transition-colors ${
+                className={`p-2 rounded-full shadow-lg transition-all duration-200 hover:scale-110 ${
                   isDarkMode 
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25' 
+                    : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/25'
                 }`}
                 title="הורד תמונה"
               >
