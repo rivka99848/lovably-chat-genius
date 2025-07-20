@@ -30,39 +30,38 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
   const downloadImage = async (url: string, filename: string = 'image.png') => {
     try {
-      const response = await fetch(url, {
-        method: 'GET',
-        mode: 'cors'
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      // Use a different approach for cross-origin images
       const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename || 'image.png';
-      link.style.display = 'none';
+      link.href = url;
+      link.download = filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      
+      // Create a temporary click event
       document.body.appendChild(link);
       link.click();
-      setTimeout(() => {
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(downloadUrl);
-      }, 100);
+      document.body.removeChild(link);
       
       toast({
-        title: "הורדה הושלמה!",
-        description: "התמונה הורדה בהצלחה למחשב.",
+        title: "הורדה החלה!",
+        description: "התמונה מורדת למחשב שלך.",
       });
     } catch (error) {
       console.error('Download error:', error);
-      toast({
-        title: "שגיאה בהורדה",
-        description: "לא ניתן להוריד את התמונה. נסה שוב.",
-        variant: "destructive",
-      });
+      // Fallback - copy URL to clipboard
+      try {
+        await navigator.clipboard.writeText(url);
+        toast({
+          title: "קישור הועתק",
+          description: "קישור התמונה הועתק ללוח - הדבק בדפדפן כדי להוריד.",
+        });
+      } catch (clipboardError) {
+        toast({
+          title: "שגיאה בהורדה",
+          description: "לא ניתן להוריד את התמונה.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
