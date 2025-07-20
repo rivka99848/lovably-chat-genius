@@ -514,7 +514,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
               </span>
               <button
                 onClick={() => downloadImage(imageUrl)}
-                className={`flex items-center space-x-2 space-x-reverse px-3 py-1.5 rounded-md text-sm transition-colors ${
+                className={`p-2 rounded-md transition-colors ${
                   isDarkMode 
                     ? 'bg-blue-600 hover:bg-blue-700 text-white' 
                     : 'bg-blue-500 hover:bg-blue-600 text-white'
@@ -522,7 +522,6 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                 title="הורד תמונה"
               >
                 <Download className="w-4 h-4" />
-                <span>הורד</span>
               </button>
             </div>
           </div>
