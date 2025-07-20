@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Copy, Code, User, Bot, Eye } from 'lucide-react';
+import { Copy, Code, User, Bot, Eye, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import CodePreview from './CodePreview';
 
@@ -26,6 +26,52 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       title: "הועתק!",
       description: "התוכן הועתק ללוח הכתיבה.",
     });
+  };
+
+  const downloadImage = async (url: string, filename: string = 'image.png') => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      toast({
+        title: "הורדה הושלמה!",
+        description: "התמונה הורדה בהצלחה.",
+      });
+    } catch (error) {
+      toast({
+        title: "שגיאה בהורדה",
+        description: "לא ניתן להוריד את התמונה.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const detectImageLink = (content: string) => {
+    try {
+      if (content.trim().startsWith('{')) {
+        const parsed = JSON.parse(content);
+        if (parsed.קישור && typeof parsed.קישור === 'string') {
+          const url = parsed.קישור.trim();
+          if (url.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i) || url.includes('files.smartbiz.org.il')) {
+            return url;
+          }
+        }
+      }
+    } catch (error) {
+      // Not JSON, continue
+    }
+    
+    // Check for direct image URLs in text
+    const urlRegex = /(https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|bmp|svg))/gi;
+    const match = content.match(urlRegex);
+    return match ? match[0] : null;
   };
 
   const cleanContent = (content: string) => {
@@ -416,6 +462,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
   const processedContent = cleanContent(message.content);
   const contentTypes = detectContentType(processedContent);
+  const imageUrl = detectImageLink(message.content);
 
   return (
     <div className="w-full mb-6" dir="rtl">
@@ -442,6 +489,45 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
           </span>
         </div>
       </div>
+
+      {/* Image Display */}
+      {imageUrl && (
+        <div className="mb-4">
+          <div className={`rounded-lg border overflow-hidden ${
+            isDarkMode ? 'border-gray-700' : 'border-gray-200'
+          }`}>
+            <img 
+              src={imageUrl} 
+              alt="תמונה שנוצרה"
+              className="w-full max-w-md h-auto"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+            <div className={`p-3 border-t flex items-center justify-between ${
+              isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'
+            }`}>
+              <span className={`text-sm ${
+                isDarkMode ? 'text-gray-300' : 'text-gray-600'
+              }`}>
+                תמונה שנוצרה
+              </span>
+              <button
+                onClick={() => downloadImage(imageUrl)}
+                className={`flex items-center space-x-2 space-x-reverse px-3 py-1.5 rounded-md text-sm transition-colors ${
+                  isDarkMode 
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
+                title="הורד תמונה"
+              >
+                <Download className="w-4 h-4" />
+                <span>הורד</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Message Content */}
       <div className={`text-base leading-relaxed ${
