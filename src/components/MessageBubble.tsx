@@ -512,7 +512,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
             <img 
               src={imageUrl} 
               alt="תמונה שנוצרה"
-              className="w-full max-w-md h-auto"
+              className="w-full h-auto"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
               }}
