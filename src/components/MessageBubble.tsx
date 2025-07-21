@@ -141,7 +141,34 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const cleanTextContent = (text: string): string => {
-    return text
+    let cleaned = text;
+    
+    // Remove code instruction prompts in Hebrew and English
+    const instructionPatterns = [
+      /הצג את הקוד הבא בתוך בלוק קוד בלבד[^`]*?(?=```|$)/g,
+      /הצג את הקוד ה[בנ]א[^`]*?(?=```|$)/g,
+      /בלי שום טקסט מקדים[^`]*?(?=```|$)/g,
+      /הסברים מחוץ לבלוק[^`]*?(?=```|$)/g,
+      /אל תוסיף הסברים[^`]*?(?=```|$)/g,
+      /השפה: \w+[^`]*?(?=```|$)/g,
+      /עם הדגשת תחביר[^`]*?(?=```|$)/g,
+      /syntax highlighting[^`]*?(?=```|$)/gi,
+      /Display the following code[^`]*?(?=```|$)/gi,
+      /Show the code[^`]*?(?=```|$)/gi,
+      /Language: \w+[^`]*?(?=```|$)/gi,
+      /תיאורים.*(?=```|$)/g,
+      /הפורמט צריך להיות ברור[^`]*?(?=```|$)/g,
+      /בפורמט הבא[^`]*?(?=```|$)/g,
+      /^.*?הנחיה.*?$/gm,
+      /^.*?instruction.*?$/gmi,
+    ];
+    
+    // Apply instruction removal patterns
+    instructionPatterns.forEach(pattern => {
+      cleaned = cleaned.replace(pattern, '');
+    });
+    
+    return cleaned
       .replace(/^[\[\]"]+|[\[\]"]+$/g, '')
       .replace(/\\n/g, '\n')
       .replace(/\\t/g, '\t')
@@ -157,7 +184,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       .replace(/[\u201C\u201D\u2018\u2019]/g, '"')
       .replace(/[\u2013\u2014]/g, '-')
       .replace(/[\u00A0]/g, ' ')
-      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'-]/g, '')
+      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'<>/-]/g, '')
       .replace(/\s+$/gm, '')
       .replace(/^\s*[\r\n]+|[\r\n]+\s*$/g, '')
       .replace(/[\r\n]{3,}/g, '\n\n')
