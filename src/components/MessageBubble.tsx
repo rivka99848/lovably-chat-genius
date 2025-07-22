@@ -141,41 +141,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const cleanTextContent = (text: string): string => {
-    let cleaned = text;
-    
-    // Remove code instruction prompts in Hebrew and English
-    const instructionPatterns = [
-      /הצג את הקוד הבא בתוך בלוק קוד בלבד[^`]*?(?=```|$)/g,
-      /הצג את הקוד ה[בנ]א[^`]*?(?=```|$)/g,
-      /בלי שום טקסט מקדים[^`]*?(?=```|$)/g,
-      /הסברים מחוץ לבלוק[^`]*?(?=```|$)/g,
-      /אל תוסיף הסברים[^`]*?(?=```|$)/g,
-      /השפה: \w+[^`]*?(?=```|$)/g,
-      /עם הדגשת תחביר[^`]*?(?=```|$)/g,
-      /syntax highlighting[^`]*?(?=```|$)/gi,
-      /Display the following code[^`]*?(?=```|$)/gi,
-      /Show the code[^`]*?(?=```|$)/gi,
-      /Language: \w+[^`]*?(?=```|$)/gi,
-      /תיאורים.*(?=```|$)/g,
-      /הפורמט צריך להיות ברור[^`]*?(?=```|$)/g,
-      /בפורמט הבא[^`]*?(?=```|$)/g,
-      /^.*?הנחיה.*?$/gm,
-      /^.*?instruction.*?$/gmi,
-    ];
-    
-    // Apply instruction removal patterns
-    instructionPatterns.forEach(pattern => {
-      cleaned = cleaned.replace(pattern, '');
-    });
-    
-    // Remove Hebrew explanations after code blocks
-    // Look for code blocks and remove Hebrew text that follows
-    cleaned = cleaned.replace(/(```[\s\S]*?```)\s*[\u0590-\u05FF][\s\S]*$/gm, '$1');
-    
-    // Remove explanations that start after code ends (when brackets close and Hebrew text follows)
-    cleaned = cleaned.replace(/(\}\s*[\n\r]*)\s*[\u0590-\u05FF].*$/gm, '$1');
-    
-    return cleaned
+    return text
       .replace(/^[\[\]"]+|[\[\]"]+$/g, '')
       .replace(/\\n/g, '\n')
       .replace(/\\t/g, '\t')
@@ -191,8 +157,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       .replace(/[\u201C\u201D\u2018\u2019]/g, '"')
       .replace(/[\u2013\u2014]/g, '-')
       .replace(/[\u00A0]/g, ' ')
-      // הסרת ההערה הבאה כדי לא לנקות תוי HTML
-      // .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'<>/-]/g, '')
+      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'-]/g, '')
       .replace(/\s+$/gm, '')
       .replace(/^\s*[\r\n]+|[\r\n]+\s*$/g, '')
       .replace(/[\r\n]{3,}/g, '\n\n')
@@ -243,7 +208,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                   {language || 'code'}
                 </span>
                 <div className="flex items-center space-x-2 space-x-reverse">
-                  {(language === 'html' || language === 'css' || language === 'javascript' || language === 'js' || language === 'jsx' || language === 'tsx' || code.includes('<') || code.includes('function') || code.includes('const') || code.includes('class') || code.includes('{') || code.includes('div') || code.includes('span')) && (
+                  {(language === 'html' || language === 'javascript' || language === 'js' || language === 'jsx' || language === 'tsx' || code.includes('<') || code.includes('function') || code.includes('const')) && (
                     <button
                       onClick={() => setShowPreview(true)}
                       className={`p-2 rounded text-sm transition-colors ${
@@ -289,7 +254,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
           <div key={index}>
             {/* Explanation text */}
             {separatedContent.explanation && (
-              <div className="leading-tight text-base mb-2">
+              <div className="leading-relaxed text-base mb-4">
                 {formatPlainText(separatedContent.explanation)}
               </div>
             )}
@@ -308,7 +273,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                   }`}>
                     <span className="text-sm font-medium">code</span>
                     <div className="flex items-center space-x-2 space-x-reverse">
-                      {(separatedContent.code.includes('<') || separatedContent.code.includes('function') || separatedContent.code.includes('const') || separatedContent.code.includes('class') || separatedContent.code.includes('{') || separatedContent.code.includes('div') || separatedContent.code.includes('span')) && (
+                      {(separatedContent.code.includes('<') || separatedContent.code.includes('function') || separatedContent.code.includes('const')) && (
                         <button
                           onClick={() => setShowPreview(true)}
                           className={`p-2 rounded text-sm transition-colors ${
@@ -346,13 +311,6 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                 </div>
               </div>
             )}
-            
-            {/* Text after code */}
-            {separatedContent.afterCode && (
-              <div className="leading-tight text-base mt-2">
-                {formatPlainText(separatedContent.afterCode)}
-              </div>
-            )}
           </div>
         );
       }
@@ -364,7 +322,6 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     
     const lines = text.split('\n');
     let codeStartIndex = -1;
-    let codeEndIndex = -1;
     
     // מילות מפתח שמציינות התחלת קוד
     const codeIndicators = [
@@ -448,61 +405,10 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       return { explanation: text, code: '' };
     }
     
-    // מצא את סוף הקוד - חפש שורה שמכילה טקסט הסבר בעברית אחרי סוגריים סוגרים
-    let braceBalance = 0;
-    let hasFoundClosingBrace = false;
-    
-    for (let i = codeStartIndex; i < lines.length; i++) {
-      const line = lines[i];
-      
-      // ספור סוגריים
-      for (const char of line) {
-        if (char === '{') braceBalance++;
-        if (char === '}') braceBalance--;
-      }
-      
-      // אם האיזון הסתיים והיה לפחות סוגריים סגורים
-      if (braceBalance === 0 && line.includes('}')) {
-        hasFoundClosingBrace = true;
-        
-        // בדוק אם יש הסבר בעברית אחרי השורה הזו
-        for (let j = i + 1; j < lines.length; j++) {
-          const nextLine = lines[j].trim();
-          
-          // דלג על שורות ריקות
-          if (!nextLine) continue;
-          
-          // אם נמצא טקסט בעברית, זה הסוף של הקוד
-          if (/[\u0590-\u05FF]/.test(nextLine)) {
-            codeEndIndex = i;
-            break;
-          }
-          
-          // אם נמצא עוד קוד, המשך
-          const isMoreCode = codeIndicators.some(pattern => pattern.test(nextLine));
-          if (isMoreCode) {
-            break; // צא מהלולאה הפנימית ותמשיך לחפש
-          }
-        }
-        
-        if (codeEndIndex !== -1) break;
-      }
-    }
-    
-    // אם לא נמצא סוף מוגדר, הקוד הוא עד הסוף
-    if (codeEndIndex === -1) {
-      codeEndIndex = lines.length - 1;
-    }
-    
     const explanation = lines.slice(0, codeStartIndex).join('\n').trim();
-    const code = lines.slice(codeStartIndex, codeEndIndex + 1).join('\n').trim();
-    const afterCode = codeEndIndex < lines.length - 1 ? lines.slice(codeEndIndex + 1).join('\n').trim() : '';
+    const code = lines.slice(codeStartIndex).join('\n').trim();
     
-    return { 
-      explanation, 
-      code,
-      afterCode 
-    };
+    return { explanation, code };
   };
 
   const detectAndWrapCodeContent = (text: string) => {
@@ -543,7 +449,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       
       if (numberedListMatch) {
         return (
-          <div key={lineIndex} className="mb-1 flex">
+          <div key={lineIndex} className="mb-2 flex">
             <span className="font-medium ml-2 min-w-[2rem]">{numberedListMatch[1]}</span>
             <span className="flex-1">{numberedListMatch[2]}</span>
           </div>
@@ -554,7 +460,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       if (!line.trim()) return <br key={lineIndex} />;
       
       return (
-        <div key={lineIndex} className="mb-1">
+        <div key={lineIndex} className="mb-2">
           {line}
         </div>
       );
@@ -571,7 +477,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   const imageUrl = detectImageLink(message.content);
 
   return (
-    <div className="w-full max-w-3xl mx-auto mb-6" dir="rtl">
+    <div className="w-full mb-6" dir="rtl">
       {/* Message Header - Only Icon and Time */}
       <div className="flex items-center mb-2">
         <div className="flex items-center space-x-2 space-x-reverse">
@@ -636,7 +542,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
       {/* Message Content - Only show if no image */}
       {!imageUrl && (
-        <div className={`text-base leading-snug ${
+        <div className={`text-base leading-relaxed ${
           isDarkMode ? 'text-gray-100' : 'text-gray-800'
         } mb-3`}>
           {formatContent(processedContent)}

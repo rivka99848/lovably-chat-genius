@@ -162,7 +162,7 @@ const ContactForm = ({ trigger, showAsIcon = false, user }: ContactFormProps) =>
       <DialogTrigger asChild>
         {trigger || defaultTrigger}
       </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto bg-background border shadow-lg">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>פניה לתמיכה</DialogTitle>
         </DialogHeader>

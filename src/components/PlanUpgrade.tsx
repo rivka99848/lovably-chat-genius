@@ -96,7 +96,7 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
         paymentId: paymentId
       });
 
-      const paymentUrl = `https://www.matara.pro/nedarimplus/online/?S=kHeC&${paymentParams.toString()}`;
+      const paymentUrl = `https://www.matara.pro/nedarimplus/online/?mosad=2813479&${paymentParams.toString()}`;
       
       // Open payment page as popup
       const popupFeatures = 'width=800,height=700,scrollbars=yes,resizable=yes,centerscreen=yes,location=no,menubar=no,toolbar=no,status=no';

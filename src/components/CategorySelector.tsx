@@ -1,22 +1,58 @@
 
-import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import React from 'react';
+import { Code, Palette, PenTool, Home, X, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { getCategories, type Category } from '@/lib/categories';
 
 interface Props {
   onSelect: (category: string) => void;
   onClose: () => void;
 }
 
+const categories = [
+  {
+    id: 'programming',
+    name: 'תכנות',
+    description: 'פיתוח קוד, דיבאג ובניית אפליקציות עם סיוע AI',
+    icon: Code,
+    color: 'from-blue-600 to-purple-600',
+    examples: ['פיתוח React', 'סקריפטים Python', 'שאילתות מסד נתונים', 'אינטגרציית API']
+  },
+  {
+    id: 'architecture',
+    name: 'אדריכלות ועיצוב פנים',
+    description: 'עיצוב חללים, תכנון פריסות ויצירת פתרונות אדריכליים',
+    icon: Home,
+    color: 'from-green-600 to-teal-600',
+    examples: ['תכניות קומה', 'עיצוב פנים', 'מידול תלת מימד', 'בחירת חומרים']
+  },
+  {
+    id: 'writing',
+    name: 'כתיבה ותמלול',
+    description: 'יצירת תוכן, עריכת טקסט ותמלול אודיו בדיוק',
+    icon: PenTool,
+    color: 'from-orange-600 to-red-600',
+    examples: ['כתיבת בלוגים', 'תיעוד טכני', 'כתיבה יצירתית', 'תמלול אודיו']
+  },
+  {
+    id: 'design',
+    name: 'גרפיקה ועיצוב',
+    description: 'יצירת תוכן ויזואלי, לוגואים ואמנות דיגיטלית',
+    icon: Palette,
+    color: 'from-pink-600 to-purple-600',
+    examples: ['עיצוב לוגו', 'עיצוב UI/UX', 'זהות מותג', 'איורים דיגיטליים']
+  },
+  {
+    id: 'copywriting',
+    name: 'ניסוח ושכתוב',
+    description: 'שכתוב טקסטים, שיפור ניסוח ויצירת תוכן מרתק',
+    icon: FileText,
+    color: 'from-indigo-600 to-blue-600',
+    examples: ['שכתוב מאמרים', 'ניסוח מכתבים', 'תוכן שיווקי', 'עריכה לשונית']
+  }
+];
+
 const CategorySelector: React.FC<Props> = ({ onSelect, onClose }) => {
-  const [categories, setCategories] = useState<Category[]>([]);
-
-  useEffect(() => {
-    setCategories(getCategories());
-  }, []);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50 flex items-center justify-center p-6" dir="rtl">
       <div className="max-w-4xl w-full">
