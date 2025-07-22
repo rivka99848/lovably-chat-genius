@@ -1,23 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, User, Sparkles, Lock, Eye, EyeOff, Moon, Sun, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getCategories, type Category } from '@/lib/categories';
 
 interface Props {
   onAuth: (email: string, name: string, category: string, isSignUp: boolean, password?: string) => void;
   onClose: () => void;
 }
-
-const categories = [
-  { id: 'programming', name: 'תכנות' },
-  { id: 'architecture', name: 'אדריכלות ועיצוב פנים' },
-  { id: 'writing', name: 'כתיבה ותמלול' },
-  { id: 'design', name: 'גרפיקה ועיצוב' },
-  { id: 'copywriting', name: 'ניסוח ושכתוב' }
-];
 
 const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   const [isSignUp, setIsSignUp] = useState(true);
@@ -31,6 +24,11 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    setCategories(getCategories());
+  }, []);
 
   const WEBHOOK_URL = 'https://n8n.smartbiz.org.il/webhook/login';
 
