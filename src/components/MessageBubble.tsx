@@ -345,6 +345,13 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                 </div>
               </div>
             )}
+            
+            {/* Text after code */}
+            {separatedContent.afterCode && (
+              <div className="leading-relaxed text-base mt-4">
+                {formatPlainText(separatedContent.afterCode)}
+              </div>
+            )}
           </div>
         );
       }
@@ -356,6 +363,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     
     const lines = text.split('\n');
     let codeStartIndex = -1;
+    let codeEndIndex = -1;
     
     // מילות מפתח שמציינות התחלת קוד
     const codeIndicators = [
@@ -439,10 +447,61 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       return { explanation: text, code: '' };
     }
     
-    const explanation = lines.slice(0, codeStartIndex).join('\n').trim();
-    const code = lines.slice(codeStartIndex).join('\n').trim();
+    // מצא את סוף הקוד - חפש שורה שמכילה טקסט הסבר בעברית אחרי סוגריים סוגרים
+    let braceBalance = 0;
+    let hasFoundClosingBrace = false;
     
-    return { explanation, code };
+    for (let i = codeStartIndex; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // ספור סוגריים
+      for (const char of line) {
+        if (char === '{') braceBalance++;
+        if (char === '}') braceBalance--;
+      }
+      
+      // אם האיזון הסתיים והיה לפחות סוגריים סגורים
+      if (braceBalance === 0 && line.includes('}')) {
+        hasFoundClosingBrace = true;
+        
+        // בדוק אם יש הסבר בעברית אחרי השורה הזו
+        for (let j = i + 1; j < lines.length; j++) {
+          const nextLine = lines[j].trim();
+          
+          // דלג על שורות ריקות
+          if (!nextLine) continue;
+          
+          // אם נמצא טקסט בעברית, זה הסוף של הקוד
+          if (/[\u0590-\u05FF]/.test(nextLine)) {
+            codeEndIndex = i;
+            break;
+          }
+          
+          // אם נמצא עוד קוד, המשך
+          const isMoreCode = codeIndicators.some(pattern => pattern.test(nextLine));
+          if (isMoreCode) {
+            break; // צא מהלולאה הפנימית ותמשיך לחפש
+          }
+        }
+        
+        if (codeEndIndex !== -1) break;
+      }
+    }
+    
+    // אם לא נמצא סוף מוגדר, הקוד הוא עד הסוף
+    if (codeEndIndex === -1) {
+      codeEndIndex = lines.length - 1;
+    }
+    
+    const explanation = lines.slice(0, codeStartIndex).join('\n').trim();
+    const code = lines.slice(codeStartIndex, codeEndIndex + 1).join('\n').trim();
+    const afterCode = codeEndIndex < lines.length - 1 ? lines.slice(codeEndIndex + 1).join('\n').trim() : '';
+    
+    return { 
+      explanation, 
+      code,
+      afterCode 
+    };
   };
 
   const detectAndWrapCodeContent = (text: string) => {
