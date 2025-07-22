@@ -243,7 +243,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                   {language || 'code'}
                 </span>
                 <div className="flex items-center space-x-2 space-x-reverse">
-                  {(language === 'html' || language === 'javascript' || language === 'js' || language === 'jsx' || language === 'tsx' || code.includes('<') || code.includes('function') || code.includes('const')) && (
+                  {(language === 'html' || language === 'css' || language === 'javascript' || language === 'js' || language === 'jsx' || language === 'tsx' || code.includes('<') || code.includes('function') || code.includes('const') || code.includes('class') || code.includes('{') || code.includes('div') || code.includes('span')) && (
                     <button
                       onClick={() => setShowPreview(true)}
                       className={`p-2 rounded text-sm transition-colors ${
@@ -308,7 +308,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                   }`}>
                     <span className="text-sm font-medium">code</span>
                     <div className="flex items-center space-x-2 space-x-reverse">
-                      {(separatedContent.code.includes('<') || separatedContent.code.includes('function') || separatedContent.code.includes('const')) && (
+                      {(separatedContent.code.includes('<') || separatedContent.code.includes('function') || separatedContent.code.includes('const') || separatedContent.code.includes('class') || separatedContent.code.includes('{') || separatedContent.code.includes('div') || separatedContent.code.includes('span')) && (
                         <button
                           onClick={() => setShowPreview(true)}
                           className={`p-2 rounded text-sm transition-colors ${
