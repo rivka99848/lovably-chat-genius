@@ -688,7 +688,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       {showPreview && (
         <CodePreview 
           code={processedContent} 
-          onClose={() => setShowPreview(false)} 
+          onClose={() => setShowPreview(false)}
         />
       )}
 
