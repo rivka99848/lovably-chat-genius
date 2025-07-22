@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { Settings, Save, ArrowRight, Plus, Trash2 } from 'lucide-react';
+import { getCategoryNames, saveCategories } from '@/lib/categories';
 
 interface BotSettings {
   welcomeMessage: string;
@@ -24,7 +25,7 @@ const Admin = () => {
   const navigate = useNavigate();
   const [settings, setSettings] = useState<BotSettings>({
     welcomeMessage: 'ברוכים הבאים לבוט המסונן שלנו – לצרכי עבודה בלבד',
-    categories: ['תכנות', 'עיצוב', 'שיווק', 'כתיבה', 'עסקים'],
+    categories: getCategoryNames(),
     webhookUrl: 'https://n8n.smartbiz.org.il/webhook',
     systemPrompts: {
       'תכנות': 'אתה מומחה תכנות המסייע בכתיבת קוד ופתרון בעיות טכניות',
@@ -53,15 +54,28 @@ const Admin = () => {
   const loadSettings = () => {
     const savedSettings = localStorage.getItem('bot_admin_settings');
     if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
+      const loadedSettings = JSON.parse(savedSettings);
+      setSettings({
+        ...loadedSettings,
+        categories: getCategoryNames() // תמיד נטען מהמקור המעודכן
+      });
+    } else {
+      // אם אין הגדרות שמורות, נטען מברירת המחדל
+      setSettings(prev => ({
+        ...prev,
+        categories: getCategoryNames()
+      }));
     }
   };
 
   const saveSettings = () => {
+    // שמירת הקטגוריות במקור האמת
+    saveCategories(settings.categories);
+    // שמירת שאר ההגדרות
     localStorage.setItem('bot_admin_settings', JSON.stringify(settings));
     toast({
       title: "הגדרות נשמרו",
-      description: "הגדרות הבוט עודכנו בהצלחה"
+      description: "הגדרות הבוט עודכנו בהצלחה. הקטגוריות יתעדכנו בכל האפליקציה"
     });
   };
 
