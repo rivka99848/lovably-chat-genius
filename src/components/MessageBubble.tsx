@@ -168,6 +168,13 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       cleaned = cleaned.replace(pattern, '');
     });
     
+    // Remove Hebrew explanations after code blocks
+    // Look for code blocks and remove Hebrew text that follows
+    cleaned = cleaned.replace(/(```[\s\S]*?```)\s*[\u0590-\u05FF][\s\S]*$/gm, '$1');
+    
+    // Remove explanations that start after code ends (when brackets close and Hebrew text follows)
+    cleaned = cleaned.replace(/(\}\s*[\n\r]*)\s*[\u0590-\u05FF].*$/gm, '$1');
+    
     return cleaned
       .replace(/^[\[\]"]+|[\[\]"]+$/g, '')
       .replace(/\\n/g, '\n')
