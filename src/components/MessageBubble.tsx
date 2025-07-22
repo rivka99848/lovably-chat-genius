@@ -191,7 +191,8 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       .replace(/[\u201C\u201D\u2018\u2019]/g, '"')
       .replace(/[\u2013\u2014]/g, '-')
       .replace(/[\u00A0]/g, ' ')
-      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'<>/-]/g, '')
+      // הסרת ההערה הבאה כדי לא לנקות תוי HTML
+      // .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'<>/-]/g, '')
       .replace(/\s+$/gm, '')
       .replace(/^\s*[\r\n]+|[\r\n]+\s*$/g, '')
       .replace(/[\r\n]{3,}/g, '\n\n')
@@ -288,7 +289,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
           <div key={index}>
             {/* Explanation text */}
             {separatedContent.explanation && (
-              <div className="leading-relaxed text-base mb-4">
+              <div className="leading-tight text-base mb-2">
                 {formatPlainText(separatedContent.explanation)}
               </div>
             )}
@@ -348,7 +349,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
             
             {/* Text after code */}
             {separatedContent.afterCode && (
-              <div className="leading-relaxed text-base mt-4">
+              <div className="leading-tight text-base mt-2">
                 {formatPlainText(separatedContent.afterCode)}
               </div>
             )}
@@ -542,7 +543,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       
       if (numberedListMatch) {
         return (
-          <div key={lineIndex} className="mb-2 flex">
+          <div key={lineIndex} className="mb-1 flex">
             <span className="font-medium ml-2 min-w-[2rem]">{numberedListMatch[1]}</span>
             <span className="flex-1">{numberedListMatch[2]}</span>
           </div>
@@ -553,7 +554,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       if (!line.trim()) return <br key={lineIndex} />;
       
       return (
-        <div key={lineIndex} className="mb-2">
+        <div key={lineIndex} className="mb-1">
           {line}
         </div>
       );
@@ -570,7 +571,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   const imageUrl = detectImageLink(message.content);
 
   return (
-    <div className="w-full mb-6" dir="rtl">
+    <div className="w-full max-w-3xl mx-auto mb-6" dir="rtl">
       {/* Message Header - Only Icon and Time */}
       <div className="flex items-center mb-2">
         <div className="flex items-center space-x-2 space-x-reverse">
@@ -635,7 +636,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
       {/* Message Content - Only show if no image */}
       {!imageUrl && (
-        <div className={`text-base leading-relaxed ${
+        <div className={`text-base leading-snug ${
           isDarkMode ? 'text-gray-100' : 'text-gray-800'
         } mb-3`}>
           {formatContent(processedContent)}
