@@ -19,6 +19,7 @@ interface Props {
 
 const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   const [showPreview, setShowPreview] = useState(false);
+  const [showGeneralPreview, setShowGeneralPreview] = useState(false);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -197,6 +198,11 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       .replace(/^\s*[\r\n]+|[\r\n]+\s*$/g, '')
       .replace(/[\r\n]{3,}/g, '\n\n')
       .trim();
+  };
+
+  const extractAllCodeBlocks = (content: string) => {
+    const codeBlocks = content.match(/```[\s\S]*?```/g) || [];
+    return codeBlocks.join('\n\n');
   };
 
   const detectContentType = (content: string) => {
@@ -659,27 +665,40 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
           </button>
 
           {(contentTypes.hasCodeBlocks || contentTypes.hasSQLKeywords || contentTypes.hasProgrammingKeywords) && (
-            <button
-              onClick={() => {
-                const codeBlocks = processedContent.match(/```[\s\S]*?```/g) || [];
-                const allCode = codeBlocks.map(block => {
-                  const content = block.slice(3, -3).trim();
-                  const lines = content.split('\n');
-                  // אם השורה הראשונה היא שפת התכנות, נדלג עליה
-                  const isLanguageLine = lines[0] && !lines[0].includes(' ') && lines[0].length < 20;
-                  return isLanguageLine ? lines.slice(1).join('\n') : content;
-                }).join('\n\n');
-                copyToClipboard(allCode || processedContent);
-              }}
-              className={`p-2 rounded-md transition-colors ${
-                isDarkMode 
-                  ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-              }`}
-              title="העתק קוד"
-            >
-              <Code className="w-4 h-4" />
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  const codeBlocks = processedContent.match(/```[\s\S]*?```/g) || [];
+                  const allCode = codeBlocks.map(block => {
+                    const content = block.slice(3, -3).trim();
+                    const lines = content.split('\n');
+                    // אם השורה הראשונה היא שפת התכנות, נדלג עליה
+                    const isLanguageLine = lines[0] && !lines[0].includes(' ') && lines[0].length < 20;
+                    return isLanguageLine ? lines.slice(1).join('\n') : content;
+                  }).join('\n\n');
+                  copyToClipboard(allCode || processedContent);
+                }}
+                className={`p-2 rounded-md transition-colors ${
+                  isDarkMode 
+                    ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+                title="העתק קוד"
+              >
+                <Code className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setShowGeneralPreview(true)}
+                className={`p-2 rounded-md transition-colors ${
+                  isDarkMode 
+                    ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+                title="תצוגה מקדימה כללית"
+              >
+                <Eye className="w-4 h-4" />
+              </button>
+            </>
           )}
         </div>
       )}
@@ -689,6 +708,13 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         <CodePreview 
           code={processedContent} 
           onClose={() => setShowPreview(false)}
+        />
+      )}
+      
+      {showGeneralPreview && (
+        <CodePreview 
+          code={extractAllCodeBlocks(processedContent)} 
+          onClose={() => setShowGeneralPreview(false)}
         />
       )}
 

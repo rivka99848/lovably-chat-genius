@@ -19,6 +19,7 @@ const CodePreview: React.FC<Props> = ({ code, onClose }) => {
     // Extract and process code for preview
     const codeBlocks = code.match(/```[\s\S]*?```/g) || [];
     let combinedCode = '';
+    let allCodeSections = [];
 
     codeBlocks.forEach((block: string) => {
       const codeContent = block.slice(3, -3).trim();
@@ -26,11 +27,28 @@ const CodePreview: React.FC<Props> = ({ code, onClose }) => {
       const language = lines[0]?.includes(' ') ? '' : lines[0] || '';
       const actualCode = language ? lines.slice(1).join('\n') : codeContent;
       
-        if (language === 'html' || actualCode.includes('<html') || actualCode.includes('<!DOCTYPE')) {
-          combinedCode = actualCode;
-        } else if (actualCode.includes('<') && (actualCode.includes('div') || actualCode.includes('span'))) {
-          // Wrap HTML fragments
-          combinedCode = `
+      if (language === 'html' || actualCode.includes('<html') || actualCode.includes('<!DOCTYPE')) {
+        combinedCode = actualCode;
+      } else if (actualCode.includes('<') && (actualCode.includes('div') || actualCode.includes('span'))) {
+        allCodeSections.push(actualCode);
+      } else if (actualCode.includes('function') || actualCode.includes('const') || actualCode.includes('class')) {
+        allCodeSections.push(actualCode);
+      }
+    });
+
+    // If we have multiple code sections, combine them
+    if (allCodeSections.length > 0 && !combinedCode) {
+      const htmlSections = allCodeSections.filter(code => 
+        code.includes('<') && (code.includes('div') || code.includes('span'))
+      );
+      const jsSections = allCodeSections.filter(code => 
+        code.includes('function') || code.includes('const') || code.includes('class')
+      );
+
+      if (htmlSections.length > 0) {
+        // Combine HTML sections
+        const combinedHTML = htmlSections.join('\n\n');
+        combinedCode = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -40,15 +58,17 @@ const CodePreview: React.FC<Props> = ({ code, onClose }) => {
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
         * { box-sizing: border-box; }
+        .code-section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
     </style>
 </head>
 <body>
-${actualCode}
+${combinedHTML}
+${jsSections.length > 0 ? `<script>\n${jsSections.join('\n\n')}\n</script>` : ''}
 </body>
 </html>`;
-        } else if (actualCode.includes('function') || actualCode.includes('const') || actualCode.includes('class')) {
-          // JavaScript/React code - create a simple demo
-          combinedCode = `
+      } else if (jsSections.length > 0) {
+        // JavaScript only
+        combinedCode = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -57,7 +77,7 @@ ${actualCode}
     <title>JavaScript Preview</title>
     <style>
         body { font-family: 'Courier New', monospace; padding: 20px; background: #f5f5f5; }
-        .code-block { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .code-block { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -67,7 +87,7 @@ ${actualCode}
     </div>
     <script>
         try {
-            ${actualCode}
+            ${jsSections.join('\n\n')}
             console.log('Code executed successfully');
         } catch (error) {
             document.getElementById('output').textContent = 'Error: ' + error.message;
@@ -75,8 +95,8 @@ ${actualCode}
     </script>
 </body>
 </html>`;
-        }
-    });
+      }
+    }
 
     setPreviewContent(combinedCode);
   }, [code]);
