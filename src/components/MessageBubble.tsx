@@ -604,7 +604,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
       {/* Image Display */}
       {imageUrl && (
-        <div className="mb-4 flex justify-end">
+        <div className="mb-4 flex justify-start">
           <div className={`w-64 rounded-lg border overflow-hidden ${
             isDarkMode ? 'border-gray-700' : 'border-gray-200'
           }`}>
