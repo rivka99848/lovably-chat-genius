@@ -604,14 +604,14 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
       {/* Image Display */}
       {imageUrl && (
-        <div className="mb-4">
-          <div className={`rounded-lg border overflow-hidden ${
+        <div className="mb-4 flex justify-end">
+          <div className={`w-64 rounded-lg border overflow-hidden ${
             isDarkMode ? 'border-gray-700' : 'border-gray-200'
           }`}>
             <img 
               src={imageUrl} 
               alt="תמונה שנוצרה"
-              className="w-64 h-64 object-cover mx-auto"
+              className="w-64 h-64 object-cover"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
               }}
