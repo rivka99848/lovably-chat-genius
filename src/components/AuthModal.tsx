@@ -34,15 +34,23 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
 
   const sendWebhook = async (userData: any) => {
     try {
+      const userId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...userData,
-          timestamp: new Date().toISOString(),
-          action: 'user_registration'
+          body: {
+            event: "register",
+            userId: userId,
+            email: userData.email,
+            name: userData.name,
+            category: userData.category,
+            password: userData.password,
+            timestamp: new Date().toISOString()
+          }
         }),
       });
       
