@@ -138,6 +138,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
 
     try {
       if (isSignUp) {
+        // רק שליחה לוובהוק - onAuth נקרא בתוך sendWebhook אם השרת מחזיר true
         await sendWebhook({
           email,
           name,
