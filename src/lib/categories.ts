@@ -29,11 +29,11 @@ const DEFAULT_CATEGORIES: Category[] = [
   },
   {
     id: 'writing',
-    name: 'כתיבה ותמלול',
-    description: 'יצירת תוכן, עריכת טקסט ותמלול אודיו בדיוק',
+    name: 'תמלול וניתוח',
+    description: 'תמלול אודיו ווידאו, ניתוח תוכן וסיכום מסמכים',
     icon: PenTool,
     color: 'from-orange-600 to-red-600',
-    examples: ['כתיבת בלוגים', 'תיעוד טכני', 'כתיבה יצירתית', 'תמלול אודיו']
+    examples: ['תמלול הקלטות', 'ניתוח טקסטים', 'סיכום מסמכים', 'הכנת דוחות']
   },
   {
     id: 'design',
