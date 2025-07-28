@@ -34,21 +34,31 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
 
   const sendWebhook = async (userData: any) => {
     try {
-      await fetch(WEBHOOK_URL, {
+      const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        mode: 'no-cors',
         body: JSON.stringify({
           ...userData,
           timestamp: new Date().toISOString(),
           action: 'user_registration'
         }),
       });
-      console.log('נתונים נשלחו לוובהוק בהצלחה');
+      
+      const result = await response.text();
+      console.log('תשובה מהשרת:', result);
+      
+      if (result === 'true') {
+        // העברה לבוט עם הודעה מהשרת
+        await onAuth(userData.email, userData.name, userData.category, userData.isSignUp);
+        return true;
+      } else {
+        throw new Error('שגיאה בהרשמה - אנא נסו שוב');
+      }
     } catch (error) {
       console.error('שגיאה בשליחת הוובהוק:', error);
+      throw error;
     }
   };
 
@@ -133,11 +143,13 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           name,
           phone,
           category: selectedCategory,
-          isSignUp: true
+          isSignUp: true,
+          password
         });
+      } else {
+        // התחברות
+        await onAuth(email, name, selectedCategory, isSignUp, password);
       }
-      
-      await onAuth(email, name, selectedCategory, isSignUp, password);
     } catch (err: any) {
       setError(err.message || 'שגיאה בהתחברות');
     } finally {
