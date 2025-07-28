@@ -145,13 +145,16 @@ const ChatInterface = () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            event: 'register',
-            userId,
-            email,
-            name,
-            category,
-            password,
-            timestamp: new Date().toISOString()
+            body: {
+              event: "register",
+              userId,
+              email,
+              name,
+              category,
+              password,
+              phone: "",
+              timestamp: new Date().toISOString()
+            }
           })
         });
 
@@ -166,16 +169,16 @@ const ChatInterface = () => {
             userData = responseText;
           }
           
-          // אם זה true - המשתמש נרשם בהצלחה
-          if (userData === true || (typeof userData === 'object' && userData.success)) {
+          // אם זה true או "true" - המשתמש נרשם בהצלחה
+          if (userData === true || userData === 'true' || userData === "המשתמש נוצר בהצלחה") {
             const newUser: User = {
-              id: userData.id || userId,
+              id: userId,
               email,
               name,
               category,
-              plan: userData.plan || 'free',
-              messagesUsed: userData.messagesUsed || 0,
-              messageLimit: userData.messageLimit || 50
+              plan: 'free',
+              messagesUsed: 0,
+              messageLimit: 50
             };
             
             setUser(newUser);
@@ -200,10 +203,12 @@ const ChatInterface = () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            event: 'login',
-            email,
-            password,
-            timestamp: new Date().toISOString()
+            body: {
+              event: "login",
+              email,
+              password,
+              timestamp: new Date().toISOString()
+            }
           })
         });
 

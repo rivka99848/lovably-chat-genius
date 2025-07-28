@@ -33,41 +33,10 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   const WEBHOOK_URL = 'https://n8n.smartbiz.org.il/webhook/login';
 
   const sendWebhook = async (userData: any) => {
-    try {
-      const userId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      
-      const response = await fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          body: {
-            event: "register",
-            userId: userId,
-            email: userData.email,
-            name: userData.name,
-            category: userData.category,
-            password: userData.password,
-            timestamp: new Date().toISOString()
-          }
-        }),
-      });
-      
-      const result = await response.text();
-      console.log('תשובה מהשרת:', result);
-      
-      if (result === 'true') {
-        // העברה לבוט עם הודעה מהשרת
-        await onAuth(userData.email, userData.name, userData.category, userData.isSignUp);
-        return true;
-      } else {
-        throw new Error('שגיאה בהרשמה - אנא נסו שוב');
-      }
-    } catch (error) {
-      console.error('שגיאה בשליחת הוובהוק:', error);
-      throw error;
-    }
+    // האחריות על שליחת הוובהוק עברה ל-ChatInterface
+    // כאן רק נקרא ל-onAuth ישירות
+    onAuth(userData.email, userData.name, userData.category, true, userData.password);
+    return true;
   };
 
   const sendPasswordResetWebhook = async (resetEmail: string) => {
