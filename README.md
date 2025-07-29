@@ -5,7 +5,7 @@
 **URL**: https://lovable.dev/projects/351da888-d982-4275-9070-3b9435975f0c
 
 ## How can I edit this code?
-
+אני רוצה להוסיף כאן טקסט בעברית
 There are several ways of editing your application.
 
 **Use Lovable**
