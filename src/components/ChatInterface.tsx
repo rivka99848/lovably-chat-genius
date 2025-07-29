@@ -17,6 +17,8 @@ import MessageBubble from './MessageBubble';
 import AuthModal from './AuthModal';
 import PlanUpgrade from './PlanUpgrade';
 import ContactForm from './ContactForm';
+import { loginUser } from '@/lib/auth/login';
+import { registerUser } from '@/lib/auth/register';
 
 interface Message {
   id: string;
@@ -138,125 +140,62 @@ const ChatInterface = () => {
   const authenticateUser = async (email: string, name: string, category: string, isSignUp: boolean, password?: string) => {
     try {
       const userId = crypto.randomUUID();
-      
       if (isSignUp) {
         // רישום משתמש חדש
-        const registerResponse = await fetch(LOGIN_WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            body: {
-              event: "register",
-              userId,
-              email,
-              name,
-              category,
-              password,
-              phone: "",
-              timestamp: new Date().toISOString()
-            }
-          })
-        });
-
-        if (registerResponse.ok) {
-          const responseText = await registerResponse.text();
-          console.log('Register response:', responseText);
-          
-          let userData;
-          try {
-            userData = JSON.parse(responseText);
-          } catch {
-            userData = responseText;
-          }
-          
-          // אם זה true או "true" - המשתמש נרשם בהצלחה
-          if (userData === true || userData === 'true' || userData === "המשתמש נוצר בהצלחה") {
-            const newUser: User = {
-              id: userId,
-              email,
-              name,
-              category,
-              plan: 'free',
-              messagesUsed: 0,
-              messageLimit: 50
-            };
-            
-            setUser(newUser);
-            localStorage.setItem('lovable_user', JSON.stringify(newUser));
-            setShowAuth(false);
-            
-            toast({
-              title: "ברוכים הבאים!",
-              description: `נרשמתם בהצלחה כמומחה ב${category}.`
-            });
-          } else {
-            // אם זה לא true - הצג את ההודעה שהשרת החזיר
-            const errorMessage = typeof userData === 'string' ? userData : 'המשתמש כבר קיים במערכת';
-            throw new Error(errorMessage);
-          }
+        const userData = await registerUser(email, name, category, password!);
+        // אם ההרשמה הצליחה
+        if (userData === true || userData === 'true' || userData === "המשתמש נוצר בהצלחה" || (typeof userData === 'object' && userData.success)) {
+          const newUser: User = {
+            id: userId,
+            email,
+            name,
+            category,
+            plan: 'free',
+            messagesUsed: 0,
+            messageLimit: 50
+          };
+          setUser(newUser);
+          localStorage.setItem('lovable_user', JSON.stringify(newUser));
+          setShowAuth(false);
+          toast({
+            title: "ברוכים הבאים!",
+            description: `נרשמתם בהצלחה כמומחה ב${category}.`
+          });
         } else {
-          throw new Error('שגיאה ברישום. אנא נסו שוב.');
+          const errorMessage = typeof userData === 'string' ? userData : 'המשתמש כבר קיים במערכת';
+          throw new Error(errorMessage);
         }
       } else {
         // התחברות משתמש קיים
-        const loginResponse = await fetch(LOGIN_WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            body: {
-              event: "login",
-              email,
-              password,
-              timestamp: new Date().toISOString()
-            }
-          })
-        });
-
-        if (loginResponse.ok) {
-          const responseText = await loginResponse.text();
-          console.log('Login response:', responseText);
-          
-          let userData;
-          try {
-            userData = JSON.parse(responseText);
-          } catch {
-            userData = responseText;
-          }
-          
-          // אם זה true או array עם success: true - המשתמש התחבר בהצלחה
-          if (userData === true || 
-              (typeof userData === 'object' && userData.success) ||
-              (Array.isArray(userData) && userData.length > 0 && userData[0].success)) {
-            const existingUser: User = {
-              id: userData.id || userId,
-              email,
-              name: userData.name || name,
-              category: userData.category || 'תכנות',
-              plan: userData.plan || 'free',
-              messagesUsed: userData.messagesUsed || 0,
-              messageLimit: userData.messageLimit || 50
-            };
-            
-            setUser(existingUser);
-            localStorage.setItem('lovable_user', JSON.stringify(existingUser));
-            setShowAuth(false);
-            
-            toast({
-              title: "ברוכים הבאים!",
-              description: `התחברתם בהצלחה כמומחה ב${existingUser.category}.`
-            });
-          } else {
-            // אם זה לא true - הצג את ההודעה שהשרת החזיר
-            const errorMessage = typeof userData === 'string' ? userData : 'שגיאה בהתחברות';
-            throw new Error(errorMessage);
-          }
+        const userData = await loginUser(email, password!);
+        if (userData === true || (typeof userData === 'object' && userData.success) || (Array.isArray(userData) && userData.length > 0 && userData[0].success)) {
+          const existingUser: User = {
+            id: userData.id || userId,
+            email,
+            name: userData.name || name,
+            category: userData.category || 'תכנות',
+            plan: userData.plan || 'free',
+            messagesUsed: userData.messagesUsed || 0,
+            messageLimit: userData.messageLimit || 50
+          };
+          setUser(existingUser);
+          localStorage.setItem('lovable_user', JSON.stringify(existingUser));
+          setShowAuth(false);
+          toast({
+            title: "ברוכים הבאים!",
+            description: `התחברתם בהצלחה כמומחה ב${existingUser.category}.`
+          });
         } else {
-          throw new Error('שגיאה בהתחברות. אנא נסו שוב.');
+          const errorMessage = typeof userData === 'string' ? userData : 'שגיאה בהתחברות';
+          throw new Error(errorMessage);
         }
       }
-    } catch (error) {
-      console.error('Auth error:', error);
-      throw error;
+    } catch (error: any) {
+      toast({
+        title: 'שגיאה',
+        description: error.message || 'שגיאה בתהליך האימות',
+        variant: 'destructive',
+      });
     }
   };
 
