@@ -3,13 +3,15 @@ export async function registerUser(email: string, name: string, category: string
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      event: "register",
-      email,
-      name,
-      category,
-      password,
-      phone: "",
-      timestamp: new Date().toISOString()
+      body: {
+        event: "register",
+        email,
+        name,
+        category,
+        password,
+        phone: "",
+        timestamp: new Date().toISOString()
+      }
     })
   });
 
