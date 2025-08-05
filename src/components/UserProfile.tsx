@@ -178,17 +178,15 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          body: {
-            event: "delete_account",
-            userId: user.id,
-            email: user.email,
-            name: user.name,
-            category: user.category,
-            plan: user.plan,
-            messagesUsed: user.messagesUsed,
-            messageLimit: user.messageLimit,
-            timestamp: new Date().toISOString()
-          }
+          event: "delete_account",
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+          category: user.category,
+          plan: user.plan,
+          messagesUsed: user.messagesUsed,
+          messageLimit: user.messageLimit,
+          timestamp: new Date().toISOString()
         })
       });
 
