@@ -165,6 +165,62 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
     }
   };
 
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm('האם אתה בטוח שברצונך למחוק את החשבון? פעולה זו אינה ניתנת לביטול.');
+    
+    if (!confirmed) return;
+
+    setIsLoading(true);
+    
+    try {
+      // שליחת נתוני המשתמש לוובהוק מחיקת חשבון
+      const response = await fetch('https://n8n.smartbiz.org.il/webhook/delet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          body: {
+            event: "delete_account",
+            userId: user.id,
+            email: user.email,
+            name: user.name,
+            category: user.category,
+            plan: user.plan,
+            messagesUsed: user.messagesUsed,
+            messageLimit: user.messageLimit,
+            timestamp: new Date().toISOString()
+          }
+        })
+      });
+
+      if (response.ok) {
+        // ניקוי הנתונים המקומיים
+        localStorage.removeItem(`lovable_conversations_${user.id}`);
+        localStorage.removeItem('lovable_user');
+        localStorage.removeItem('lovable_chat_history');
+        
+        toast({
+          title: "החשבון נמחק",
+          description: "החשבון נמחק בהצלחה מהמערכת"
+        });
+        
+        // חזרה לדף הבית
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+      } else {
+        throw new Error('שגיאה במחיקת החשבון');
+      }
+    } catch (error) {
+      toast({
+        title: "שגיאה",
+        description: "נכשל במחיקת החשבון. נסה שנית מאוחר יותר",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className={`min-h-screen premium-gradient flex items-center justify-center p-6 ${isDarkMode ? 'dark' : ''}`} dir="rtl">
       <Card className={`w-full max-w-4xl shadow-2xl backdrop-blur-xl ${
@@ -426,13 +482,46 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                     </div>
                   </div>
                 </div>
-                <Switch
-                  checked={autoSave}
-                  onCheckedChange={setAutoSave}
-                />
-              </div>
-            </div>
-          </div>
+                 <Switch
+                   checked={autoSave}
+                   onCheckedChange={setAutoSave}
+                 />
+               </div>
+
+               {/* Delete Account Option */}
+               <div className={`p-4 rounded-lg border border-red-600/30 ${
+                 isDarkMode 
+                   ? 'bg-red-900/20' 
+                   : 'bg-red-50'
+               }`}>
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center space-x-3 space-x-reverse">
+                     <Trash2 className="w-5 h-5 text-red-500" />
+                     <div>
+                       <div className="font-medium text-red-600">מחיקת חשבון</div>
+                       <div className={`text-sm ${isDarkMode ? 'text-red-400/70' : 'text-red-600/70'}`}>
+                         מחק את החשבון לצמיתות - פעולה זו אינה ניתנת לביטול
+                       </div>
+                     </div>
+                   </div>
+                   <Button
+                     onClick={handleDeleteAccount}
+                     disabled={isLoading}
+                     variant="destructive"
+                     size="sm"
+                     className="bg-red-600 hover:bg-red-700 text-white"
+                   >
+                     {isLoading ? (
+                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2" />
+                     ) : (
+                       <Trash2 className="w-3 h-3 ml-1" />
+                     )}
+                     מחק חשבון
+                   </Button>
+                 </div>
+               </div>
+             </div>
+           </div>
 
           {/* Payment History */}
           <div>
