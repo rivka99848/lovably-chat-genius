@@ -477,23 +477,33 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   // Function to detect and fix image URLs
   const isImageUrl = (text: string): boolean => {
     if (!text) return false;
-    const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)$/i;
+    const trimmed = text.trim();
+    const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?[^/]*)?$/i;
     
-    // Check if it looks like an image URL (even if malformed)
-    if (imageExtensions.test(text.trim())) {
-      return true;
-    }
+    // First try to fix the URL and then check if it's valid
+    const fixedUrl = fixImageUrl(trimmed);
     
-    // Check for patterns that look like malformed image URLs
-    const malformedImagePattern = /https?[:\/]*[^\s]*\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i;
-    if (malformedImagePattern.test(text.trim())) {
-      return true;
-    }
-    
+    // Check if fixed URL is valid and has image extension
     try {
-      const url = new URL(text.trim());
+      const url = new URL(fixedUrl);
       return imageExtensions.test(url.pathname);
     } catch {
+      // If URL constructor still fails, check for image extension patterns anywhere in the text
+      if (imageExtensions.test(trimmed)) {
+        return true;
+      }
+      
+      // Check for malformed URLs with image extensions
+      const malformedImagePattern = /https?[:\/]*[^\s]*\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i;
+      if (malformedImagePattern.test(trimmed)) {
+        return true;
+      }
+      
+      // Special case: check if it contains "files" and image extension (common pattern)
+      if (trimmed.includes('files') && imageExtensions.test(trimmed) && /^https?[:\//]/.test(trimmed)) {
+        return true;
+      }
+      
       return false;
     }
   };
