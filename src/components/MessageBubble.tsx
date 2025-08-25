@@ -82,31 +82,10 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     const lines = content.split('\n');
     let currentSegment = { type: '', content: '', lines: [] as string[] };
     let inCodeBlock = false;
-    let codeBlockDepth = 0;
+    let htmlTagCount = 0;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      
-      // Check for HTML tag patterns to identify code blocks
-      const openTags = (line.match(/<[^\/][^>]*>/g) || []).length;
-      const closeTags = (line.match(/<\/[^>]*>/g) || []).length;
-      const selfClosingTags = (line.match(/<[^>]*\/>/g) || []).length;
-      
-      // Detect start of code block
-      if (!inCodeBlock && isCodeText(line)) {
-        inCodeBlock = true;
-        codeBlockDepth = 0;
-      }
-      
-      // Track HTML nesting depth
-      if (inCodeBlock) {
-        codeBlockDepth += (openTags - selfClosingTags - closeTags);
-      }
-      
-      // Determine if we're still in a code block
-      const isInCodeBlock = inCodeBlock && (codeBlockDepth > 0 || isCodeText(line) || 
-        (i > 0 && isCodeText(lines[i-1])) || 
-        (i < lines.length - 1 && isCodeText(lines[i+1])));
       
       // Skip empty lines
       if (!line.trim()) {
@@ -116,12 +95,43 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         continue;
       }
 
+      // Strong indicators that we're starting a code block
+      const isCodeStart = !inCodeBlock && (
+        /^(DOCTYPE|html|head|body|<html|<!DOCTYPE)/i.test(line.trim()) ||
+        /^<[a-zA-Z]/.test(line.trim()) ||
+        (isCodeText(line) && !isHebrewText(line))
+      );
+
+      // If we detect the start of a code block
+      if (isCodeStart) {
+        inCodeBlock = true;
+        htmlTagCount = 0;
+      }
+
+      // Track HTML tags if we're in a code block
+      if (inCodeBlock) {
+        const openTags = (line.match(/<[^\/!][^>]*>/g) || []).length;
+        const closeTags = (line.match(/<\/[^>]*>/g) || []).length;
+        htmlTagCount += (openTags - closeTags);
+      }
+
+      // Determine if we should end the code block
+      const shouldEndCodeBlock = inCodeBlock && (
+        htmlTagCount <= 0 && 
+        !isCodeText(line) && 
+        isHebrewText(line.replace(/<[^>]*>/g, '')) &&
+        (i === lines.length - 1 || 
+         (!isCodeText(lines[i + 1]) && isHebrewText(lines[i + 1])))
+      );
+
       let segmentType = 'text';
-      if (isInCodeBlock) {
+      if (inCodeBlock && !shouldEndCodeBlock) {
         segmentType = 'code';
       } else {
-        inCodeBlock = false;
-        codeBlockDepth = 0;
+        if (shouldEndCodeBlock) {
+          inCodeBlock = false;
+          htmlTagCount = 0;
+        }
         
         const lineIsHebrew = isHebrewText(line);
         if (lineIsHebrew) segmentType = 'hebrew';
