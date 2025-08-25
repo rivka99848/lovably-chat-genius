@@ -82,8 +82,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     const lines = content.split('\n');
     let currentSegment = { type: '', content: '', lines: [] as string[] };
     let inCodeBlock = false;
-    let codeBlockDepth = 0;
-    let consecutiveCodeLines = 0;
+    let codeBlockType = '';
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -96,72 +95,120 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         continue;
       }
 
-      const isCurrentLineCode = isCodeText(line);
-      const isCurrentLineHebrew = isHebrewText(line);
+      // Detect specific code block starts
+      let isCodeStart = false;
+      let detectedCodeType = '';
       
-      // Strong indicators for code block start
-      const isCodeStart = !inCodeBlock && (
-        // HTML document indicators
-        /^(<!DOCTYPE|<html|<head|<body)/i.test(line.trim()) ||
-        // Opening HTML/XML tags
-        /^<[a-zA-Z][^>]*>/.test(line.trim()) ||
-        // Programming constructs
-        /^(function|const|let|var|class|interface|import|export|if|for|while|def|CREATE|SELECT|INSERT|UPDATE|DELETE)\b/i.test(line.trim()) ||
-        // Multiple consecutive lines of code
-        (isCurrentLineCode && !isCurrentLineHebrew)
-      );
-
-      // Check upcoming lines for code continuity
-      let upcomingCodeLines = 0;
-      for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
-        if (lines[j].trim() && isCodeText(lines[j]) && !isHebrewText(lines[j])) {
-          upcomingCodeLines++;
+      if (!inCodeBlock) {
+        // HTML/XML documents
+        if (/^(<!DOCTYPE|<html|<HTML)/i.test(line.trim())) {
+          isCodeStart = true;
+          detectedCodeType = 'html';
+        }
+        // CSS
+        else if (/^(\s*[\w\-#.:\[\]]+\s*{|\s*@media|\s*@import|\s*\/\*)/i.test(line.trim())) {
+          isCodeStart = true;
+          detectedCodeType = 'css';
+        }
+        // JavaScript/TypeScript functions, variables, imports
+        else if (/^(function|const|let|var|class|interface|import|export|if|for|while|switch|try|catch)\b/i.test(line.trim())) {
+          isCodeStart = true;
+          detectedCodeType = 'javascript';
+        }
+        // SQL
+        else if (/^(CREATE|SELECT|INSERT|UPDATE|DELETE|ALTER|DROP|WITH|FROM|WHERE)\b/i.test(line.trim())) {
+          isCodeStart = true;
+          detectedCodeType = 'sql';
+        }
+        // Python
+        else if (/^(def|class|import|from|if __name__|print\(|return\b)/i.test(line.trim())) {
+          isCodeStart = true;
+          detectedCodeType = 'python';
+        }
+        // Shell/Terminal commands
+        else if (/^(\$|#|\w+@\w+:|\w+>\s*|npm\s+|cd\s+|git\s+|ls\s+|mkdir\s+)/i.test(line.trim())) {
+          isCodeStart = true;
+          detectedCodeType = 'shell';
+        }
+        // JSON
+        else if (/^(\s*{|\s*\[|\s*"[\w\-]+"\s*:)/i.test(line.trim())) {
+          isCodeStart = true;
+          detectedCodeType = 'json';
+        }
+        // XML or other tags
+        else if (/^<[a-zA-Z][^>]*>/.test(line.trim())) {
+          isCodeStart = true;
+          detectedCodeType = 'xml';
         }
       }
 
-      // Enhanced code block detection
-      if (isCodeStart || (isCurrentLineCode && upcomingCodeLines >= 1)) {
-        if (!inCodeBlock) {
-          inCodeBlock = true;
-          codeBlockDepth = 0;
-          consecutiveCodeLines = 0;
-        }
+      if (isCodeStart) {
+        inCodeBlock = true;
+        codeBlockType = detectedCodeType;
       }
 
-      // Track HTML/XML structure depth
-      if (inCodeBlock) {
-        const openTags = (line.match(/<[^\/!?][^>]*[^\/]>/g) || []).length;
-        const closeTags = (line.match(/<\/[^>]+>/g) || []).length;
-        const selfClosingTags = (line.match(/<[^>]*\/>/g) || []).length;
-        codeBlockDepth += (openTags - closeTags);
-        
-        if (isCurrentLineCode) {
-          consecutiveCodeLines++;
-        } else {
-          consecutiveCodeLines = 0;
-        }
-      }
-
-      // Determine if we should end the code block
+      // Determine if we should end the code block based on type
       let shouldEndCodeBlock = false;
       if (inCodeBlock) {
-        // Check for natural end of code block
-        const nextLine = i < lines.length - 1 ? lines[i + 1] : '';
-        const isNextLineHebrew = nextLine && isHebrewText(nextLine);
-        const isNextLineCode = nextLine && isCodeText(nextLine);
-        
-        shouldEndCodeBlock = (
-          // HTML/XML structure is complete
-          (codeBlockDepth <= 0 && /<\/html>|<\/body>|<\/head>/.test(line)) ||
-          // Current line is Hebrew and not part of code
-          (isCurrentLineHebrew && !isCurrentLineCode && consecutiveCodeLines === 0) ||
-          // Current line is Hebrew and next line is also Hebrew (end of code)
-          (isCurrentLineHebrew && isNextLineHebrew && !isNextLineCode) ||
-          // Current line doesn't look like code and next line is Hebrew
-          (!isCurrentLineCode && isNextLineHebrew) ||
-          // End of content
-          (i === lines.length - 1 && !isCurrentLineCode && isCurrentLineHebrew)
-        );
+        switch (codeBlockType) {
+          case 'html':
+            // End HTML when we see closing html tag or reach clear Hebrew text after complete structure
+            shouldEndCodeBlock = /<\/html>/i.test(line) || 
+              (/<\/body>|<\/head>/i.test(line) && i < lines.length - 1 && 
+               isHebrewText(lines[i + 1]) && !lines[i + 1].includes('<'));
+            break;
+            
+          case 'css':
+            // End CSS when we see unmatched closing brace followed by Hebrew
+            const openBraces = (line.match(/\{/g) || []).length;
+            const closeBraces = (line.match(/\}/g) || []).length;
+            shouldEndCodeBlock = closeBraces > 0 && i < lines.length - 1 && 
+              isHebrewText(lines[i + 1]) && !lines[i + 1].includes('{') && !lines[i + 1].includes(':');
+            break;
+            
+          case 'javascript':
+          case 'python':
+            // End when we reach clear Hebrew text that's not part of strings/comments
+            shouldEndCodeBlock = i < lines.length - 1 && 
+              isHebrewText(lines[i + 1]) && 
+              !lines[i + 1].includes('(') && 
+              !lines[i + 1].includes('{') && 
+              !lines[i + 1].includes('=') &&
+              !/^(function|const|let|var|class|if|for|while|def|return)/i.test(lines[i + 1]);
+            break;
+            
+          case 'sql':
+            // End SQL when we see semicolon followed by Hebrew
+            shouldEndCodeBlock = /;/.test(line) && i < lines.length - 1 && 
+              isHebrewText(lines[i + 1]) && 
+              !/^(CREATE|SELECT|INSERT|UPDATE|DELETE|WITH|FROM|WHERE)/i.test(lines[i + 1]);
+            break;
+            
+          case 'shell':
+            // End shell when we reach Hebrew that's not part of command
+            shouldEndCodeBlock = i < lines.length - 1 && 
+              isHebrewText(lines[i + 1]) && 
+              !/^(\$|#|\w+@\w+:|\w+>\s*|npm\s+|cd\s+|git\s+)/i.test(lines[i + 1]);
+            break;
+            
+          case 'json':
+            // End JSON when we see closing brace/bracket followed by Hebrew
+            shouldEndCodeBlock = /^\s*[\}\]]/.test(line) && i < lines.length - 1 && 
+              isHebrewText(lines[i + 1]) && !lines[i + 1].includes('"');
+            break;
+            
+          case 'xml':
+            // End XML when we see closing tag followed by Hebrew
+            shouldEndCodeBlock = /<\/[^>]+>/.test(line) && i < lines.length - 1 && 
+              isHebrewText(lines[i + 1]) && !lines[i + 1].includes('<');
+            break;
+            
+          default:
+            // Default: end when we reach clear Hebrew text
+            shouldEndCodeBlock = i < lines.length - 1 && 
+              isHebrewText(lines[i + 1]) && 
+              !isCodeText(lines[i + 1]);
+        }
       }
 
       let segmentType = 'text';
@@ -170,13 +217,11 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       } else {
         if (shouldEndCodeBlock) {
           inCodeBlock = false;
-          codeBlockDepth = 0;
-          consecutiveCodeLines = 0;
+          codeBlockType = '';
         }
         
-        if (isCurrentLineHebrew) {
-          segmentType = 'hebrew';
-        }
+        const lineIsHebrew = isHebrewText(line);
+        if (lineIsHebrew) segmentType = 'hebrew';
       }
 
       // If this is a new segment type, finish the current one and start new
