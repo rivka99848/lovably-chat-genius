@@ -4,6 +4,7 @@ import { X, Code, Eye, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Props {
   code: string;
@@ -19,17 +20,17 @@ const CodePreview: React.FC<Props> = ({ code, onClose }) => {
     const codeBlocks = code.match(/```[\s\S]*?```/g) || [];
     let combinedCode = '';
 
-    codeBlocks.forEach(block => {
+    codeBlocks.forEach((block: string) => {
       const codeContent = block.slice(3, -3).trim();
       const lines = codeContent.split('\n');
-      const language = lines[0].includes(' ') ? '' : lines[0];
+      const language = lines[0]?.includes(' ') ? '' : lines[0] || '';
       const actualCode = language ? lines.slice(1).join('\n') : codeContent;
       
-      if (language === 'html' || actualCode.includes('<html') || actualCode.includes('<!DOCTYPE')) {
-        combinedCode = actualCode;
-      } else if (actualCode.includes('<') && (actualCode.includes('div') || actualCode.includes('span'))) {
-        // Wrap HTML fragments
-        combinedCode = `
+        if (language === 'html' || actualCode.includes('<html') || actualCode.includes('<!DOCTYPE')) {
+          combinedCode = actualCode;
+        } else if (actualCode.includes('<') && (actualCode.includes('div') || actualCode.includes('span'))) {
+          // Wrap HTML fragments
+          combinedCode = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -45,9 +46,9 @@ const CodePreview: React.FC<Props> = ({ code, onClose }) => {
 ${actualCode}
 </body>
 </html>`;
-      } else if (actualCode.includes('function') || actualCode.includes('const') || actualCode.includes('class')) {
-        // JavaScript/React code - create a simple demo
-        combinedCode = `
+        } else if (actualCode.includes('function') || actualCode.includes('const') || actualCode.includes('class')) {
+          // JavaScript/React code - create a simple demo
+          combinedCode = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -74,7 +75,7 @@ ${actualCode}
     </script>
 </body>
 </html>`;
-      }
+        }
     });
 
     setPreviewContent(combinedCode);
@@ -93,8 +94,8 @@ ${actualCode}
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-6xl h-5/6 bg-white flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
+      <Card className="w-full max-w-6xl h-5/6 bg-white flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold text-gray-800">Code Preview</h2>
@@ -110,8 +111,8 @@ ${actualCode}
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+        <div className="flex-1 p-4 overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col overflow-hidden">
             <TabsList className="mb-4">
               <TabsTrigger value="preview" className="flex items-center">
                 <Eye className="w-4 h-4 mr-1" />
@@ -123,17 +124,17 @@ ${actualCode}
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="preview" className="flex-1">
+            <TabsContent value="preview" className="flex-1 h-full">
               <div className="h-full border rounded-lg overflow-hidden bg-white">
                 {previewContent ? (
                   <iframe
                     srcDoc={previewContent}
-                    className="w-full h-full border-0"
+                    className="w-full h-full border-0 min-h-[600px]"
                     sandbox="allow-scripts allow-same-origin"
                     title="Code Preview"
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
+                  <div className="flex items-center justify-center h-full text-gray-500 min-h-[400px]">
                     <div className="text-center">
                       <Code className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>No previewable code found</p>
@@ -144,12 +145,14 @@ ${actualCode}
               </div>
             </TabsContent>
 
-            <TabsContent value="code" className="flex-1">
+            <TabsContent value="code" className="flex-1 overflow-hidden">
               <div className="h-full border rounded-lg overflow-hidden">
-                <div className="h-full bg-gray-900 text-gray-100 p-4 overflow-auto">
-                  <pre className="text-sm">
-                    <code>{previewContent || code}</code>
-                  </pre>
+                <div className="h-full bg-gray-900 text-gray-100 overflow-auto">
+                  <div className="p-4">
+                    <pre className="text-sm whitespace-pre-wrap break-words">
+                      <code className="block">{previewContent || code}</code>
+                    </pre>
+                  </div>
                 </div>
               </div>
             </TabsContent>
