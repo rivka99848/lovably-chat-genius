@@ -150,64 +150,71 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       // Determine if we should end the code block based on type
       let shouldEndCodeBlock = false;
       if (inCodeBlock) {
+        const nextLine = i < lines.length - 1 ? lines[i + 1] : '';
+        const isNextLineHebrew = nextLine && isHebrewText(nextLine);
+        const isCurrentLineHebrew = isHebrewText(line);
+        
         switch (codeBlockType) {
           case 'html':
-            // End HTML when we see closing html tag or reach clear Hebrew text after complete structure
+            // End HTML when we see closing html tag OR when we reach clear Hebrew text that's not part of HTML
             shouldEndCodeBlock = /<\/html>/i.test(line) || 
-              (/<\/body>|<\/head>/i.test(line) && i < lines.length - 1 && 
-               isHebrewText(lines[i + 1]) && !lines[i + 1].includes('<'));
+              (/<\/body>/i.test(line) && isNextLineHebrew && !nextLine.includes('<')) ||
+              (line.trim().endsWith('>') && isNextLineHebrew && 
+               !nextLine.includes('<') && !nextLine.includes('=') && 
+               isCurrentLineHebrew && line.length > 20); // Long Hebrew line after HTML suggests end
             break;
             
           case 'css':
             // End CSS when we see unmatched closing brace followed by Hebrew
             const openBraces = (line.match(/\{/g) || []).length;
             const closeBraces = (line.match(/\}/g) || []).length;
-            shouldEndCodeBlock = closeBraces > 0 && i < lines.length - 1 && 
-              isHebrewText(lines[i + 1]) && !lines[i + 1].includes('{') && !lines[i + 1].includes(':');
+            shouldEndCodeBlock = closeBraces > 0 && isNextLineHebrew && 
+              !nextLine.includes('{') && !nextLine.includes(':');
             break;
             
           case 'javascript':
           case 'python':
             // End when we reach clear Hebrew text that's not part of strings/comments
-            shouldEndCodeBlock = i < lines.length - 1 && 
-              isHebrewText(lines[i + 1]) && 
-              !lines[i + 1].includes('(') && 
-              !lines[i + 1].includes('{') && 
-              !lines[i + 1].includes('=') &&
-              !/^(function|const|let|var|class|if|for|while|def|return)/i.test(lines[i + 1]);
+            shouldEndCodeBlock = isNextLineHebrew && 
+              !nextLine.includes('(') && 
+              !nextLine.includes('{') && 
+              !nextLine.includes('=') &&
+              !/^(function|const|let|var|class|if|for|while|def|return)/i.test(nextLine);
             break;
             
           case 'sql':
             // End SQL when we see semicolon followed by Hebrew
-            shouldEndCodeBlock = /;/.test(line) && i < lines.length - 1 && 
-              isHebrewText(lines[i + 1]) && 
-              !/^(CREATE|SELECT|INSERT|UPDATE|DELETE|WITH|FROM|WHERE)/i.test(lines[i + 1]);
+            shouldEndCodeBlock = /;/.test(line) && isNextLineHebrew && 
+              !/^(CREATE|SELECT|INSERT|UPDATE|DELETE|WITH|FROM|WHERE)/i.test(nextLine);
             break;
             
           case 'shell':
             // End shell when we reach Hebrew that's not part of command
-            shouldEndCodeBlock = i < lines.length - 1 && 
-              isHebrewText(lines[i + 1]) && 
-              !/^(\$|#|\w+@\w+:|\w+>\s*|npm\s+|cd\s+|git\s+)/i.test(lines[i + 1]);
+            shouldEndCodeBlock = isNextLineHebrew && 
+              !/^(\$|#|\w+@\w+:|\w+>\s*|npm\s+|cd\s+|git\s+)/i.test(nextLine);
             break;
             
           case 'json':
             // End JSON when we see closing brace/bracket followed by Hebrew
-            shouldEndCodeBlock = /^\s*[\}\]]/.test(line) && i < lines.length - 1 && 
-              isHebrewText(lines[i + 1]) && !lines[i + 1].includes('"');
+            shouldEndCodeBlock = /^\s*[\}\]]/.test(line) && isNextLineHebrew && 
+              !nextLine.includes('"');
             break;
             
           case 'xml':
             // End XML when we see closing tag followed by Hebrew
-            shouldEndCodeBlock = /<\/[^>]+>/.test(line) && i < lines.length - 1 && 
-              isHebrewText(lines[i + 1]) && !lines[i + 1].includes('<');
+            shouldEndCodeBlock = /<\/[^>]+>/.test(line) && isNextLineHebrew && 
+              !nextLine.includes('<');
             break;
             
           default:
-            // Default: end when we reach clear Hebrew text
-            shouldEndCodeBlock = i < lines.length - 1 && 
-              isHebrewText(lines[i + 1]) && 
-              !isCodeText(lines[i + 1]);
+            // Default: end when we reach clear Hebrew text that doesn't look like code
+            shouldEndCodeBlock = isNextLineHebrew && !isCodeText(nextLine);
+        }
+        
+        // Additional check: if current line has Hebrew and looks like descriptive text, end the code block
+        if (!shouldEndCodeBlock && isCurrentLineHebrew && line.length > 30 && 
+            !line.includes('<') && !line.includes('=') && !line.includes('{') && !line.includes('}')) {
+          shouldEndCodeBlock = true;
         }
       }
 
