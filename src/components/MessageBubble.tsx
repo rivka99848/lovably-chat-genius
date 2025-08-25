@@ -580,6 +580,20 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
               <Code className="w-4 h-4" />
             </button>
           )}
+
+          {contentTypes.hasHTMLTags && (
+            <button
+              onClick={() => setShowPreview(true)}
+              className={`p-2 rounded-md transition-colors ${
+                isDarkMode 
+                  ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50' 
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }`}
+              title="תצוגה מקדימה"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )}
 
