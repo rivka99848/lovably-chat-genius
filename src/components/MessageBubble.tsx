@@ -520,9 +520,11 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     const lines = text.split('\n');
     
     return lines.map((line, lineIndex) => {
-      // Check if line is an image URL
-      if (isImageUrl(line.trim())) {
-        const fixedUrl = fixImageUrl(line.trim());
+      const trimmedLine = line.trim();
+      
+      // Check if line is an image URL (entire line or just contains URL)
+      if (isImageUrl(trimmedLine)) {
+        const fixedUrl = fixImageUrl(trimmedLine);
         return (
           <div key={lineIndex} className="mb-4">
             <img 
@@ -535,10 +537,42 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                 const target = e.target as HTMLImageElement;
                 const parent = target.parentElement;
                 if (parent) {
-                  parent.innerHTML = `<span class="text-blue-500 underline">${line.trim()}</span>`;
+                  parent.innerHTML = `<span class="text-blue-500 underline">${trimmedLine}</span>`;
                 }
               }}
             />
+          </div>
+        );
+      }
+      
+      // Check if line contains an image URL within text
+      const imageUrlPattern = /(https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|svg|bmp|ico))/gi;
+      const matches = trimmedLine.match(imageUrlPattern);
+      
+      if (matches && matches.length > 0) {
+        // Replace each image URL with an img tag
+        return (
+          <div key={lineIndex} className="mb-4">
+            {matches.map((url, urlIndex) => {
+              const fixedUrl = fixImageUrl(url);
+              return (
+                <div key={urlIndex} className="mb-2">
+                  <img 
+                    src={fixedUrl} 
+                    alt="תמונה מהבוט"
+                    className="max-w-full h-auto rounded-lg shadow-md"
+                    style={{ maxHeight: '400px' }}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<span class="text-blue-500 underline">${url}</span>`;
+                      }
+                    }}
+                  />
+                </div>
+              );
+            })}
           </div>
         );
       }
