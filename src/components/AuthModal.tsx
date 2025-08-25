@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, User, Sparkles, Lock, Eye, EyeOff, Moon, Sun } from 'lucide-react';
+import { Mail, User, Sparkles, Lock, Eye, EyeOff, Moon, Sun, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -21,31 +21,124 @@ const categories = [
 
 const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   const [isSignUp, setIsSignUp] = useState(true);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [isPasswordReset, setIsPasswordReset] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
+  const WEBHOOK_URL = 'https://n8n.smartbiz.org.il/webhook/login';
+
+  const sendWebhook = async (userData: any) => {
+    try {
+      await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        mode: 'no-cors',
+        body: JSON.stringify({
+          ...userData,
+          timestamp: new Date().toISOString(),
+          action: 'user_registration'
+        }),
+      });
+      console.log('נתונים נשלחו לוובהוק בהצלחה');
+    } catch (error) {
+      console.error('שגיאה בשליחת הוובהוק:', error);
+    }
+  };
+
+  const sendPasswordResetWebhook = async (resetEmail: string) => {
+    try {
+      // יצירת קישור אישי לאיפוס סיסמה
+      const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const resetLink = `${window.location.origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(resetEmail)}`;
+      
+      console.log('שולח בקשה לוובהוק:', {
+        url: 'https://n8n.smartbiz.org.il/webhook/password',
+        email: resetEmail,
+        resetLink: resetLink
+      });
+      
+      const requestData = {
+        "event": "password_reset_request",
+        "user": {
+          "email": resetEmail,
+          "reset_token": resetToken,
+          "reset_link": resetLink
+        },
+        "request_info": {
+          "timestamp": new Date().toISOString(),
+          "action": "password_reset",
+          "source": "auth_modal",
+          "user_agent": navigator.userAgent,
+          "origin": window.location.origin
+        },
+        "webhook_version": "1.0"
+      };
+      
+      console.log('JSON Data to send:', JSON.stringify(requestData, null, 2));
+      
+      const response = await fetch('https://n8n.smartbiz.org.il/webhook/c23a573f-06bf-4393-af56-e5388709a5ca', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestData, null, 2),
+      });
+      
+      console.log('תשובה מהוובהוק:', {
+        status: response.status,
+        statusText: response.statusText,
+        type: response.type
+      });
+      
+      if (response.ok) {
+        const result = await response.text();
+        console.log('תוכן התשובה:', result);
+        
+        if (result === 'true') {
+          setError('הוראות איפוס הסיסמא נשלחו לכתובת המייל שלכם');
+        } else if (result === 'false') {
+          setError('כתובת המייל לא נמצאה במערכת. אנא ודאו שהכתובת נכונה או הירשמו מחדש.');
+        } else {
+          setError('הוראות איפוס הסיסמא נשלחו לכתובת המייל שלכם');
+        }
+      } else {
+        throw new Error(`שגיאת שרת: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('שגיאה בשליחת בקשת איפוס סיסמא:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isSignUp && currentStep === 1) {
-      if (!email || !password) return;
-      setCurrentStep(2);
-      return;
-    }
-
-    if (!email || !password || (isSignUp && (!name || !selectedCategory))) return;
+    if (!email || !password || (isSignUp && (!name || !phone || !selectedCategory))) return;
 
     setIsLoading(true);
     setError('');
 
     try {
+      if (isSignUp) {
+        await sendWebhook({
+          email,
+          name,
+          phone,
+          category: selectedCategory,
+          isSignUp: true
+        });
+      }
+      
       await onAuth(email, name, selectedCategory, isSignUp, password);
     } catch (err: any) {
       setError(err.message || 'שגיאה בהתחברות');
@@ -68,32 +161,57 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
   };
 
   const resetForm = () => {
-    setCurrentStep(1);
     setEmail('');
     setPassword('');
     setName('');
+    setPhone('');
     setSelectedCategory('');
     setError('');
   };
 
   const switchMode = () => {
     setIsSignUp(!isSignUp);
+    setIsPasswordReset(false);
     resetForm();
   };
 
-  const goBack = () => {
-    if (currentStep === 2) {
-      setCurrentStep(1);
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email) return;
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await sendPasswordResetWebhook(email);
+    } catch (err: any) {
+      setError('שגיאה בשליחת בקשת איפוס הסיסמא');
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const goToPasswordReset = () => {
+    setIsPasswordReset(true);
+    setIsSignUp(false);
+    resetForm();
+  };
+
+  const goBackToLogin = () => {
+    setIsPasswordReset(false);
+    setIsSignUp(false);
+    resetForm();
   };
 
   return (
     <div className={`min-h-screen premium-gradient flex items-center justify-center p-6 ${isDarkMode ? 'dark' : ''}`} dir="rtl">
-      <Card className={`w-full max-w-md p-8 shadow-2xl backdrop-blur-xl ${
-        isDarkMode 
-          ? 'bg-gray-900/90 border-gray-700/50 text-white' 
-          : 'bg-white/95 border-gray-200 text-gray-900'
-      }`}>
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <Card className={`p-8 shadow-2xl backdrop-blur-xl ${
+          isDarkMode 
+            ? 'bg-gray-900/90 border-gray-700/50 text-white' 
+            : 'bg-white/95 border-gray-200 text-gray-900'
+        }`}>
         <div className="text-center mb-8">
           <div className="flex justify-between items-center mb-4">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-full">
@@ -111,13 +229,14 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             </button>
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent mb-2">
-            ברוכים הבאים לבוט המסונן שלנו
+            {isPasswordReset ? 'איפוס סיסמא' : 'ברוכים הבאים לבוט המסונן שלנו'}
           </h1>
           <p className={isDarkMode ? 'text-white/70' : 'text-gray-600'}>
-            {isSignUp 
-              ? (currentStep === 1 ? 'הזינו את פרטי ההרשמה שלכם' : 'השלימו את פרטי הפרופיל שלכם')
-              : 'התחברו כדי להמשיך'
-            }
+            {isPasswordReset 
+              ? 'הזינו את כתובת המייל שלכם ונשלח לכם הוראות איפוס' 
+              : isSignUp 
+              ? 'הזינו את כל פרטי ההרשמה שלכם' 
+              : 'התחברו כדי להמשיך'}
           </p>
         </div>
 
@@ -131,29 +250,29 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {(!isSignUp || currentStep === 1) && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="email" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>כתובת אימייל</Label>
-                <div className="relative">
-                  <Mail className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="הכניסו את האימייל שלכם"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={`pr-10 py-3 text-right backdrop-blur-sm ${
-                      isDarkMode 
-                        ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
-                        : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
-                    }`}
-                    required
-                  />
-                </div>
-              </div>
+        <form onSubmit={isPasswordReset ? handlePasswordReset : handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="email" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>כתובת אימייל</Label>
+            <div className="relative">
+              <Mail className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
+              <Input
+                id="email"
+                type="email"
+                placeholder="הכניסו את האימייל שלכם"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={`pr-10 py-3 text-right backdrop-blur-sm ${
+                  isDarkMode 
+                    ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
+                    : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
+                }`}
+                required
+              />
+            </div>
+          </div>
 
+          {!isPasswordReset && (
+            <>
               <div className="space-y-2">
                 <Label htmlFor="password" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>סיסמה</Label>
                 <div className="relative">
@@ -179,11 +298,27 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                
+                {!isSignUp && (
+                  <div className="text-left">
+                    <button
+                      type="button"
+                      onClick={goToPasswordReset}
+                      className={`text-sm transition-colors ${
+                        isDarkMode 
+                          ? 'text-blue-400 hover:text-blue-300' 
+                          : 'text-blue-600 hover:text-blue-700'
+                      }`}
+                    >
+                      שכחתי סיסמא
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
 
-          {isSignUp && currentStep === 2 && (
+          {isSignUp && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="name" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>שם מלא</Label>
@@ -195,6 +330,26 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
                     placeholder="הכניסו את השם המלא שלכם"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    className={`pr-10 py-3 text-right backdrop-blur-sm ${
+                      isDarkMode 
+                        ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
+                        : 'bg-gray-50 border-gray-200 focus:border-green-500 text-gray-900 placeholder-gray-500'
+                    }`}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone" className={isDarkMode ? 'text-white/70' : 'text-gray-700'}>מספר טלפון</Label>
+                <div className="relative">
+                  <Phone className={`absolute right-3 top-3 w-4 h-4 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`} />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="הכניסו את מספר הטלפון שלכם"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                     className={`pr-10 py-3 text-right backdrop-blur-sm ${
                       isDarkMode 
                         ? 'bg-white/10 border-white/20 focus:border-green-400 text-white placeholder-white/50' 
@@ -231,43 +386,23 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
                   הקטגוריה הזו תהיה קבועה עבור החשבון שלכם
                 </p>
               </div>
+
             </>
           )}
 
           <div className="space-y-3">
-            {isSignUp && currentStep === 2 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={goBack}
-                className={`w-full py-3 ${
-                  isDarkMode 
-                    ? 'bg-transparent border-white/20 text-white hover:bg-white/10' 
-                    : 'bg-transparent border-gray-200 text-gray-900 hover:bg-gray-50'
-                }`}
-                disabled={isLoading}
-              >
-                חזור
-              </Button>
-            )}
-
             <Button
               type="submit"
               className="w-full py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium border-0"
-              disabled={isLoading || !email || !password || (isSignUp && currentStep === 2 && (!name || !selectedCategory))}
+              disabled={isLoading || !email || (!isPasswordReset && !password) || (isSignUp && (!name || !phone || !selectedCategory))}
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2"></div>
-                  {isSignUp 
-                    ? (currentStep === 1 ? 'בודק...' : 'יוצר חשבון...')
-                    : 'מתחבר...'
-                  }
+                  {isPasswordReset ? 'שולח מייל...' : isSignUp ? 'יוצר חשבון...' : 'מתחבר...'}
                 </div>
               ) : (
-                isSignUp 
-                  ? (currentStep === 1 ? 'המשך' : 'צור חשבון')
-                  : 'התחבר'
+                isPasswordReset ? 'שלח מייל לאיפוס' : isSignUp ? 'צור חשבון' : 'התחבר'
               )}
             </Button>
 
@@ -310,18 +445,33 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
           </div>
         </form>
 
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={switchMode}
-            className={`text-sm transition-colors ${
-              isDarkMode 
-                ? 'text-white/60 hover:text-green-400' 
-                : 'text-gray-600 hover:text-green-600'
-            }`}
-          >
-            {isSignUp ? 'יש לכם כבר חשבון? התחברו' : 'אין לכם חשבון? הירשמו'}
-          </button>
+        <div className="mt-6 text-center space-y-2">
+          {!isPasswordReset ? (
+            <button
+              type="button"
+              onClick={switchMode}
+              className={`text-sm transition-colors ${
+                isDarkMode 
+                  ? 'text-white/60 hover:text-green-400' 
+                  : 'text-gray-600 hover:text-green-600'
+              }`}
+            >
+              {isSignUp ? 'יש לכם כבר חשבון? התחברו' : 'אין לכם חשבון? הירשמו'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={goBackToLogin}
+              className={`text-sm transition-colors ${
+                isDarkMode 
+                  ? 'text-white/60 hover:text-green-400' 
+                  : 'text-gray-600 hover:text-green-600'
+              }`}
+            >
+              חזרה להתחברות
+            </button>
+          )}
+          
         </div>
 
         <div className={`mt-8 pt-6 border-t ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
@@ -336,7 +486,8 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
             </div>
           </div>
         </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 };

@@ -30,6 +30,7 @@ interface User {
   id: string;
   email: string;
   name: string;
+  phone?: string;
   category: string;
   plan: 'free' | 'pro' | 'enterprise';
   messagesUsed: number;
@@ -86,6 +87,8 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
       const paymentParams = new URLSearchParams({
         userId: user.id,
         userEmail: user.email,
+        userName: user.name,
+        userPhone: user.phone || '',
         packageId: packageData.id,
         packageName: packageData.name,
         packagePrice: packageData.price.toString(),
