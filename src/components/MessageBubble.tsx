@@ -81,9 +81,32 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     const segments = [];
     const lines = content.split('\n');
     let currentSegment = { type: '', content: '', lines: [] as string[] };
+    let inCodeBlock = false;
+    let codeBlockDepth = 0;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      
+      // Check for HTML tag patterns to identify code blocks
+      const openTags = (line.match(/<[^\/][^>]*>/g) || []).length;
+      const closeTags = (line.match(/<\/[^>]*>/g) || []).length;
+      const selfClosingTags = (line.match(/<[^>]*\/>/g) || []).length;
+      
+      // Detect start of code block
+      if (!inCodeBlock && isCodeText(line)) {
+        inCodeBlock = true;
+        codeBlockDepth = 0;
+      }
+      
+      // Track HTML nesting depth
+      if (inCodeBlock) {
+        codeBlockDepth += (openTags - selfClosingTags - closeTags);
+      }
+      
+      // Determine if we're still in a code block
+      const isInCodeBlock = inCodeBlock && (codeBlockDepth > 0 || isCodeText(line) || 
+        (i > 0 && isCodeText(lines[i-1])) || 
+        (i < lines.length - 1 && isCodeText(lines[i+1])));
       
       // Skip empty lines
       if (!line.trim()) {
@@ -93,12 +116,16 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         continue;
       }
 
-      const lineIsCode = isCodeText(line);
-      const lineIsHebrew = isHebrewText(line);
-      
       let segmentType = 'text';
-      if (lineIsCode) segmentType = 'code';
-      else if (lineIsHebrew) segmentType = 'hebrew';
+      if (isInCodeBlock) {
+        segmentType = 'code';
+      } else {
+        inCodeBlock = false;
+        codeBlockDepth = 0;
+        
+        const lineIsHebrew = isHebrewText(line);
+        if (lineIsHebrew) segmentType = 'hebrew';
+      }
 
       // If this is a new segment type, finish the current one and start new
       if (currentSegment.type && currentSegment.type !== segmentType) {
