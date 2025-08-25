@@ -152,15 +152,22 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       if (inCodeBlock) {
         switch (codeBlockType) {
           case 'html':
-            // End HTML when we see closing html tag
+            // End HTML only when we see closing html tag OR clear Hebrew text after complete HTML structure  
             if (/<\/html>/i.test(line)) {
               shouldEndCodeBlock = true;
             }
-            // Also check if we have clear Hebrew text after the current line
+            // End when we reach clear Hebrew text that's definitely not HTML
             else if (i < lines.length - 1) {
-              const nextLine = lines[i + 1];
-              if (isHebrewText(nextLine) && !nextLine.includes('<') && 
-                  !nextLine.includes('=') && !/<[^>]+>/.test(nextLine)) {
+              const nextLine = lines[i + 1].trim();
+              if (nextLine && isHebrewText(nextLine) && 
+                  !nextLine.includes('<') && 
+                  !nextLine.includes('>') && 
+                  !nextLine.includes('=') && 
+                  !nextLine.includes('"') && 
+                  !nextLine.includes('(') && 
+                  !nextLine.includes(')') &&
+                  !nextLine.includes('{') &&
+                  !nextLine.includes('}')) {
                 shouldEndCodeBlock = true;
               }
             }
