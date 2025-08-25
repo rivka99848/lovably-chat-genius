@@ -152,9 +152,17 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       if (inCodeBlock) {
         switch (codeBlockType) {
           case 'html':
-            // End HTML when we see closing html or body tag
-            if (/<\/(html|body)>/i.test(line)) {
-              shouldEndCodeBlock = true;
+            // End HTML when we see closing html or body tag, or clear completion patterns
+            if (/<\/(html|body)>/i.test(line) || 
+                (line.trim().endsWith('>') && i < lines.length - 1)) {
+              const nextLine = lines[i + 1].trim();
+              // If next line exists and doesn't look like HTML, end the block
+              if (nextLine && !nextLine.startsWith('<') && !nextLine.includes('=') && 
+                  !nextLine.includes('html') && !nextLine.includes('head') && 
+                  !nextLine.includes('body') && !nextLine.includes('script') && 
+                  !nextLine.includes('style')) {
+                shouldEndCodeBlock = true;
+              }
             }
             break;
             
