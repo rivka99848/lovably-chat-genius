@@ -29,11 +29,18 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     });
   };
 
-  // Function to detect text direction based on content
-  const detectTextDirection = (text: string): 'rtl' | 'ltr' => {
-    if (!text) return 'rtl';
+  // Function to detect if text is Hebrew
+  const isHebrewText = (text: string): boolean => {
+    if (!text) return false;
+    const hebrewChars = text.match(/[\u0590-\u05FF]/g) || [];
+    const totalChars = text.replace(/\s/g, '').length;
+    return totalChars > 0 && (hebrewChars.length / totalChars) > 0.3;
+  };
+
+  // Function to detect if text is code
+  const isCodeText = (text: string): boolean => {
+    if (!text) return false;
     
-    // If it's code (contains common programming patterns), always LTR
     const codePatterns = [
       /function\s*\(/,
       /const\s+\w+\s*=/,
@@ -54,30 +61,70 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       /window\./,
       /\w+\(\)/,
       /=>\s*{/,
-      /\[.*\]/,
-      /\{.*\}/,
       /DOCTYPE/,
       /html/,
       /head/,
       /body/,
       /meta/,
       /script/,
-      /style/
+      /style/,
+      /^[\$#]\s+/,
+      /^\w+@\w+:/,
+      /\w+\.\w+\(/
     ];
     
-    const hasCodePatterns = codePatterns.some(pattern => pattern.test(text));
-    if (hasCodePatterns) return 'ltr';
-    
-    // Count Hebrew characters
-    const hebrewChars = text.match(/[\u0590-\u05FF]/g) || [];
-    const totalChars = text.replace(/\s/g, '').length;
-    
-    // If more than 20% Hebrew characters, use RTL
-    if (totalChars > 0 && (hebrewChars.length / totalChars) > 0.2) {
-      return 'rtl';
+    return codePatterns.some(pattern => pattern.test(text));
+  };
+
+  // Function to parse content and separate Hebrew text from code
+  const parseContent = (content: string) => {
+    const segments = [];
+    const lines = content.split('\n');
+    let currentSegment = { type: '', content: '', lines: [] as string[] };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Skip empty lines
+      if (!line.trim()) {
+        if (currentSegment.lines.length > 0) {
+          currentSegment.lines.push(line);
+        }
+        continue;
+      }
+
+      const lineIsCode = isCodeText(line);
+      const lineIsHebrew = isHebrewText(line);
+      
+      let segmentType = 'text';
+      if (lineIsCode) segmentType = 'code';
+      else if (lineIsHebrew) segmentType = 'hebrew';
+
+      // If this is a new segment type, finish the current one and start new
+      if (currentSegment.type && currentSegment.type !== segmentType) {
+        if (currentSegment.lines.length > 0) {
+          segments.push({
+            type: currentSegment.type,
+            content: currentSegment.lines.join('\n').trim()
+          });
+        }
+        currentSegment = { type: segmentType, content: '', lines: [] };
+      } else if (!currentSegment.type) {
+        currentSegment.type = segmentType;
+      }
+
+      currentSegment.lines.push(line);
     }
-    
-    return 'ltr';
+
+    // Don't forget the last segment
+    if (currentSegment.lines.length > 0) {
+      segments.push({
+        type: currentSegment.type,
+        content: currentSegment.lines.join('\n').trim()
+      });
+    }
+
+    return segments;
   };
 
   const cleanContent = (content: string) => {
@@ -176,181 +223,93 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const formatContent = (content: string) => {
-    // Split content by code blocks first
-    const parts = content.split(/(```[\s\S]*?```)/g);
-    
-    return parts.map((part, index) => {
-      if (part.startsWith('```') && part.endsWith('```')) {
-        // This is a code block - use CodeBlock component
-        const codeContent = part.slice(3, -3).trim();
-        const lines = codeContent.split('\n');
-        const language = lines[0] && !lines[0].includes(' ') && lines[0].length < 20 ? lines[0] : '';
-        const code = language ? lines.slice(1).join('\n') : codeContent;
-        
-        return (
-          <CodeBlock 
-            key={index}
-            content={part}
-            language={language || 'code'}
-            isDarkMode={isDarkMode}
-          />
-        );
-      } else {
-        // This is regular text - check if it needs to be split between explanation and code
-        const separatedContent = separateExplanationFromCode(part);
-        
-        return (
-          <div key={index}>
-            {/* Explanation text */}
-            {separatedContent.explanation && (
-              <div className={`leading-relaxed text-base mb-4 ${
-                detectTextDirection(separatedContent.explanation) === 'rtl' ? 'text-right' : 'text-left'
-              }`} dir={detectTextDirection(separatedContent.explanation)}>
-                {formatPlainText(separatedContent.explanation)}
-              </div>
-            )}
-            
-            {/* Code section */}
-            {separatedContent.code && (
-              <div dir="ltr" className="text-left">
-                <CodeBlock 
-                  content={separatedContent.code}
-                  language="code"
-                  isDarkMode={isDarkMode}
-                />
-              </div>
-            )}
-          </div>
-        );
-      }
-    });
-  };
-
-  const separateExplanationFromCode = (text: string) => {
-    if (!text.trim()) return { explanation: text, code: '' };
-    
-    const lines = text.split('\n');
-    let codeStartIndex = -1;
-    
-    // מילות מפתח שמציינות התחלת קוד
-    const codeIndicators = [
-      /^bash\s*$/i,
-      /^[\$#]\s+/,  // פקודות שמתחילות ב-$ או #
-      /^npm\s+/i,
-      /^npx\s+/i,
-      /^cd\s+/i,
-      /^git\s+/i,
-      /^node\s+/i,
-      /^python\s+/i,
-      /^pip\s+/i,
-      /^yarn\s+/i,
-      /^curl\s+/i,
-      /^mkdir\s+/i,
-      /^touch\s+/i,
-      /^echo\s+/i,
-      /^cat\s+/i,
-      /^ls\s+/i,
-      /^cp\s+/i,
-      /^mv\s+/i,
-      /^rm\s+/i,
-      /^chmod\s+/i,
-      /^sudo\s+/i,
-      /^apt\s+/i,
-      /^yum\s+/i,
-      /^brew\s+/i,
-      /^docker\s+/i,
-      /^kubectl\s+/i,
-      /^ssh\s+/i,
-      /^scp\s+/i,
-      /^rsync\s+/i,
-      /^tar\s+/i,
-      /^zip\s+/i,
-      /^unzip\s+/i,
-      /^wget\s+/i,
-      /^^import\s+/i, // הצהרות import
-      /^from\s+.+\s+import/i,
-      /^const\s+/i,
-      /^let\s+/i,
-      /^var\s+/i,
-      /^function\s+/i,
-      /^class\s+/i,
-      /^interface\s+/i,
-      /^type\s+/i,
-      /^export\s+/i,
-      /^<[^>]+>/,  // HTML tags
-      /^\s*{/,     // JSON או object
-      /^\s*\[/,    // Array
-    ];
-    
-    // חפש את השורה הראשונה שמכילה קוד
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+    // First handle code blocks wrapped in ```
+    if (content.includes('```')) {
+      const parts = content.split(/(```[\s\S]*?```)/g);
       
-      // דלג על שורות ריקות
-      if (!line) continue;
-      
-      // בדוק אם השורה מתחילה עם אחד ממחווני הקוד
-      const isCodeLine = codeIndicators.some(pattern => pattern.test(line));
-      
-      if (isCodeLine) {
-        codeStartIndex = i;
-        break;
-      }
-      
-      // אם זה נראה כמו רשימה ממוספרת שמכילה קוד
-      const numberedListWithCode = line.match(/^\d+\.\s*(.+)$/);
-      if (numberedListWithCode) {
-        const listContent = numberedListWithCode[1];
-        const hasCodeInList = codeIndicators.some(pattern => pattern.test(listContent));
-        if (hasCodeInList) {
-          codeStartIndex = i;
-          break;
+      return parts.map((part, index) => {
+        if (part.startsWith('```') && part.endsWith('```')) {
+          const codeContent = part.slice(3, -3).trim();
+          const lines = codeContent.split('\n');
+          const language = lines[0] && !lines[0].includes(' ') && lines[0].length < 20 ? lines[0] : '';
+          const code = language ? lines.slice(1).join('\n') : codeContent;
+          
+          return (
+            <CodeBlock 
+              key={index}
+              content={part}
+              language={language || 'code'}
+              isDarkMode={isDarkMode}
+            />
+          );
+        } else {
+          // Parse this text part into segments
+          const segments = parseContent(part);
+          
+          return (
+            <div key={index}>
+              {segments.map((segment, segIndex) => {
+                if (segment.type === 'code') {
+                  return (
+                    <div key={segIndex} dir="ltr" className="text-left my-2">
+                      <CodeBlock 
+                        content={`\`\`\`\n${segment.content}\n\`\`\``}
+                        language="code"
+                        isDarkMode={isDarkMode}
+                      />
+                    </div>
+                  );
+                } else if (segment.type === 'hebrew') {
+                  return (
+                    <div key={segIndex} dir="rtl" className="text-right leading-relaxed text-base mb-4">
+                      {formatPlainText(segment.content)}
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div key={segIndex} dir="ltr" className="text-left leading-relaxed text-base mb-4">
+                      {formatPlainText(segment.content)}
+                    </div>
+                  );
+                }
+              })}
+            </div>
+          );
         }
-      }
+      });
+    } else {
+      // No code blocks, parse the entire content
+      const segments = parseContent(content);
+      
+      return segments.map((segment, index) => {
+        if (segment.type === 'code') {
+          return (
+            <div key={index} dir="ltr" className="text-left my-2">
+              <CodeBlock 
+                content={`\`\`\`\n${segment.content}\n\`\`\``}
+                language="code"
+                isDarkMode={isDarkMode}
+              />
+            </div>
+          );
+        } else if (segment.type === 'hebrew') {
+          return (
+            <div key={index} dir="rtl" className="text-right leading-relaxed text-base mb-4">
+              {formatPlainText(segment.content)}
+            </div>
+          );
+        } else {
+          return (
+            <div key={index} dir="ltr" className="text-left leading-relaxed text-base mb-4">
+              {formatPlainText(segment.content)}
+            </div>
+          );
+        }
+      });
     }
-    
-    if (codeStartIndex === -1) {
-      // לא נמצא קוד, החזר הכל כהסבר
-      return { explanation: text, code: '' };
-    }
-    
-    const explanation = lines.slice(0, codeStartIndex).join('\n').trim();
-    const code = lines.slice(codeStartIndex).join('\n').trim();
-    
-    return { explanation, code };
-  };
-
-  const detectAndWrapCodeContent = (text: string) => {
-    // Count code-like patterns
-    const codePatterns = [
-      /\$\s+[^\n]+/g, // Commands starting with $
-      /npm\s+[^\n]+/g, // npm commands
-      /cd\s+[^\n]+/g, // cd commands
-      /import\s+[^\n]+/g, // import statements
-      /const\s+[^\n]+/g, // const declarations
-      /function\s+[^\n]+/g, // function declarations
-      /\{[^}]*\}/g, // JSON-like objects
-      /\([^)]*\)/g, // Function calls
-    ];
-
-    let codeMatches = 0;
-    codePatterns.forEach(pattern => {
-      const matches = text.match(pattern) || [];
-      codeMatches += matches.length;
-    });
-
-    // If there are many code patterns, treat the whole thing as code
-    const shouldWrapAsCode = codeMatches > 3;
-    
-    return {
-      shouldWrapAsCode,
-      cleanCode: text.trim()
-    };
   };
 
   const formatPlainText = (text: string) => {
-    const textDir = detectTextDirection(text);
-    // Handle numbered lists (1. 2. 3. etc.)
     const lines = text.split('\n');
     
     return lines.map((line, lineIndex) => {
@@ -358,9 +317,10 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       const numberedListMatch = line.match(/^(\d+\.)\s*(.*)$/);
       
       if (numberedListMatch) {
+        const isHebrewLine = isHebrewText(numberedListMatch[2]);
         return (
-          <div key={lineIndex} className={`mb-2 flex ${textDir === 'rtl' ? 'flex-row-reverse text-right' : 'flex-row text-left'}`}>
-            <span className={`font-medium min-w-[2rem] ${textDir === 'rtl' ? 'mr-2' : 'ml-2'}`}>{numberedListMatch[1]}</span>
+          <div key={lineIndex} className={`mb-2 flex ${isHebrewLine ? 'flex-row-reverse text-right' : 'flex-row text-left'}`}>
+            <span className={`font-medium min-w-[2rem] ${isHebrewLine ? 'mr-2' : 'ml-2'}`}>{numberedListMatch[1]}</span>
             <span className="flex-1">{numberedListMatch[2]}</span>
           </div>
         );
@@ -370,7 +330,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       if (!line.trim()) return <br key={lineIndex} />;
       
       return (
-        <div key={lineIndex} className={`mb-2 ${textDir === 'rtl' ? 'text-right' : 'text-left'}`}>
+        <div key={lineIndex} className="mb-2">
           {line}
         </div>
       );
@@ -384,7 +344,6 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
   const processedContent = cleanContent(message.content);
   const contentTypes = detectContentType(processedContent);
-  const textDirection = detectTextDirection(processedContent);
 
   return (
     <div className="w-full mb-6">
@@ -441,7 +400,6 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                 const allCode = codeBlocks.map(block => {
                   const content = block.slice(3, -3).trim();
                   const lines = content.split('\n');
-                  // אם השורה הראשונה היא שפת התכנות, נדלג עליה
                   const isLanguageLine = lines[0] && !lines[0].includes(' ') && lines[0].length < 20;
                   return isLanguageLine ? lines.slice(1).join('\n') : content;
                 }).join('\n\n');
