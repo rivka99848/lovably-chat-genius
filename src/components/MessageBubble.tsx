@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Copy, Code, User, Bot, Eye } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import CodePreview from './CodePreview';
+import CodeBlock from './CodeBlock';
 
 interface Message {
   id: string;
@@ -129,64 +130,19 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     
     return parts.map((part, index) => {
       if (part.startsWith('```') && part.endsWith('```')) {
-        // This is a code block
+        // This is a code block - use CodeBlock component
         const codeContent = part.slice(3, -3).trim();
         const lines = codeContent.split('\n');
         const language = lines[0] && !lines[0].includes(' ') && lines[0].length < 20 ? lines[0] : '';
         const code = language ? lines.slice(1).join('\n') : codeContent;
         
         return (
-          <div key={index} className="my-4 relative group">
-            <div className={`rounded-lg border ${
-              isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
-            }`}>
-              {/* Header */}
-              <div className={`flex items-center justify-between px-4 py-3 border-b ${
-                isDarkMode 
-                  ? 'border-gray-700 text-gray-300' 
-                  : 'border-gray-200 text-gray-600'
-              }`}>
-                <span className="text-sm font-medium">
-                  {language || 'code'}
-                </span>
-                <div className="flex items-center space-x-2 space-x-reverse">
-                  {(language === 'html' || language === 'javascript' || language === 'js' || language === 'jsx' || language === 'tsx' || code.includes('<') || code.includes('function') || code.includes('const')) && (
-                    <button
-                      onClick={() => setShowPreview(true)}
-                      className={`p-2 rounded text-sm transition-colors ${
-                        isDarkMode 
-                          ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
-                          : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-                      }`}
-                      title="תצוגה מקדימה"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => copyToClipboard(code)}
-                    className={`p-2 rounded text-sm transition-colors ${
-                      isDarkMode 
-                        ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
-                        : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-                    }`}
-                    title="העתק קוד"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              
-              {/* Code */}
-              <div className="p-4 overflow-x-auto max-w-full">
-                <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
-                  isDarkMode ? 'text-gray-100' : 'text-gray-800'
-                }`}>
-                  <code className="block">{code}</code>
-                </pre>
-              </div>
-            </div>
-          </div>
+          <CodeBlock 
+            key={index}
+            content={part}
+            language={language || 'code'}
+            isDarkMode={isDarkMode}
+          />
         );
       } else {
         // This is regular text - check if it needs to be split between explanation and code
@@ -203,55 +159,11 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
             
             {/* Code section */}
             {separatedContent.code && (
-              <div className="my-4">
-                <div className={`rounded-lg border ${
-                  isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
-                }`}>
-                  {/* Header */}
-                  <div className={`flex items-center justify-between px-4 py-3 border-b ${
-                    isDarkMode 
-                      ? 'border-gray-700 text-gray-300' 
-                      : 'border-gray-200 text-gray-600'
-                  }`}>
-                    <span className="text-sm font-medium">code</span>
-                    <div className="flex items-center space-x-2 space-x-reverse">
-                      {(separatedContent.code.includes('<') || separatedContent.code.includes('function') || separatedContent.code.includes('const')) && (
-                        <button
-                          onClick={() => setShowPreview(true)}
-                          className={`p-2 rounded text-sm transition-colors ${
-                            isDarkMode 
-                              ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
-                              : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-                          }`}
-                          title="תצוגה מקדימה"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => copyToClipboard(separatedContent.code)}
-                        className={`p-2 rounded text-sm transition-colors ${
-                          isDarkMode 
-                            ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
-                            : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-                        }`}
-                        title="העתק קוד"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Code */}
-                  <div className="p-4 overflow-x-auto max-w-full">
-                    <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
-                      isDarkMode ? 'text-gray-100' : 'text-gray-800'
-                    }`}>
-                      <code className="block">{separatedContent.code}</code>
-                    </pre>
-                  </div>
-                </div>
-              </div>
+              <CodeBlock 
+                content={separatedContent.code}
+                language="code"
+                isDarkMode={isDarkMode}
+              />
             )}
           </div>
         );
