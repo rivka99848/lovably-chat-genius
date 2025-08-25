@@ -100,8 +100,8 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       let detectedCodeType = '';
       
       if (!inCodeBlock) {
-        // HTML/XML documents
-        if (/^(<!DOCTYPE|<html|<HTML)/i.test(line.trim())) {
+        // HTML/XML documents - including plain "html" start
+        if (/^(<!DOCTYPE|<html|<HTML|html\s*$|html$)/i.test(line.trim())) {
           isCodeStart = true;
           detectedCodeType = 'html';
         }
