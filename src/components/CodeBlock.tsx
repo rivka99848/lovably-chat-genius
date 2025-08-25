@@ -28,7 +28,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ content, language = 'code', isDar
   const processedCode = cleanCode(content);
 
   return (
-    <div className="my-4 relative group">
+    <div className="my-4 relative group" dir="ltr">
       <div className={`rounded-lg border ${
         isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
       }`}>
@@ -56,9 +56,9 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ content, language = 'code', isDar
         
         {/* Code */}
         <div className="p-4 overflow-x-auto max-w-full">
-          <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${
+          <pre className={`text-sm font-mono whitespace-pre-wrap break-words text-left ${
             isDarkMode ? 'text-gray-100' : 'text-gray-800'
-          }`}>
+          }`} dir="ltr">
             <code className="block">{processedCode}</code>
           </pre>
         </div>

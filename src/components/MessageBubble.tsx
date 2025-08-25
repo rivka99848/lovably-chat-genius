@@ -29,6 +29,50 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     });
   };
 
+  // Function to detect text direction based on content
+  const detectTextDirection = (text: string): 'rtl' | 'ltr' => {
+    if (!text) return 'ltr';
+    
+    // If it's code (contains common programming patterns), always LTR
+    const codePatterns = [
+      /function\s*\(/,
+      /const\s+\w+\s*=/,
+      /let\s+\w+\s*=/,
+      /var\s+\w+\s*=/,
+      /import\s+/,
+      /export\s+/,
+      /class\s+\w+/,
+      /interface\s+\w+/,
+      /\{\s*\w+:/,
+      /<\w+/,
+      /\$\s*\w+/,
+      /npm\s+/,
+      /cd\s+/,
+      /git\s+/,
+      /console\./,
+      /document\./,
+      /window\./,
+      /\w+\(\)/,
+      /=>\s*{/,
+      /\[.*\]/,
+      /\{.*\}/
+    ];
+    
+    const hasCodePatterns = codePatterns.some(pattern => pattern.test(text));
+    if (hasCodePatterns) return 'ltr';
+    
+    // Count Hebrew characters
+    const hebrewChars = text.match(/[\u0590-\u05FF]/g) || [];
+    const totalChars = text.replace(/\s/g, '').length;
+    
+    // If more than 30% Hebrew characters, use RTL
+    if (totalChars > 0 && (hebrewChars.length / totalChars) > 0.3) {
+      return 'rtl';
+    }
+    
+    return 'ltr';
+  };
+
   const cleanContent = (content: string) => {
     if (!content) return '';
     
@@ -152,18 +196,20 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
           <div key={index}>
             {/* Explanation text */}
             {separatedContent.explanation && (
-              <div className="leading-relaxed text-base mb-4">
+              <div className="leading-relaxed text-base mb-4" dir={detectTextDirection(separatedContent.explanation)}>
                 {formatPlainText(separatedContent.explanation)}
               </div>
             )}
             
             {/* Code section */}
             {separatedContent.code && (
-              <CodeBlock 
-                content={separatedContent.code}
-                language="code"
-                isDarkMode={isDarkMode}
-              />
+              <div dir="ltr">
+                <CodeBlock 
+                  content={separatedContent.code}
+                  language="code"
+                  isDarkMode={isDarkMode}
+                />
+              </div>
             )}
           </div>
         );
@@ -294,31 +340,36 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
   };
 
   const formatPlainText = (text: string) => {
+    const textDir = detectTextDirection(text);
     // Handle numbered lists (1. 2. 3. etc.)
     const lines = text.split('\n');
     
-    return lines.map((line, lineIndex) => {
-      // Check if line starts with number followed by dot
-      const numberedListMatch = line.match(/^(\d+\.)\s*(.*)$/);
-      
-      if (numberedListMatch) {
-        return (
-          <div key={lineIndex} className="mb-2 flex">
-            <span className="font-medium ml-2 min-w-[2rem]">{numberedListMatch[1]}</span>
-            <span className="flex-1">{numberedListMatch[2]}</span>
-          </div>
-        );
-      }
-      
-      // Regular line
-      if (!line.trim()) return <br key={lineIndex} />;
-      
-      return (
-        <div key={lineIndex} className="mb-2">
-          {line}
-        </div>
-      );
-    });
+    return (
+      <div dir={textDir} className={textDir === 'rtl' ? 'text-right' : 'text-left'}>
+        {lines.map((line, lineIndex) => {
+          // Check if line starts with number followed by dot
+          const numberedListMatch = line.match(/^(\d+\.)\s*(.*)$/);
+          
+          if (numberedListMatch) {
+            return (
+              <div key={lineIndex} className={`mb-2 flex ${textDir === 'rtl' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <span className={`font-medium min-w-[2rem] ${textDir === 'rtl' ? 'mr-2' : 'ml-2'}`}>{numberedListMatch[1]}</span>
+                <span className="flex-1">{numberedListMatch[2]}</span>
+              </div>
+            );
+          }
+          
+          // Regular line
+          if (!line.trim()) return <br key={lineIndex} />;
+          
+          return (
+            <div key={lineIndex} className="mb-2">
+              {line}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   const getFormattedTime = () => {
@@ -328,12 +379,13 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
 
   const processedContent = cleanContent(message.content);
   const contentTypes = detectContentType(processedContent);
+  const textDirection = detectTextDirection(processedContent);
 
   return (
-    <div className="w-full mb-6" dir="rtl">
+    <div className="w-full mb-6" dir={textDirection}>
       {/* Message Header - Only Icon and Time */}
-      <div className="flex items-center mb-2">
-        <div className="flex items-center space-x-2 space-x-reverse">
+      <div className={`flex items-center mb-2 ${textDirection === 'rtl' ? 'justify-start' : 'justify-start'}`}>
+        <div className={`flex items-center ${textDirection === 'rtl' ? 'space-x-2 space-x-reverse' : 'space-x-2'}`}>
           <div className={`p-1.5 rounded-full ${
             message.isUser 
               ? 'bg-green-500' 
@@ -358,13 +410,13 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       {/* Message Content */}
       <div className={`text-base leading-relaxed ${
         isDarkMode ? 'text-gray-100' : 'text-gray-800'
-      } mb-3`}>
+      } mb-3 ${textDirection === 'rtl' ? 'text-right' : 'text-left'}`} dir={textDirection}>
         {formatContent(processedContent)}
       </div>
 
       {/* Action Buttons for Bot Messages */}
       {!message.isUser && (
-        <div className="flex items-center space-x-3 space-x-reverse">
+        <div className={`flex items-center ${textDirection === 'rtl' ? 'space-x-3 space-x-reverse' : 'space-x-3'}`}>
           <button
             onClick={() => copyToClipboard(processedContent)}
             className={`p-2 rounded-md transition-colors ${
