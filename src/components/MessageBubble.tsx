@@ -474,10 +474,45 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     }
   };
 
+  // Function to detect if text is an image URL
+  const isImageUrl = (text: string): boolean => {
+    if (!text) return false;
+    const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)$/i;
+    try {
+      const url = new URL(text.trim());
+      return imageExtensions.test(url.pathname);
+    } catch {
+      // If not a valid URL, check if it's a path ending with image extension
+      return imageExtensions.test(text.trim());
+    }
+  };
+
   const formatPlainText = (text: string) => {
     const lines = text.split('\n');
     
     return lines.map((line, lineIndex) => {
+      // Check if line is an image URL
+      if (isImageUrl(line.trim())) {
+        return (
+          <div key={lineIndex} className="mb-4">
+            <img 
+              src={line.trim()} 
+              alt="תמונה מהבוט"
+              className="max-w-full h-auto rounded-lg shadow-md"
+              style={{ maxHeight: '400px' }}
+              onError={(e) => {
+                // If image fails to load, show the URL as text instead
+                const target = e.target as HTMLImageElement;
+                const parent = target.parentElement;
+                if (parent) {
+                  parent.innerHTML = `<span class="text-blue-500 underline">${line.trim()}</span>`;
+                }
+              }}
+            />
+          </div>
+        );
+      }
+      
       // Check if line starts with number followed by dot
       const numberedListMatch = line.match(/^(\d+\.)\s*(.*)$/);
       
