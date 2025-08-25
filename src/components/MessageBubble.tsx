@@ -484,6 +484,12 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       return true;
     }
     
+    // Check for patterns that look like malformed image URLs
+    const malformedImagePattern = /https?[:\/]*[^\s]*\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i;
+    if (malformedImagePattern.test(text.trim())) {
+      return true;
+    }
+    
     try {
       const url = new URL(text.trim());
       return imageExtensions.test(url.pathname);
@@ -507,10 +513,18 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     }
     
     // Fix domain without proper slash (e.g., "https://domain.comfiles..." should be "https://domain.com/files...")
-    const domainWithoutSlashPattern = /^(https?:\/\/[^\/]+)([^\/].*)/;
-    const match = fixed.match(domainWithoutSlashPattern);
-    if (match && !match[2].startsWith('/')) {
-      fixed = match[1] + '/' + match[2];
+    // More comprehensive pattern to handle various cases
+    const domainPattern = /^(https?:\/\/)([^\/]+)([^\/].*)/;
+    const match = fixed.match(domainPattern);
+    if (match) {
+      const protocol = match[1];
+      const domain = match[2];
+      const path = match[3];
+      
+      // If path doesn't start with slash, add it
+      if (!path.startsWith('/')) {
+        fixed = protocol + domain + '/' + path;
+      }
     }
     
     return fixed;
