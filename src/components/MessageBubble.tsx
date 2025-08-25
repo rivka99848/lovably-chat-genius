@@ -474,17 +474,46 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     }
   };
 
-  // Function to detect if text is an image URL
+  // Function to detect and fix image URLs
   const isImageUrl = (text: string): boolean => {
     if (!text) return false;
     const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)$/i;
+    
+    // Check if it looks like an image URL (even if malformed)
+    if (imageExtensions.test(text.trim())) {
+      return true;
+    }
+    
     try {
       const url = new URL(text.trim());
       return imageExtensions.test(url.pathname);
     } catch {
-      // If not a valid URL, check if it's a path ending with image extension
-      return imageExtensions.test(text.trim());
+      return false;
     }
+  };
+
+  // Function to fix malformed URLs
+  const fixImageUrl = (url: string): string => {
+    let fixed = url.trim();
+    
+    // Fix missing colon after https
+    if (fixed.startsWith('https:') && !fixed.startsWith('https://')) {
+      fixed = fixed.replace('https:', 'https://');
+    }
+    
+    // Fix missing colon after http  
+    if (fixed.startsWith('http:') && !fixed.startsWith('http://')) {
+      fixed = fixed.replace('http:', 'http://');
+    }
+    
+    // Fix domain without proper slash (e.g., "https://domain.comfiles..." should be "https://domain.com/files...")
+    const domainWithoutSlashPattern = /^(https?:\/\/[^\/]+)([^\/].*)/;
+    const match = fixed.match(domainWithoutSlashPattern);
+    if (match && !match[2].startsWith('/')) {
+      fixed = match[1] + '/' + match[2];
+    }
+    
+    return fixed;
   };
 
   const formatPlainText = (text: string) => {
@@ -493,10 +522,11 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     return lines.map((line, lineIndex) => {
       // Check if line is an image URL
       if (isImageUrl(line.trim())) {
+        const fixedUrl = fixImageUrl(line.trim());
         return (
           <div key={lineIndex} className="mb-4">
             <img 
-              src={line.trim()} 
+              src={fixedUrl} 
               alt="תמונה מהבוט"
               className="max-w-full h-auto rounded-lg shadow-md"
               style={{ maxHeight: '400px' }}
