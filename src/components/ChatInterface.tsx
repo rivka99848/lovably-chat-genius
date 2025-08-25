@@ -16,6 +16,7 @@ import {
 import MessageBubble from './MessageBubble';
 import AuthModal from './AuthModal';
 import PlanUpgrade from './PlanUpgrade';
+import ContactForm from './ContactForm';
 
 interface Message {
   id: string;
@@ -382,9 +383,32 @@ const ChatInterface = () => {
     // Add files to form data with detected format
     uploadedFiles.forEach((file, index) => {
       const detectedFormat = detectFileType(file);
-      formData.append(`file_${index}`, file);
+      
+      console.log(`File ${index}:`, {
+        originalName: file.name,
+        originalType: file.type,
+        detectedFormat: detectedFormat
+      });
+      
+      // Create corrected filename with proper extension
+      const originalName = file.name;
+      const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+      const correctedFileName = `${nameWithoutExt}.${detectedFormat}`;
+      
+      // Create new file with corrected name and MIME type
+      const correctedMimeType = detectedFormat === 'mp3' ? 'audio/mpeg' : 
+                               detectedFormat === 'mp4' ? 'video/mp4' : file.type;
+      const correctedFile = new File([file], correctedFileName, { type: correctedMimeType });
+      
+      console.log(`Corrected file ${index}:`, {
+        correctedFileName: correctedFileName,
+        correctedMimeType: correctedMimeType,
+        finalFormat: detectedFormat
+      });
+      
+      formData.append(`file_${index}`, correctedFile);
       formData.append(`file_${index}_format`, detectedFormat);
-      formData.append(`file_${index}_name`, file.name);
+      formData.append(`file_${index}_name`, correctedFileName);
     });
 
     // Log all form data for debugging
@@ -612,14 +636,17 @@ const ChatInterface = () => {
   }
 
   if (showPlanUpgrade) {
-    return <PlanUpgrade user={user} onClose={() => setShowPlanUpgrade(false)} onUpgrade={(plan) => {
-      if (user) {
-        const updatedUser = { ...user, plan, messageLimit: plan === 'pro' ? 500 : 2000 };
+    return <PlanUpgrade 
+      isOpen={true}
+      onClose={() => setShowPlanUpgrade(false)} 
+      user={user}
+      onUpdateUser={(updatedUser) => {
         setUser(updatedUser);
         localStorage.setItem('lovable_user', JSON.stringify(updatedUser));
-      }
-      setShowPlanUpgrade(false);
-    }} />;
+        setShowPlanUpgrade(false);
+      }}
+      isDarkMode={isDarkMode}
+    />;
   }
 
   return (
@@ -660,6 +687,7 @@ const ChatInterface = () => {
                 >
                   <Crown className="w-5 h-5" />
                 </button>
+                <ContactForm showAsIcon={true} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -686,6 +714,9 @@ const ChatInterface = () => {
                     <DropdownMenuItem onClick={handleUpgradeClick} dir="rtl">
                       <CreditCard className="ml-2 h-4 w-4" />
                       שדרוג
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild dir="rtl">
+                      <ContactForm />
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -913,6 +944,7 @@ const ChatInterface = () => {
               multiple
               onChange={handleFileUpload}
               className="hidden"
+              accept=".mp3,.txt,.md,.csv,.tsv,.json,.xml,.yml,.yaml,.html,.htm,.ini,.log,.js,.py,.jpeg,.jpg,.png,.webp"
             />
             
             <button
@@ -983,6 +1015,36 @@ const ChatInterface = () => {
               </p>
             </div>
           )}
+          
+          {/* Footer Credit */}
+          <div className={`mt-4 pt-3 border-t text-center ${
+            isDarkMode 
+              ? 'border-white/10 text-white/40' 
+              : 'border-gray-200 text-gray-400'
+          }`}>
+            <div className="flex items-center justify-center gap-2 text-xs">
+              <span>פותח על ידי</span>
+              <a 
+                href="#" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className={`flex items-center gap-1 hover:opacity-80 transition-opacity ${
+                  isDarkMode ? 'text-white/60 hover:text-white/80' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <img 
+                  src="/path-to-your-logo.png" 
+                  alt="Developer Logo" 
+                  className="h-4 w-auto"
+                  onError={(e) => {
+                    // Hide image if it fails to load
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <span>Your Name</span>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>

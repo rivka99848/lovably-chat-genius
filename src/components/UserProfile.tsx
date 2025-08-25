@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, Mail, Crown, Settings, Save, ArrowRight, Edit3, Shield, Bell, Palette, Globe, MessageCircle, Trash2 } from 'lucide-react';
+import { User, Mail, Crown, Settings, Save, ArrowRight, Edit3, Shield, Bell, Palette, Globe, MessageCircle, Trash2, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
+import PlanUpgrade from '@/components/PlanUpgrade';
 
 interface Message {
   id: string;
@@ -26,6 +27,25 @@ interface SavedConversation {
   category: string;
 }
 
+interface Package {
+  id: string;
+  name: string;
+  price: number;
+  messageLimit: number;
+  features: string[];
+  type: 'free' | 'pro' | 'enterprise';
+}
+
+interface Payment {
+  id: string;
+  packageName: string;
+  amount: number;
+  date: Date;
+  status: 'pending' | 'completed' | 'failed';
+  startDate?: Date;
+  endDate?: Date;
+}
+
 interface User {
   id: string;
   email: string;
@@ -34,6 +54,7 @@ interface User {
   plan: 'free' | 'pro' | 'enterprise';
   messagesUsed: number;
   messageLimit: number;
+  payments?: Payment[];
 }
 
 interface Props {
@@ -60,6 +81,8 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
   const [autoSave, setAutoSave] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
+  const [payments, setPayments] = useState<Payment[]>(user.payments || []);
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   React.useEffect(() => {
     // Load saved conversations
@@ -258,14 +281,25 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                 <Label className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
                   חבילה נוכחית
                 </Label>
-                <div className="flex items-center space-x-2 space-x-reverse">
-                  <Badge className={getPlanColor(user.plan)}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <Badge className={getPlanColor(user.plan)}>
+                      <Crown className="w-3 h-3 ml-1" />
+                      {getPlanName(user.plan)}
+                    </Badge>
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {user.messagesUsed}/{user.messageLimit} הודעות
+                    </span>
+                  </div>
+                  <Button
+                    onClick={() => setShowUpgrade(true)}
+                    variant="outline"
+                    size="sm"
+                    className="bg-gradient-to-r from-green-600/20 to-blue-600/20 hover:from-green-600/30 hover:to-blue-600/30 border-green-600/30"
+                  >
                     <Crown className="w-3 h-3 ml-1" />
-                    {getPlanName(user.plan)}
-                  </Badge>
-                  <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {user.messagesUsed}/{user.messageLimit} הודעות
-                  </span>
+                    שדרוג
+                  </Button>
                 </div>
               </div>
             </div>
@@ -400,6 +434,54 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
             </div>
           </div>
 
+          {/* Payment History */}
+          <div>
+            <h2 className="text-xl font-semibold flex items-center mb-4">
+              <CreditCard className="w-5 h-5 ml-2" />
+              היסטוריית תשלומים
+            </h2>
+
+            {payments.length > 0 ? (
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {payments.map((payment) => (
+                  <div key={payment.id} className={`p-4 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-gray-800/50 border-gray-700' 
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{payment.packageName}</div>
+                        <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          ₪{payment.amount} • {payment.date.toLocaleDateString('he-IL')}
+                        </div>
+                        {payment.startDate && payment.endDate && (
+                          <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                            תקף מ-{payment.startDate.toLocaleDateString('he-IL')} עד {payment.endDate.toLocaleDateString('he-IL')}
+                          </div>
+                        )}
+                      </div>
+                      <Badge className={
+                        payment.status === 'completed' 
+                          ? 'bg-green-600/20 text-green-400 border-green-600/30'
+                          : payment.status === 'pending'
+                          ? 'bg-yellow-600/20 text-yellow-400 border-yellow-600/30'
+                          : 'bg-red-600/20 text-red-400 border-red-600/30'
+                      }>
+                        {payment.status === 'completed' ? 'הושלם' : 
+                         payment.status === 'pending' ? 'ממתין' : 'נכשל'}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                אין תשלומים עדיין
+              </div>
+            )}
+          </div>
+
           {/* Account Stats */}
           <div>
             <h2 className="text-xl font-semibold flex items-center mb-4">
@@ -435,6 +517,14 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
           </div>
         </div>
       </Card>
+
+      <PlanUpgrade
+        isOpen={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        user={user}
+        onUpdateUser={onUpdateUser}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 };
