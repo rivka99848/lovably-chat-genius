@@ -1,379 +1,220 @@
-import React, { useState } from 'react';
-import { Crown, Package, CreditCard, X, Check, Zap, Users, Star } from 'lucide-react';
+
+import React from 'react';
+import { Crown, Check, X, Zap, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { toast } from '@/hooks/use-toast';
-
-interface Package {
-  id: string;
-  name: string;
-  price: number;
-  messageLimit: number;
-  features: string[];
-  type: 'free' | 'pro' | 'enterprise';
-  popular?: boolean;
-}
-
-interface Payment {
-  id: string;
-  packageName: string;
-  amount: number;
-  date: Date;
-  status: 'pending' | 'completed' | 'failed';
-  startDate?: Date;
-  endDate?: Date;
-}
 
 interface User {
   id: string;
   email: string;
   name: string;
-  phone?: string;
   category: string;
   plan: 'free' | 'pro' | 'enterprise';
   messagesUsed: number;
   messageLimit: number;
-  payments?: Payment[];
 }
 
 interface Props {
-  isOpen: boolean;
+  user: User | null;
   onClose: () => void;
-  user: User;
-  onUpdateUser: (updatedUser: User) => void;
-  isDarkMode: boolean;
+  onUpgrade: (plan: 'pro' | 'enterprise') => void;
 }
 
-const packages: Package[] = [
+const plans = [
   {
-    id: '1',
-    name: 'חבילה חינם',
-    price: 0,
-    messageLimit: 50,
-    features: ['50 הודעות חינם', 'תמיכה בסיסית', 'גישה לכל התכונות הבסיסיות'],
-    type: 'free'
+    id: 'free',
+    name: 'Free',
+    price: '$0',
+    period: '/month',
+    description: 'Perfect for getting started',
+    features: [
+      '50 messages per month',
+      'Access to all AI assistants',
+      'Basic chat history',
+      'Email support'
+    ],
+    limitations: [
+      'Limited messages',
+      'No priority support',
+      'Basic features only'
+    ],
+    color: 'gray',
+    icon: Star
   },
   {
-    id: '2',
-    name: 'חבילה מקצועית',
-    price: 29,
-    messageLimit: 500,
-    features: ['500 הודעות', 'תמיכה מועדפת', 'גישה מוקדמת לתכונות', 'ייצוא שיחות', 'אולוית עדיפות'],
-    type: 'pro',
+    id: 'pro',
+    name: 'Pro',
+    price: '$19',
+    period: '/month',
+    description: 'Best for professionals',
+    features: [
+      '500 messages per month',
+      'Priority AI responses',
+      'Advanced code preview',
+      'Chat export & backup',
+      'Priority email support',
+      'Advanced integrations'
+    ],
+    limitations: [],
+    color: 'green',
+    icon: Zap,
     popular: true
   },
   {
-    id: '3',
-    name: 'חבילה ארגונית',
-    price: 99,
-    messageLimit: 2000,
-    features: ['2000 הודעות', 'תמיכה 24/7', 'ניהול צוות', 'דוחות מתקדמים', 'אינטגרציות מותאמות אישית', 'נהל מרובה'],
-    type: 'enterprise'
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: '$49',
+    period: '/month',
+    description: 'For teams and power users',
+    features: [
+      'Unlimited messages',
+      'Custom AI training',
+      'API access',
+      'Team collaboration',
+      'Custom integrations',
+      'Dedicated support',
+      'Advanced analytics',
+      'White-label options'
+    ],
+    limitations: [],
+    color: 'blue',
+    icon: Crown
   }
 ];
 
-const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isDarkMode }) => {
-  const [pendingPayments, setPendingPayments] = useState<Set<string>>(new Set());
-
-  const handlePayment = async (packageData: Package) => {
-    try {
-      // Create pending payment
-      const paymentId = Date.now().toString();
-      setPendingPayments(prev => new Set([...prev, paymentId]));
-
-      // Navigate to payment page with package details
-      const paymentParams = new URLSearchParams({
-        userId: user.id,
-        userEmail: user.email,
-        userName: user.name,
-        userPhone: user.phone || '',
-        packageId: packageData.id,
-        packageName: packageData.name,
-        packagePrice: packageData.price.toString(),
-        packageType: packageData.type,
-        paymentId: paymentId
-      });
-
-      const paymentUrl = `https://www.matara.pro/nedarimplus/online/?S=kHeC&${paymentParams.toString()}`;
-      
-      // Open payment page as popup
-      const popupFeatures = 'width=800,height=700,scrollbars=yes,resizable=yes,centerscreen=yes,location=no,menubar=no,toolbar=no,status=no';
-      window.open(paymentUrl, 'paymentPopup', popupFeatures);
-      
-      toast({
-        title: "מעבר לתשלום",
-        description: "מועבר לדף התשלום..."
-      });
-
-      // Check payment status periodically
-      checkPaymentStatus(paymentId, packageData);
-      
-    } catch (error) {
-      toast({
-        title: "שגיאה",
-        description: "נכשל בעיבוד התשלום",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const checkPaymentStatus = async (paymentId: string, packageData: Package) => {
-    const maxAttempts = 10;
-    let attempts = 0;
-    
-    const intervalId = setInterval(async () => {
-      attempts++;
-      
-      try {
-        const response = await fetch('https://n8n.smartbiz.org.il/webhook/payment-status', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            paymentId: paymentId,
-            userId: user.id
-          })
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          
-          if (result.status === 'completed') {
-            // Payment successful - update user plan
-            const updatedUser = {
-              ...user,
-              plan: packageData.type,
-              messageLimit: packageData.messageLimit,
-              messagesUsed: user.messagesUsed
-            };
-            
-            setPendingPayments(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(paymentId);
-              return newSet;
-            });
-            
-            onUpdateUser(updatedUser);
-            
-            toast({
-              title: "התשלום אושר!",
-              description: `החבילה ${packageData.name} הופעלה בהצלחה`
-            });
-            
-            onClose();
-            clearInterval(intervalId);
-          } else if (result.status === 'failed') {
-            // Payment failed
-            setPendingPayments(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(paymentId);
-              return newSet;
-            });
-            
-            toast({
-              title: "התשלום נכשל",
-              description: "אנא נסה שוב או פנה לתמיכה",
-              variant: "destructive"
-            });
-            
-            clearInterval(intervalId);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking payment status:', error);
-      }
-      
-      if (attempts >= maxAttempts) {
-        clearInterval(intervalId);
-        setPendingPayments(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(paymentId);
-          return newSet;
-        });
-      }
-    }, 5000); // Check every 5 seconds
-  };
-
-  const getPlanColor = (plan: string) => {
-    switch (plan) {
-      case 'pro': return 'bg-blue-600/20 text-blue-400 border-blue-600/30';
-      case 'enterprise': return 'bg-purple-600/20 text-purple-400 border-purple-600/30';
-      default: return 'bg-green-600/20 text-green-400 border-green-600/30';
-    }
-  };
-
-  const getPlanIcon = (plan: string) => {
-    switch (plan) {
-      case 'pro': return <Zap className="w-4 h-4" />;
-      case 'enterprise': return <Users className="w-4 h-4" />;
-      default: return <Package className="w-4 h-4" />;
+const PlanUpgrade: React.FC<Props> = ({ user, onClose, onUpgrade }) => {
+  const handleUpgrade = (planId: string) => {
+    if (planId === 'pro' || planId === 'enterprise') {
+      // In a real app, this would integrate with Stripe or another payment processor
+      onUpgrade(planId as 'pro' | 'enterprise');
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`max-w-4xl max-h-[90vh] overflow-y-auto ${
-        isDarkMode 
-          ? 'bg-gray-900/95 border-gray-700/50 text-white' 
-          : 'bg-white/95 border-gray-200 text-gray-900'
-      }`} dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold flex items-center">
-            <Crown className="w-6 h-6 ml-2 text-yellow-500" />
-            שדרוג החבילה
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {/* Current Plan */}
-          <div className={`p-4 rounded-lg border ${
-            isDarkMode 
-              ? 'bg-gray-800/50 border-gray-700' 
-              : 'bg-gray-50 border-gray-200'
-          }`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3 space-x-reverse">
-                <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-blue-600 rounded-full flex items-center justify-center">
-                  {getPlanIcon(user.plan)}
-                </div>
-                <div>
-                  <div className="font-medium">החבילה הנוכחית שלך</div>
-                  <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {user.messagesUsed}/{user.messageLimit} הודעות בשימוש
-                  </div>
-                </div>
-              </div>
-              <Badge className={getPlanColor(user.plan)}>
-                {packages.find(p => p.type === user.plan)?.name || 'חבילה חינם'}
-              </Badge>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50 flex items-center justify-center p-6">
+      <div className="max-w-6xl w-full">
+        <Card className="p-8 bg-white/90 backdrop-blur-sm border-0 shadow-2xl">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">
+                Upgrade Your Plan
+              </h1>
+              <p className="text-gray-600">
+                Choose the perfect plan for your needs. Upgrade or downgrade anytime.
+              </p>
             </div>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
           </div>
 
-          {/* Available Plans */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">בחר חבילה</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {packages.map((pkg) => (
-                <Card key={pkg.id} className={`relative p-6 ${
-                  isDarkMode 
-                    ? 'bg-gray-800/50 border-gray-700' 
-                    : 'bg-gray-50 border-gray-200'
-                } ${
-                  pkg.popular ? 'ring-2 ring-blue-500/50' : ''
-                } ${
-                  user.plan === pkg.type ? 'opacity-50' : ''
-                }`}>
-                  {pkg.popular && (
-                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                      <Badge className="bg-blue-600 text-white border-blue-600">
-                        <Star className="w-3 h-3 ml-1" />
-                        הכי פופולרי
-                      </Badge>
-                    </div>
+          {user && user.messagesUsed >= user.messageLimit && (
+            <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <Crown className="w-5 h-5 text-yellow-600" />
+                <div>
+                  <p className="font-medium text-yellow-800">Message limit reached!</p>
+                  <p className="text-sm text-yellow-700">
+                    You've used all {user.messageLimit} messages for this month. Upgrade to continue chatting.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {plans.map((plan) => {
+              const IconComponent = plan.icon;
+              const isCurrentPlan = user?.plan === plan.id;
+              
+              return (
+                <Card
+                  key={plan.id}
+                  className={`p-6 relative transition-all duration-300 ${
+                    plan.popular 
+                      ? 'ring-2 ring-green-500 scale-105' 
+                      : 'hover:shadow-lg border-2 hover:border-green-200'
+                  } ${isCurrentPlan ? 'bg-green-50 border-green-300' : ''}`}
+                >
+                  {plan.popular && (
+                    <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-green-600 text-white">
+                      Most Popular
+                    </Badge>
                   )}
                   
-                  <div className="text-center mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                      {getPlanIcon(pkg.type)}
-                    </div>
-                    <h4 className="text-xl font-bold">{pkg.name}</h4>
-                    <div className={`text-3xl font-bold mt-2 ${
-                      pkg.price === 0 ? 'text-green-400' : 'text-blue-400'
+                  {isCurrentPlan && (
+                    <Badge className="absolute -top-3 right-4 bg-blue-600 text-white">
+                      Current Plan
+                    </Badge>
+                  )}
+
+                  <div className="text-center mb-6">
+                    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-4 ${
+                      plan.color === 'green' ? 'bg-green-100 text-green-600' :
+                      plan.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                      'bg-gray-100 text-gray-600'
                     }`}>
-                      {pkg.price === 0 ? 'חינם' : `₪${pkg.price}`}
-                      {pkg.price > 0 && (
-                        <span className={`text-sm font-normal ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                          /חודש
-                        </span>
-                      )}
+                      <IconComponent className="w-6 h-6" />
                     </div>
-                    <div className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {pkg.messageLimit} הודעות
+                    
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">{plan.name}</h3>
+                    <div className="mb-2">
+                      <span className="text-3xl font-bold text-gray-900">{plan.price}</span>
+                      <span className="text-gray-600">{plan.period}</span>
                     </div>
+                    <p className="text-sm text-gray-600">{plan.description}</p>
                   </div>
 
                   <div className="space-y-3 mb-6">
-                    {pkg.features.map((feature, index) => (
-                      <div key={index} className="flex items-center space-x-2 space-x-reverse">
-                        <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
-                        <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                          {feature}
-                        </span>
+                    {plan.features.map((feature, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                        <span className="text-sm text-gray-700">{feature}</span>
+                      </div>
+                    ))}
+                    
+                    {plan.limitations.map((limitation, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <X className="w-4 h-4 text-red-500 flex-shrink-0" />
+                        <span className="text-sm text-gray-500">{limitation}</span>
                       </div>
                     ))}
                   </div>
 
-                  {user.plan === pkg.type ? (
-                    <Button disabled className="w-full" variant="outline">
-                      החבילה הנוכחית
-                    </Button>
-                  ) : pkg.price === 0 ? (
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => {
-                        const updatedUser = {
-                          ...user,
-                          plan: pkg.type,
-                          messageLimit: pkg.messageLimit
-                        };
-                        onUpdateUser(updatedUser);
-                        toast({
-                          title: "החבילה שונתה",
-                          description: "עברת לחבילה החינם"
-                        });
-                        onClose();
-                      }}
-                    >
-                      עבור לחבילה
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => handlePayment(pkg)}
-                      className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-                      disabled={pendingPayments.size > 0}
-                    >
-                      <CreditCard className="w-4 h-4 ml-2" />
-                      {pendingPayments.size > 0 ? 'מעבד תשלום...' : 'שדרג עכשיו'}
-                    </Button>
-                  )}
+                  <Button
+                    onClick={() => handleUpgrade(plan.id)}
+                    disabled={isCurrentPlan || plan.id === 'free'}
+                    className={`w-full ${
+                      plan.popular
+                        ? 'bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700'
+                        : plan.color === 'blue'
+                        ? 'bg-blue-600 hover:bg-blue-700'
+                        : 'bg-gray-600 hover:bg-gray-700'
+                    } ${isCurrentPlan ? 'bg-gray-400 cursor-not-allowed' : ''}`}
+                  >
+                    {isCurrentPlan ? 'Current Plan' : 
+                     plan.id === 'free' ? 'Current Plan' : 
+                     `Upgrade to ${plan.name}`}
+                  </Button>
                 </Card>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
-          {/* Benefits */}
-          <div className={`p-4 rounded-lg border ${
-            isDarkMode 
-              ? 'bg-gray-800/50 border-gray-700' 
-              : 'bg-gray-50 border-gray-200'
-          }`}>
-            <h4 className="font-semibold mb-2">למה לשדרג?</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <Check className="w-4 h-4 text-green-400" />
-                <span>יותר הודעות לשימוש</span>
-              </div>
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <Check className="w-4 h-4 text-green-400" />
-                <span>תמיכה מהירה יותר</span>
-              </div>
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <Check className="w-4 h-4 text-green-400" />
-                <span>תכונות מתקדמות</span>
-              </div>
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <Check className="w-4 h-4 text-green-400" />
-                <span>גישה מוקדמת לעדכונים</span>
-              </div>
+          <div className="mt-8 text-center">
+            <p className="text-sm text-gray-500 mb-4">
+              All plans include access to our four specialized AI assistants: Programming, Architecture, Writing, and Design.
+            </p>
+            <div className="flex justify-center space-x-6 text-xs text-gray-400">
+              <span>✓ No setup fees</span>
+              <span>✓ Cancel anytime</span>
+              <span>✓ 30-day money back guarantee</span>
             </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </Card>
+      </div>
+    </div>
   );
 };
 

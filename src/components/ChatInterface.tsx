@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun, LogOut, CreditCard, Menu, X, Search, MoreVertical, Trash2 } from 'lucide-react';
+import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun, LogOut, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,9 +16,6 @@ import {
 import MessageBubble from './MessageBubble';
 import AuthModal from './AuthModal';
 import PlanUpgrade from './PlanUpgrade';
-import ContactForm from './ContactForm';
-import { loginUser } from '@/lib/auth/login';
-import { registerUser } from '@/lib/auth/register';
 
 interface Message {
   id: string;
@@ -47,12 +44,8 @@ const ChatInterface = () => {
   const [showPlanUpgrade, setShowPlanUpgrade] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [savedConversations, setSavedConversations] = useState<any[]>([]);
-  const [viewingConversation, setViewingConversation] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -77,10 +70,8 @@ const ChatInterface = () => {
     // Check for existing user session
     const savedUser = localStorage.getItem('lovable_user');
     if (savedUser) {
-      const userData = JSON.parse(savedUser);
-      setUser(userData);
+      setUser(JSON.parse(savedUser));
       loadChatHistory();
-      loadSavedConversations(userData.id);
     } else {
       setShowAuth(true);
     }
@@ -100,21 +91,6 @@ const ChatInterface = () => {
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
-  // Maintain focus on input field after loading changes
-  useEffect(() => {
-    if (!isLoading && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isLoading]);
-
-  // Auto-resize textarea based on content
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 128)}px`;
-    }
-  }, [inputValue]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -130,157 +106,143 @@ const ChatInterface = () => {
     localStorage.setItem('lovable_chat_history', JSON.stringify(newMessages));
   };
 
-  const loadSavedConversations = (userId: string) => {
-    const saved = localStorage.getItem(`lovable_conversations_${userId}`);
-    if (saved) {
-      setSavedConversations(JSON.parse(saved));
-    }
-  };
-
   const authenticateUser = async (email: string, name: string, category: string, isSignUp: boolean, password?: string) => {
     try {
       const userId = crypto.randomUUID();
+      
       if (isSignUp) {
         // רישום משתמש חדש
-        const userData = await registerUser(email, name, category, password!);
-        // אם ההרשמה הצליחה
-        if (userData === true || userData === 'true' || userData === "המשתמש נוצר בהצלחה" || (typeof userData === 'object' && userData.success)) {
-          const newUser: User = {
-            id: userId,
+        const registerResponse = await fetch(LOGIN_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'register',
+            userId,
             email,
             name,
             category,
-            plan: 'free',
-            messagesUsed: 0,
-            messageLimit: 50
-          };
-          setUser(newUser);
-          localStorage.setItem('lovable_user', JSON.stringify(newUser));
-          setShowAuth(false);
-          toast({
-            title: "ברוכים הבאים!",
-            description: `נרשמתם בהצלחה כמומחה ב${category}.`
-          });
+            password,
+            timestamp: new Date().toISOString()
+          })
+        });
+
+        if (registerResponse.ok) {
+          const responseText = await registerResponse.text();
+          console.log('Register response:', responseText);
+          
+          let userData;
+          try {
+            userData = JSON.parse(responseText);
+          } catch {
+            userData = responseText;
+          }
+          
+          // אם זה true - המשתמש נרשם בהצלחה
+          if (userData === true || (typeof userData === 'object' && userData.success)) {
+            const newUser: User = {
+              id: userData.id || userId,
+              email,
+              name,
+              category,
+              plan: userData.plan || 'free',
+              messagesUsed: userData.messagesUsed || 0,
+              messageLimit: userData.messageLimit || 50
+            };
+            
+            setUser(newUser);
+            localStorage.setItem('lovable_user', JSON.stringify(newUser));
+            setShowAuth(false);
+            
+            toast({
+              title: "ברוכים הבאים!",
+              description: `נרשמתם בהצלחה כמומחה ב${category}.`
+            });
+          } else {
+            // אם זה לא true - הצג את ההודעה שהשרת החזיר
+            const errorMessage = typeof userData === 'string' ? userData : 'המשתמש כבר קיים במערכת';
+            throw new Error(errorMessage);
+          }
         } else {
-          const errorMessage = typeof userData === 'string' ? userData : 'המשתמש כבר קיים במערכת';
-          throw new Error(errorMessage);
+          throw new Error('שגיאה ברישום. אנא נסו שוב.');
         }
       } else {
         // התחברות משתמש קיים
-        const userData = await loginUser(email, password!);
-        if (userData === true || (typeof userData === 'object' && userData.success) || (Array.isArray(userData) && userData.length > 0 && userData[0].success)) {
-          const existingUser: User = {
-            id: userData.id || userId,
+        const loginResponse = await fetch(LOGIN_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'login',
             email,
-            name: userData.name || name,
-            category: userData.category || 'תכנות',
-            plan: userData.plan || 'free',
-            messagesUsed: userData.messagesUsed || 0,
-            messageLimit: userData.messageLimit || 50
-          };
-          setUser(existingUser);
-          localStorage.setItem('lovable_user', JSON.stringify(existingUser));
-          setShowAuth(false);
-          toast({
-            title: "ברוכים הבאים!",
-            description: `התחברתם בהצלחה כמומחה ב${existingUser.category}.`
-          });
+            password,
+            timestamp: new Date().toISOString()
+          })
+        });
+
+        if (loginResponse.ok) {
+          const responseText = await loginResponse.text();
+          console.log('Login response:', responseText);
+          
+          let userData;
+          try {
+            userData = JSON.parse(responseText);
+          } catch {
+            userData = responseText;
+          }
+          
+          // אם זה true - המשתמש התחבר בהצלחה
+          if (userData === true || (typeof userData === 'object' && userData.success)) {
+            const existingUser: User = {
+              id: userData.id || userId,
+              email,
+              name: userData.name || name,
+              category: userData.category || 'תכנות',
+              plan: userData.plan || 'free',
+              messagesUsed: userData.messagesUsed || 0,
+              messageLimit: userData.messageLimit || 50
+            };
+            
+            setUser(existingUser);
+            localStorage.setItem('lovable_user', JSON.stringify(existingUser));
+            setShowAuth(false);
+            
+            toast({
+              title: "ברוכים הבאים!",
+              description: `התחברתם בהצלחה כמומחה ב${existingUser.category}.`
+            });
+          } else {
+            // אם זה לא true - הצג את ההודעה שהשרת החזיר
+            const errorMessage = typeof userData === 'string' ? userData : 'שגיאה בהתחברות';
+            throw new Error(errorMessage);
+          }
         } else {
-          const errorMessage = typeof userData === 'string' ? userData : 'שגיאה בהתחברות';
-          throw new Error(errorMessage);
+          throw new Error('שגיאה בהתחברות. אנא נסו שוב.');
         }
       }
-    } catch (error: any) {
-      toast({
-        title: 'שגיאה',
-        description: error.message || 'שגיאה בתהליך האימות',
-        variant: 'destructive',
-      });
+    } catch (error) {
+      console.error('Auth error:', error);
+      throw error;
     }
-  };
-
-  const detectFileType = (file: File): string => {
-    const fileName = file.name.toLowerCase();
-    const mimeType = file.type.toLowerCase();
-    
-    // Audio files - check file extension first to ensure correct format detection
-    if (fileName.endsWith('.mp3') || fileName.endsWith('.mpga')) return 'mp3';
-    if (fileName.endsWith('.wav')) return 'wav';
-    if (fileName.endsWith('.weba')) return 'weba';
-    if (fileName.endsWith('.aac')) return 'aac';
-    if (fileName.endsWith('.ogg')) return 'ogg';
-    if (fileName.endsWith('.m4a')) return 'm4a';
-    
-    // Video files
-    if (mimeType.startsWith('video/') || fileName.endsWith('.mp4') || fileName.endsWith('.avi') || fileName.endsWith('.mov') || fileName.endsWith('.mkv') || fileName.endsWith('.wmv') || fileName.endsWith('.webm')) {
-      if (fileName.endsWith('.webm')) return 'webm';
-      return 'mp4';
-    }
-    
-    // Fallback to mime type check for audio files without recognized extensions
-    if (mimeType.startsWith('audio/')) {
-      if (mimeType.includes('mpeg') || mimeType.includes('mp3')) return 'mp3';
-      if (mimeType.includes('wav')) return 'wav';
-      if (mimeType.includes('webm')) return 'webm';
-      return 'mp3'; // default for audio
-    }
-    
-    return 'file';
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
-    
-    // Check file size limits based on user plan
-    const maxSize = user?.plan === 'free' ? 25 * 1024 * 1024 : 100 * 1024 * 1024; // 25MB for free, 100MB for paid
-    const oversizedFiles = files.filter(file => file.size > maxSize);
-    
-    if (oversizedFiles.length > 0) {
-      const maxSizeMB = user?.plan === 'free' ? 25 : 100;
-      toast({
-        title: "קבצים גדולים מדי",
-        description: `הגבלת העלאה: ${maxSizeMB}MB למשתמש ${user?.plan === 'free' ? 'חינמי' : 'בתשלום'}`,
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Detect file types and show appropriate messages
-    const audioVideoFiles = files.filter(file => {
-      const type = detectFileType(file);
-      return ['mp3', 'wav', 'mp4', 'weba', 'webm', 'aac', 'ogg', 'm4a'].includes(type);
-    });
-    
     setUploadedFiles(prev => [...prev, ...files]);
     
-    if (audioVideoFiles.length > 0) {
-      const formats = audioVideoFiles.map(file => detectFileType(file)).join(', ');
-      toast({
-        title: "קבצי מדיה הועלו",
-        description: `הועלו ${audioVideoFiles.length} קבצי אודיו/וידאו בפורמטים: ${formats}`
-      });
-    } else {
-      toast({
-        title: "קבצים הועלו",
-        description: `הועלו ${files.length} קבצים בהצלחה.`
-      });
-    }
+    toast({
+      title: "קבצים הועלו",
+      description: `הועלו ${files.length} קבצים בהצלחה.`
+    });
   };
 
   const removeFile = (index: number) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const generateChatTitle = (content: string): string => {
-    const words = content.split(' ').filter(word => word.length > 2);
-    return words.slice(0, 3).join(' ') || 'שיחה חדשה';
-  };
-
   const saveCurrentConversation = () => {
     if (messages.length === 0 || !user) return;
     
     const conversationId = Date.now().toString();
-    const title = generateChatTitle(messages[0]?.content || 'שיחה חדשה');
+    const title = messages[0]?.content.substring(0, 50) + '...' || 'שיחה חדשה';
     
     const conversation = {
       id: conversationId,
@@ -346,35 +308,9 @@ const ChatInterface = () => {
     formData.append('timestamp', new Date().toISOString());
     formData.append('sessionId', currentSessionId);
     
-    // Add files to form data with detected format
+    // Add files to form data
     uploadedFiles.forEach((file, index) => {
-      const detectedFormat = detectFileType(file);
-      
-      console.log(`File ${index}:`, {
-        originalName: file.name,
-        originalType: file.type,
-        detectedFormat: detectedFormat
-      });
-      
-      // Create corrected filename with proper extension
-      const originalName = file.name;
-      const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-      const correctedFileName = `${nameWithoutExt}.${detectedFormat}`;
-      
-      // Create new file with corrected name and MIME type
-      const correctedMimeType = detectedFormat === 'mp3' ? 'audio/mpeg' : 
-                               detectedFormat === 'mp4' ? 'video/mp4' : file.type;
-      const correctedFile = new File([file], correctedFileName, { type: correctedMimeType });
-      
-      console.log(`Corrected file ${index}:`, {
-        correctedFileName: correctedFileName,
-        correctedMimeType: correctedMimeType,
-        finalFormat: detectedFormat
-      });
-      
-      formData.append(`file_${index}`, correctedFile);
-      formData.append(`file_${index}_format`, detectedFormat);
-      formData.append(`file_${index}_name`, correctedFileName);
+      formData.append(`file_${index}`, file);
     });
 
     // Log all form data for debugging
@@ -419,10 +355,9 @@ const ChatInterface = () => {
         let shouldProcessMessage = false;
         
         if (data === true) {
-          // השרת החזיר true - השליחה הצליחה, מעביר לממשק הבוט
+          // השרת החזיר true - אנחנו צריכים לחכות להודעה או לעבד את התוכן
           shouldProcessMessage = true;
-          cleanContent = 'ההודעה נשלחה בהצלחה לשרת.';
-          navigate('/'); // העברה לממשק הבוט הראשי
+          cleanContent = 'ממתין לתגובה מהשרת...';
         } else if (Array.isArray(data)) {
           console.log('Response is an array:', data);
           if (data.length === 0) {
@@ -515,43 +450,17 @@ const ChatInterface = () => {
     }
   };
 
-  const loadConversation = (conversation: any) => {
-    setMessages(conversation.messages);
-    setViewingConversation(conversation);
-    saveChatHistory(conversation.messages);
-    
-    toast({
-      title: "שיחה נטענה",
-      description: `נטענה השיחה: ${conversation.title}`
-    });
-  };
-
-  const returnToCurrentConversation = () => {
-    setViewingConversation(null);
-    loadChatHistory();
-    
-    toast({
-      title: "חזרה לשיחה נוכחית",
-      description: "חזרתם לשיחה הנוכחית"
-    });
-  };
-
   const startNewConversation = () => {
     // Save current conversation before starting new one
-    if (messages.length > 0 && !viewingConversation) {
+    if (messages.length > 0) {
       saveCurrentConversation();
-      // Reload saved conversations to show the updated list
-      if (user) {
-        loadSavedConversations(user.id);
-      }
     }
     
     setMessages([]);
-    setViewingConversation(null);
-    // Don't remove chat history - keep all conversations saved
+    localStorage.removeItem('lovable_chat_history');
     toast({
       title: "שיחה חדשה",
-      description: "התחלנו שיחה חדשה. השיחה הקודמת נשמרה."
+      description: "התחלנו שיחה חדשה."
     });
   };
 
@@ -561,24 +470,6 @@ const ChatInterface = () => {
       sendMessage();
     }
   };
-
-  const deleteConversation = (conversationId: string) => {
-    if (!user) return;
-    
-    const filtered = savedConversations.filter(conv => conv.id !== conversationId);
-    setSavedConversations(filtered);
-    localStorage.setItem(`lovable_conversations_${user.id}`, JSON.stringify(filtered));
-    
-    toast({
-      title: "שיחה נמחקה",
-      description: "השיחה נמחקה בהצלחה"
-    });
-  };
-
-  const filteredConversations = savedConversations.filter(conv => 
-    conv.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.messages.some((msg: any) => msg.content.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
 
   const handleSettingsClick = () => {
     console.log('Settings clicked');
@@ -620,298 +511,151 @@ const ChatInterface = () => {
   }
 
   if (showPlanUpgrade) {
-    return <PlanUpgrade 
-      isOpen={true}
-      onClose={() => setShowPlanUpgrade(false)} 
-      user={user}
-      onUpdateUser={(updatedUser) => {
+    return <PlanUpgrade user={user} onClose={() => setShowPlanUpgrade(false)} onUpgrade={(plan) => {
+      if (user) {
+        const updatedUser = { ...user, plan, messageLimit: plan === 'pro' ? 500 : 2000 };
         setUser(updatedUser);
         localStorage.setItem('lovable_user', JSON.stringify(updatedUser));
-        setShowPlanUpgrade(false);
-      }}
-      isDarkMode={isDarkMode}
-    />;
+      }
+      setShowPlanUpgrade(false);
+    }} />;
   }
 
   return (
     <div className={`flex h-screen premium-gradient ${isDarkMode ? 'dark text-white' : 'text-gray-900'}`} dir="rtl">
       {/* Sidebar */}
-      {isSidebarOpen && (
-        <div className={`w-80 border-l backdrop-blur-xl flex flex-col transition-all duration-300 bg-gray-900 ${
-          isDarkMode 
-            ? 'border-gray-700/50' 
-            : 'border-gray-200'
-        }`}>
-          {/* Header */}
-          <div className={`p-6 border-b bg-gray-900 ${isDarkMode ? 'border-gray-700/50' : 'border-gray-200'}`}>
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
-                בוט מסונן
-              </h1>
-              <div className="flex space-x-2 space-x-reverse">
-                <button
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    isDarkMode 
-                      ? 'hover:bg-white/10 text-white/80' 
-                      : 'hover:bg-gray-100 text-gray-600'
-                  }`}
-                  title="החלף צבע"
-                >
-                  {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                </button>
-                <button
-                  onClick={() => setShowPlanUpgrade(true)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    isDarkMode 
-                      ? 'hover:bg-white/10 text-yellow-400' 
-                      : 'hover:bg-gray-100 text-yellow-600'
-                  }`}
-                  title="שדרוג"
-                >
-                  <Crown className="w-5 h-5" />
-                </button>
-                {user && <ContactForm showAsIcon={true} user={user} />}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      className={`p-2 rounded-lg transition-colors ${
-                        isDarkMode 
-                          ? 'hover:bg-white/10 text-blue-400' 
-                          : 'hover:bg-gray-100 text-blue-600'
-                      }`}
-                      title="הגדרות"
-                    >
-                      <Settings className="w-5 h-5" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-gray-800 border shadow-lg">
-                    <DropdownMenuItem onClick={handleLogout} dir="rtl" className="text-orange-600 hover:text-orange-700 hover:bg-orange-50">
-                      <LogOut className="ml-2 h-4 w-4" />
-                      התנתקות
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSettingsClick} dir="rtl">
-                      <Settings className="ml-2 h-4 w-4" />
-                      הגדרות
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleUpgradeClick} dir="rtl">
-                      <CreditCard className="ml-2 h-4 w-4" />
-                      שדרוג
-                    </DropdownMenuItem>
-                    {user && (
-                      <DropdownMenuItem asChild dir="rtl">
-                        <ContactForm user={user} />
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+      <div className={`w-80 border-l backdrop-blur-xl flex flex-col ${
+        isDarkMode 
+          ? 'bg-gray-900/90 border-gray-700/50' 
+          : 'bg-white/95 border-gray-200'
+      }`}>
+        {/* Header */}
+        <div className={`p-6 border-b ${isDarkMode ? 'border-gray-700/50' : 'border-gray-200'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
+              בוט מסונן
+            </h1>
+            <div className="flex space-x-2 space-x-reverse">
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`p-2 rounded-lg transition-colors ${
+                  isDarkMode 
+                    ? 'hover:bg-white/10 text-white/80' 
+                    : 'hover:bg-gray-100 text-gray-600'
+                }`}
+                title="החלף צבע"
+              >
+                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={() => setShowPlanUpgrade(true)}
+                className={`p-2 rounded-lg transition-colors ${
+                  isDarkMode 
+                    ? 'hover:bg-white/10 text-yellow-400' 
+                    : 'hover:bg-gray-100 text-yellow-600'
+                }`}
+                title="שדרוג"
+              >
+                <Crown className="w-5 h-5" />
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={`p-2 rounded-lg transition-colors ${
+                      isDarkMode 
+                        ? 'hover:bg-white/10 text-blue-400' 
+                        : 'hover:bg-gray-100 text-blue-600'
+                    }`}
+                    title="הגדרות"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-gray-800 border shadow-lg">
+                  <DropdownMenuItem onClick={handleLogout} dir="rtl" className="text-orange-600 hover:text-orange-700 hover:bg-orange-50">
+                    <LogOut className="ml-2 h-4 w-4" />
+                    התנתקות
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSettingsClick} dir="rtl">
+                    <Settings className="ml-2 h-4 w-4" />
+                    הגדרות
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleUpgradeClick} dir="rtl">
+                    <CreditCard className="ml-2 h-4 w-4" />
+                    שדרוג
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+          
+          {user && (
+            <div className="space-y-2">
+              <div className={`flex items-center space-x-2 space-x-reverse text-sm ${
+                isDarkMode ? 'text-white/70' : 'text-gray-600'
+              }`}>
+                <User className="w-4 h-4" />
+                <span>{user.name}</span>
+              </div>
+              <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
+                {user.category}
+              </Badge>
+              <div className={`text-xs ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                {user.messagesUsed}/{user.messageLimit} הודעות נשלחו
               </div>
             </div>
-            
-            {user && (
-              <div className="space-y-2">
-                <div className={`flex items-center space-x-2 space-x-reverse text-sm ${
-                  isDarkMode ? 'text-white/70' : 'text-gray-600'
-                }`}>
-                  <User className="w-4 h-4" />
-                  <span>{user.name}</span>
+          )}
+        </div>
+
+        {/* New Conversation Button */}
+        <div className="p-4">
+          <Button
+            onClick={startNewConversation}
+            className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 border-0 text-white"
+          >
+            <Plus className="w-4 h-4 ml-2" />
+            שיחה חדשה
+          </Button>
+        </div>
+
+        {/* Chat History Summary */}
+        <div className="flex-1 p-4">
+          <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>שיחות אחרונות</h3>
+          <div className="space-y-2">
+            {messages.length > 0 ? (
+              <Card className={`p-3 cursor-pointer transition-colors ${
+                isDarkMode 
+                  ? 'bg-white/10 border-white/10 hover:bg-white/15' 
+                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+              }`}>
+                <div className={`text-sm truncate ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
+                  {messages[0]?.content.substring(0, 50)}...
                 </div>
-                <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
-                  {user.category}
-                </Badge>
-                <div className={`text-xs ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
-                  {user.messagesUsed}/{user.messageLimit} הודעות נשלחו
+                <div className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                  {messages.length} הודעות
                 </div>
+              </Card>
+            ) : (
+              <div className={`text-sm text-center py-8 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>
+                עדיין אין שיחות
               </div>
             )}
           </div>
+        </div>
 
-          {/* New Conversation Button */}
-          <div className="p-4 space-y-3">
-            <Button
-              onClick={startNewConversation}
-              className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 border-0 text-white"
-            >
-              <Plus className="w-4 h-4 ml-2" />
-              שיחה חדשה
-            </Button>
-            
-            {/* Search conversations */}
-            <div className="relative">
-              <Search className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${
-                isDarkMode ? 'text-white/40' : 'text-gray-400'
-              }`} />
-              <Input
-                type="text"
-                placeholder="חיפוש שיחות..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`pr-10 ${
-                  isDarkMode 
-                    ? 'bg-white/10 border-white/20 text-white placeholder-white/50' 
-                    : 'bg-white border-gray-200 text-gray-900 placeholder-gray-500'
-                }`}
-              />
-            </div>
-          </div>
-
-          {/* Chat History Summary */}
-          <div className="flex-1 p-4 overflow-y-auto">
-            <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>שיחות אחרונות</h3>
-            <div className="space-y-2">
-              {/* Current conversation */}
-              {messages.length > 0 && !viewingConversation && (
-                <Card className={`p-3 cursor-pointer transition-colors border-green-500/50 ${
-                  isDarkMode 
-                    ? 'bg-green-600/20 border-green-600/30 hover:bg-green-600/30' 
-                    : 'bg-green-50 border-green-200 hover:bg-green-100'
-                }`}>
-                  <div className={`text-sm truncate ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
-                    <span className="text-green-400 text-xs">שיחה נוכחית • </span>
-                    {generateChatTitle(messages[0]?.content || 'שיחה חדשה')}
-                  </div>
-                  <div className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
-                    {messages.length} הודעות
-                  </div>
-                </Card>
-              )}
-
-              {/* Back to current conversation button when viewing saved conversation */}
-              {viewingConversation && (
-                <Card 
-                  onClick={returnToCurrentConversation}
-                  className={`p-3 cursor-pointer transition-colors border-blue-500/50 ${
-                    isDarkMode 
-                      ? 'bg-blue-600/20 border-blue-600/30 hover:bg-blue-600/30' 
-                      : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
-                  }`}
-                >
-                  <div className={`text-sm font-medium ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-                    ↩ חזרה לשיחה נוכחית
-                  </div>
-                  <div className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
-                    לחצו לחזרה לשיחה הפעילה
-                  </div>
-                </Card>
-              )}
-
-              {/* Currently viewing conversation indicator */}
-              {viewingConversation && (
-                <Card className={`p-3 border-purple-500/50 ${
-                  isDarkMode 
-                    ? 'bg-purple-600/20 border-purple-600/30' 
-                    : 'bg-purple-50 border-purple-200'
-                }`}>
-                  <div className={`text-sm truncate ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
-                    <span className="text-purple-400 text-xs">צופים כעת • </span>
-                    {viewingConversation.title}
-                  </div>
-                  <div className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
-                    {viewingConversation.messages.length} הודעות
-                  </div>
-                </Card>
-              )}
-              
-              {/* Saved conversations */}
-              {filteredConversations.map((conversation, index) => (
-                <Card 
-                  key={conversation.id} 
-                  className={`p-3 transition-colors group ${
-                    viewingConversation?.id === conversation.id 
-                      ? (isDarkMode 
-                          ? 'bg-purple-600/20 border-purple-600/30' 
-                          : 'bg-purple-50 border-purple-200') 
-                      : (isDarkMode 
-                          ? 'bg-white/10 border-white/10 hover:bg-white/15' 
-                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100')
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div 
-                      className="flex-1 cursor-pointer"
-                      onClick={() => loadConversation(conversation)}
-                    >
-                      <div className={`text-sm truncate ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
-                        {conversation.title}
-                      </div>
-                      <div className={`text-xs mt-1 flex justify-between ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
-                        <span>{conversation.messages.length} הודעות</span>
-                        <span>{new Date(conversation.date).toLocaleDateString('he-IL')}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Delete button */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-                            isDarkMode 
-                              ? 'hover:bg-white/10 text-white/60' 
-                              : 'hover:bg-gray-200 text-gray-500'
-                          }`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800">
-                        <DropdownMenuItem 
-                          onClick={() => deleteConversation(conversation.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        >
-                          <Trash2 className="w-4 h-4 ml-2" />
-                          מחק שיחה
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </Card>
-              ))}
-              
-              {/* Empty state */}
-              {messages.length === 0 && savedConversations.length === 0 && (
-                <div className={`text-sm text-center py-8 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>
-                  עדיין אין שיחות
-                </div>
-              )}
-              
-              {/* No search results */}
-              {searchQuery && filteredConversations.length === 0 && savedConversations.length > 0 && (
-                <div className={`text-sm text-center py-8 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>
-                  לא נמצאו שיחות התואמות את החיפוש
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Settings */}
-          <div className={`p-4 border-t ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
-            <div className={`text-sm text-center ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
-              הקטגוריה שלכם: <span className="font-semibold text-green-400">{user?.category}</span>
-            </div>
+        {/* Settings */}
+        <div className={`p-4 border-t ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
+          <div className={`text-sm text-center ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+            הקטגוריה שלכם: <span className="font-semibold text-green-400">{user?.category}</span>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Main Chat Area */}
-      <div className={`flex-1 flex flex-col ${isDarkMode ? '' : 'bg-white/95'}`}>
-        {/* Toggle Sidebar Button */}
-        <div className={`p-4 border-b ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className={`p-2 rounded-lg transition-colors ${
-              isDarkMode 
-                ? 'hover:bg-white/10 text-white/80 hover:text-white' 
-                : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-            }`}
-            title={isSidebarOpen ? "הסתר תפריט" : "הצג תפריט"}
-          >
-            {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
+      <div className="flex-1 flex flex-col">
         {/* Chat Messages */}
-        <div className={`flex-1 overflow-y-auto p-6 space-y-4 ${isDarkMode ? '' : 'bg-white text-gray-900'}`}>
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.length === 0 ? (
             <div className="text-center py-12">
               <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -948,10 +692,10 @@ const ChatInterface = () => {
         </div>
 
         {/* Input Area */}
-        <div className={`border-t backdrop-blur-xl p-6 bg-gray-900 ${
+        <div className={`border-t backdrop-blur-xl p-6 ${
           isDarkMode 
-            ? 'border-white/10' 
-            : 'border-gray-200'
+            ? 'border-white/10 bg-black/20' 
+            : 'border-gray-200 bg-white/50'
         }`}>
           {uploadedFiles.length > 0 && (
             <div className={`mb-4 p-3 rounded-lg border ${
@@ -986,7 +730,7 @@ const ChatInterface = () => {
               multiple
               onChange={handleFileUpload}
               className="hidden"
-              accept=".mp3,.txt,.md,.csv,.tsv,.json,.xml,.yml,.yaml,.html,.htm,.ini,.log,.js,.py,.jpeg,.jpg,.png,.webp"
+              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif"
             />
             
             <button
@@ -1003,30 +747,18 @@ const ChatInterface = () => {
             </button>
             
             <div className="flex-1 relative">
-              <textarea
-                ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+              <Input
+                ref={inputRef}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                    // Keep focus on input after sending
-                    setTimeout(() => {
-                      if (inputRef.current) {
-                        inputRef.current.focus();
-                      }
-                    }, 100);
-                  }
-                }}
+                onKeyPress={handleKeyPress}
                 placeholder={`שאלו את המומחה שלכם ב${user?.category} כל שאלה או העלו קבצים...`}
-                className={`w-full min-h-[48px] max-h-32 pl-12 py-3 text-base text-right backdrop-blur-sm resize-none ${
+                className={`pl-12 py-3 text-base text-right backdrop-blur-sm ${
                   isDarkMode 
                     ? 'bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-white placeholder-white/50' 
                     : 'bg-white/80 border-gray-200 focus:border-green-500 focus:ring-green-500 text-gray-900 placeholder-gray-500'
-                } rounded-lg border`}
+                }`}
                 disabled={isLoading}
-                rows={1}
               />
             </div>
             <button
@@ -1063,7 +795,6 @@ const ChatInterface = () => {
               </p>
             </div>
           )}
-          
         </div>
       </div>
     </div>

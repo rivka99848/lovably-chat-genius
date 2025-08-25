@@ -4,7 +4,6 @@ import { X, Code, Eye, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Props {
   code: string;
@@ -19,35 +18,17 @@ const CodePreview: React.FC<Props> = ({ code, onClose }) => {
     // Extract and process code for preview
     const codeBlocks = code.match(/```[\s\S]*?```/g) || [];
     let combinedCode = '';
-    let allCodeSections = [];
 
-    codeBlocks.forEach((block: string) => {
+    codeBlocks.forEach(block => {
       const codeContent = block.slice(3, -3).trim();
       const lines = codeContent.split('\n');
-      const language = lines[0]?.includes(' ') ? '' : lines[0] || '';
+      const language = lines[0].includes(' ') ? '' : lines[0];
       const actualCode = language ? lines.slice(1).join('\n') : codeContent;
       
       if (language === 'html' || actualCode.includes('<html') || actualCode.includes('<!DOCTYPE')) {
         combinedCode = actualCode;
       } else if (actualCode.includes('<') && (actualCode.includes('div') || actualCode.includes('span'))) {
-        allCodeSections.push(actualCode);
-      } else if (actualCode.includes('function') || actualCode.includes('const') || actualCode.includes('class')) {
-        allCodeSections.push(actualCode);
-      }
-    });
-
-    // If we have multiple code sections, combine them
-    if (allCodeSections.length > 0 && !combinedCode) {
-      const htmlSections = allCodeSections.filter(code => 
-        code.includes('<') && (code.includes('div') || code.includes('span'))
-      );
-      const jsSections = allCodeSections.filter(code => 
-        code.includes('function') || code.includes('const') || code.includes('class')
-      );
-
-      if (htmlSections.length > 0) {
-        // Combine HTML sections
-        const combinedHTML = htmlSections.join('\n\n');
+        // Wrap HTML fragments
         combinedCode = `
 <!DOCTYPE html>
 <html lang="en">
@@ -58,16 +39,14 @@ const CodePreview: React.FC<Props> = ({ code, onClose }) => {
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
         * { box-sizing: border-box; }
-        .code-section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
     </style>
 </head>
 <body>
-${combinedHTML}
-${jsSections.length > 0 ? `<script>\n${jsSections.join('\n\n')}\n</script>` : ''}
+${actualCode}
 </body>
 </html>`;
-      } else if (jsSections.length > 0) {
-        // JavaScript only
+      } else if (actualCode.includes('function') || actualCode.includes('const') || actualCode.includes('class')) {
+        // JavaScript/React code - create a simple demo
         combinedCode = `
 <!DOCTYPE html>
 <html lang="en">
@@ -77,7 +56,7 @@ ${jsSections.length > 0 ? `<script>\n${jsSections.join('\n\n')}\n</script>` : ''
     <title>JavaScript Preview</title>
     <style>
         body { font-family: 'Courier New', monospace; padding: 20px; background: #f5f5f5; }
-        .code-block { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .code-block { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -87,7 +66,7 @@ ${jsSections.length > 0 ? `<script>\n${jsSections.join('\n\n')}\n</script>` : ''
     </div>
     <script>
         try {
-            ${jsSections.join('\n\n')}
+            ${actualCode}
             console.log('Code executed successfully');
         } catch (error) {
             document.getElementById('output').textContent = 'Error: ' + error.message;
@@ -96,7 +75,7 @@ ${jsSections.length > 0 ? `<script>\n${jsSections.join('\n\n')}\n</script>` : ''
 </body>
 </html>`;
       }
-    }
+    });
 
     setPreviewContent(combinedCode);
   }, [code]);
@@ -114,8 +93,8 @@ ${jsSections.length > 0 ? `<script>\n${jsSections.join('\n\n')}\n</script>` : ''
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <Card className="w-full max-w-6xl h-5/6 bg-white flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <Card className="w-full max-w-6xl h-5/6 bg-white flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold text-gray-800">Code Preview</h2>
@@ -131,8 +110,8 @@ ${jsSections.length > 0 ? `<script>\n${jsSections.join('\n\n')}\n</script>` : ''
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-4 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col overflow-hidden">
+        <div className="flex-1 p-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
             <TabsList className="mb-4">
               <TabsTrigger value="preview" className="flex items-center">
                 <Eye className="w-4 h-4 mr-1" />
@@ -144,17 +123,17 @@ ${jsSections.length > 0 ? `<script>\n${jsSections.join('\n\n')}\n</script>` : ''
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="preview" className="flex-1 h-full">
+            <TabsContent value="preview" className="flex-1">
               <div className="h-full border rounded-lg overflow-hidden bg-white">
                 {previewContent ? (
                   <iframe
                     srcDoc={previewContent}
-                    className="w-full h-full border-0 min-h-[600px]"
+                    className="w-full h-full border-0"
                     sandbox="allow-scripts allow-same-origin"
                     title="Code Preview"
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500 min-h-[400px]">
+                  <div className="flex items-center justify-center h-full text-gray-500">
                     <div className="text-center">
                       <Code className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>No previewable code found</p>
@@ -165,14 +144,12 @@ ${jsSections.length > 0 ? `<script>\n${jsSections.join('\n\n')}\n</script>` : ''
               </div>
             </TabsContent>
 
-            <TabsContent value="code" className="flex-1 overflow-hidden">
+            <TabsContent value="code" className="flex-1">
               <div className="h-full border rounded-lg overflow-hidden">
-                <div className="h-full bg-gray-900 text-gray-100 overflow-auto">
-                  <div className="p-4">
-                    <pre className="text-sm whitespace-pre-wrap break-words">
-                      <code className="block">{previewContent || code}</code>
-                    </pre>
-                  </div>
+                <div className="h-full bg-gray-900 text-gray-100 p-4 overflow-auto">
+                  <pre className="text-sm">
+                    <code>{previewContent || code}</code>
+                  </pre>
                 </div>
               </div>
             </TabsContent>

@@ -11,30 +11,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { Settings, CreditCard, LogOut, User } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import ContactForm from './ContactForm';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  phone?: string;
-  category: string;
-  plan: 'free' | 'pro' | 'enterprise';
-  messagesUsed: number;
-  messageLimit: number;
-}
 
 interface ProfileDropdownProps {
-  user?: User; // Make user optional
+  user: {
+    name: string;
+    email: string;
+  };
 }
 
 const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
   const navigate = useNavigate();
-
-  // Don't render if no user data is available
-  if (!user) {
-    return null;
-  }
 
   const handleSettingsClick = () => {
     console.log('Settings clicked');
@@ -79,9 +65,6 @@ const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
         <DropdownMenuItem onClick={handleUpgradeClick} dir="rtl">
           <CreditCard className="ml-2 h-4 w-4" />
           שדרוג
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild dir="rtl">
-          <ContactForm user={user} />
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} dir="rtl" className="text-orange-600 hover:text-orange-700 hover:bg-orange-50">
