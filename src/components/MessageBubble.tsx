@@ -512,17 +512,17 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       fixed = fixed.replace('http:', 'http://');
     }
     
-    // Fix domain without proper slash (e.g., "https://domain.comfiles..." should be "https://domain.com/files...")
-    // More comprehensive pattern to handle various cases
-    const domainPattern = /^(https?:\/\/)([^\/]+)([^\/].*)/;
+    // Fix domain without proper slash - handle cases like "domain.comfiles" 
+    // Look for pattern: protocol + domain + path (without slash between them)
+    const domainPattern = /^(https?:\/\/)([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(\/?.*)$/;
     const match = fixed.match(domainPattern);
     if (match) {
       const protocol = match[1];
       const domain = match[2];
-      const path = match[3];
+      let path = match[3];
       
-      // If path doesn't start with slash, add it
-      if (!path.startsWith('/')) {
+      // If path doesn't start with slash but has content, add it
+      if (path && !path.startsWith('/')) {
         fixed = protocol + domain + '/' + path;
       }
     }
