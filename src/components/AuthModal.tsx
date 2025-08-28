@@ -85,13 +85,19 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
       
       console.log('JSON Data to send:', JSON.stringify(requestData, null, 2));
       
+      const formData = new FormData();
+      formData.append('event', 'password_reset_request');
+      formData.append('email', resetEmail);
+      formData.append('reset_token', resetToken);
+      formData.append('reset_link', resetLink);
+      formData.append('timestamp', new Date().toISOString());
+      formData.append('origin', window.location.origin);
+      formData.append('user_agent', navigator.userAgent);
+
       await fetch('https://n8n.chatnaki.co.il/webhook/password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         mode: 'no-cors',
-        body: JSON.stringify(requestData),
+        body: formData,
       });
       
       // במצב no-cors אין לנו תשובה זמינה, מציגים הודעת הצלחה כללית
