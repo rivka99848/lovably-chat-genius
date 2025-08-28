@@ -79,41 +79,84 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
 
   const handlePayment = async (packageData: Package) => {
     try {
-      // Create pending payment
+      // Create pending payment ID
       const paymentId = Date.now().toString();
       setPendingPayments(prev => new Set([...prev, paymentId]));
 
-      // Navigate to payment page with package details
-      const paymentParams = new URLSearchParams({
-        userId: user.id,
-        userEmail: user.email,
-        userName: user.name,
-        userPhone: user.phone || '',
-        packageId: packageData.id,
-        packageName: packageData.name,
-        packagePrice: packageData.price.toString(),
-        packageType: packageData.type,
-        paymentId: paymentId
-      });
+      // Send webhook to n8n with customer and package data
+      const webhookUrl = 'https://n8n.chatnaki.co.il/webhook/ec08226c-892c-48e2-b5e1-25fe521d186f';
+      
+      const webhookData = {
+        customer: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          phone: user.phone || '',
+          currentPlan: user.plan,
+          messagesUsed: user.messagesUsed,
+          messageLimit: user.messageLimit
+        },
+        package: {
+          id: packageData.id,
+          name: packageData.name,
+          price: packageData.price,
+          type: packageData.type,
+          messageLimit: packageData.messageLimit,
+          features: packageData.features
+        },
+        paymentId: paymentId,
+        timestamp: new Date().toISOString()
+      };
 
-      const paymentUrl = `https://www.matara.pro/nedarimplus/online/?mosad=2813479&${paymentParams.toString()}`;
-      
-      // Open payment page as popup
-      const popupFeatures = 'width=800,height=700,scrollbars=yes,resizable=yes,centerscreen=yes,location=no,menubar=no,toolbar=no,status=no';
-      window.open(paymentUrl, 'paymentPopup', popupFeatures);
-      
       toast({
-        title: "מעבר לתשלום",
-        description: "מועבר לדף התשלום..."
+        title: "שולח פרטי תשלום",
+        description: "מכין דף תשלום מותאם אישית..."
       });
 
-      // Check payment status periodically
-      checkPaymentStatus(paymentId, packageData);
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // Expecting iframe URL in the response
+      if (result.paymentIframe) {
+        // Open payment iframe in a popup
+        const popupFeatures = 'width=800,height=700,scrollbars=yes,resizable=yes,centerscreen=yes,location=no,menubar=no,toolbar=no,status=no';
+        window.open(result.paymentIframe, 'paymentPopup', popupFeatures);
+        
+        toast({
+          title: "מעבר לתשלום",
+          description: "מועבר לדף התשלום המותאם..."
+        });
+
+        // Check payment status periodically
+        checkPaymentStatus(paymentId, packageData);
+      } else {
+        throw new Error('לא התקבל קישור לדף התשלום');
+      }
       
     } catch (error) {
+      console.error('Error sending webhook:', error);
+      const currentPaymentId = Date.now().toString(); // fallback ID
+      setPendingPayments(prev => {
+        const newSet = new Set(prev);
+        // Remove any pending payment ID
+        prev.forEach(id => newSet.delete(id));
+        return newSet;
+      });
+      
       toast({
         title: "שגיאה",
-        description: "נכשל בעיבוד התשלום",
+        description: "נכשל בעיבוד התשלום. אנא נסה שוב.",
         variant: "destructive"
       });
     }
