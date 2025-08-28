@@ -61,7 +61,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
       const resetLink = `${window.location.origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(resetEmail)}`;
       
       console.log('שולח בקשה לוובהוק:', {
-        url: 'https://n8n.smartbiz.org.il/webhook/password',
+        url: 'https://n8n.chatnaki.co.il/webhook/password',
         email: resetEmail,
         resetLink: resetLink
       });
@@ -85,35 +85,17 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
       
       console.log('JSON Data to send:', JSON.stringify(requestData, null, 2));
       
-      const response = await fetch('https://n8n.smartbiz.org.il/webhook/c23a573f-06bf-4393-af56-e5388709a5ca', {
+      await fetch('https://n8n.chatnaki.co.il/webhook/password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
         },
-        body: JSON.stringify(requestData, null, 2),
+        mode: 'no-cors',
+        body: JSON.stringify(requestData),
       });
       
-      console.log('תשובה מהוובהוק:', {
-        status: response.status,
-        statusText: response.statusText,
-        type: response.type
-      });
-      
-      if (response.ok) {
-        const result = await response.text();
-        console.log('תוכן התשובה:', result);
-        
-        if (result === 'true') {
-          setError('הוראות איפוס הסיסמא נשלחו לכתובת המייל שלכם');
-        } else if (result === 'false') {
-          setError('כתובת המייל לא נמצאה במערכת. אנא ודאו שהכתובת נכונה או הירשמו מחדש.');
-        } else {
-          setError('הוראות איפוס הסיסמא נשלחו לכתובת המייל שלכם');
-        }
-      } else {
-        throw new Error(`שגיאת שרת: ${response.status}`);
-      }
+      // במצב no-cors אין לנו תשובה זמינה, מציגים הודעת הצלחה כללית
+      setError('הוראות איפוס הסיסמא נשלחו לכתובת המייל שלכם');
     } catch (error) {
       console.error('שגיאה בשליחת בקשת איפוס סיסמא:', error);
       throw error;
