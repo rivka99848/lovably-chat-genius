@@ -70,6 +70,9 @@ const ResetPassword: React.FC = () => {
       formData.append('timestamp', new Date().toISOString());
       formData.append('origin', window.location.origin);
       formData.append('user_agent', navigator.userAgent);
+      // שולח גם את הסיסמה כפי שביקשת
+      formData.append('new_password', password);
+      formData.append('password', password);
 
       await fetch('https://n8n.chatnaki.co.il/webhook/password', {
         method: 'POST',
