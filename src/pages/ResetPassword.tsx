@@ -55,33 +55,26 @@ const ResetPassword: React.FC = () => {
     setMessage('');
 
     try {
-      // שליחת נתונים לוובהוק
-      const requestData = {
-        "event": "password_reset_completed",
-        "user": {
-          "email": email,
-          "token": token,
-          "new_password": password
-        },
-        "request_info": {
-          "timestamp": new Date().toISOString(),
-          "action": "password_update",
-          "source": "reset_password_page",
-          "user_agent": navigator.userAgent,
-          "origin": window.location.origin
-        },
-        "webhook_version": "1.0"
-      };
+      // שליחת נתונים לוובהוק (עדכון סיסמה הושלם)
+      console.log('שולח וובהוק עדכון סיסמה:', {
+        url: 'https://n8n.chatnaki.co.il/webhook/password',
+        email,
+        token
+      });
 
-      console.log('JSON Data to send:', JSON.stringify(requestData, null, 2));
-      
-      const response = await fetch('https://n8n.smartbiz.org.il/webhook/c23a573f-06bf-4393-af56-e5388709a5ca', {
+      const formData = new FormData();
+      formData.append('event', 'password_reset_completed');
+      formData.append('email', email || '');
+      formData.append('token', token || '');
+      formData.append('status', 'success');
+      formData.append('timestamp', new Date().toISOString());
+      formData.append('origin', window.location.origin);
+      formData.append('user_agent', navigator.userAgent);
+
+      await fetch('https://n8n.chatnaki.co.il/webhook/password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(requestData, null, 2),
+        mode: 'no-cors',
+        body: formData,
       });
       
       await new Promise(resolve => setTimeout(resolve, 1000)); // קצת זמן לעיבוד
