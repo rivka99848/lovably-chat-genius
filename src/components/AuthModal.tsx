@@ -61,7 +61,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
       const resetLink = `${window.location.origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(resetEmail)}`;
       
       console.log('שולח בקשה לוובהוק:', {
-        url: 'https://n8n.chatnaki.co.il/webhook/password',
+        url: 'https://n8n.chatnaki.co.il/webhook/c23a573f-06bf-4393-af56-e5388709a5ca',
         email: resetEmail,
         resetLink: resetLink
       });
@@ -94,7 +94,7 @@ const AuthModal: React.FC<Props> = ({ onAuth, onClose }) => {
       formData.append('origin', window.location.origin);
       formData.append('user_agent', navigator.userAgent);
 
-      await fetch('https://n8n.chatnaki.co.il/webhook/password', {
+      await fetch('https://n8n.chatnaki.co.il/webhook/c23a573f-06bf-4393-af56-e5388709a5ca', {
         method: 'POST',
         mode: 'no-cors',
         body: formData,
