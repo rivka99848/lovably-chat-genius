@@ -34,6 +34,7 @@ interface User {
   plan: 'free' | 'pro' | 'enterprise';
   messagesUsed: number;
   messageLimit: number;
+  registrationDate?: string;
 }
 
 const ChatInterface = () => {
@@ -167,7 +168,8 @@ const ChatInterface = () => {
               category,
               plan: userData.plan || 'free',
               messagesUsed: userData.messagesUsed || 0,
-              messageLimit: userData.messageLimit || 50
+              messageLimit: userData.messageLimit || 50,
+              registrationDate: new Date().toISOString()
             };
             
             setUser(newUser);
@@ -221,7 +223,8 @@ const ChatInterface = () => {
               category: userData.category || 'תכנות',
               plan: userData.plan || 'free',
               messagesUsed: userData.messagesUsed || 0,
-              messageLimit: userData.messageLimit || 50
+              messageLimit: userData.messageLimit || 50,
+              registrationDate: userData.registrationDate || new Date().toISOString()
             };
             
             setUser(existingUser);
@@ -346,6 +349,11 @@ const ChatInterface = () => {
 
     // Check token limits  
     if (user.messagesUsed >= user.messageLimit) {
+      toast({
+        title: "נגמרו הטוקנים",
+        description: "נגמרו לכם הטוקנים לחודש זה. שדרגו את התוכנית או המתינו לחידוש החודשי.",
+        variant: "destructive"
+      });
       setShowPlanUpgrade(true);
       return;
     }
@@ -955,8 +963,8 @@ const ChatInterface = () => {
                 isDarkMode 
                   ? 'hover:bg-white/5 text-white/80 hover:text-white' 
                   : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-              }`}
-              disabled={isLoading}
+              } ${user && user.messagesUsed >= user.messageLimit ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={isLoading || (user && user.messagesUsed >= user.messageLimit)}
               title="העלאת קבצים"
             >
               <Upload className="w-5 h-5" />
@@ -973,19 +981,21 @@ const ChatInterface = () => {
                     sendMessage();
                   }
                 }}
-                placeholder={`שאלו את המומחה שלכם ב${user?.category} כל שאלה או העלו קבצים...`}
+                placeholder={user && user.messagesUsed >= user.messageLimit ? 
+                  "נגמרו הטוקנים - שדרגו את התוכנית כדי להמשיך" :
+                  `שאלו את המומחה שלכם ב${user?.category} כל שאלה או העלו קבצים...`}
                 className={`w-full min-h-[48px] max-h-32 pl-12 py-3 text-base text-right backdrop-blur-sm resize-none ${
                   isDarkMode 
                     ? 'bg-white/10 border-white/20 focus:border-green-400 focus:ring-green-400 text-white placeholder-white/50' 
                     : 'bg-white/80 border-gray-200 focus:border-green-500 focus:ring-green-500 text-gray-900 placeholder-gray-500'
-                } rounded-lg border`}
-                disabled={isLoading}
+                } rounded-lg border ${user && user.messagesUsed >= user.messageLimit ? 'opacity-50' : ''}`}
+                disabled={isLoading || (user && user.messagesUsed >= user.messageLimit)}
                 rows={1}
               />
             </div>
             <button
               onClick={sendMessage}
-              disabled={(!inputValue.trim() && uploadedFiles.length === 0) || isLoading}
+              disabled={(!inputValue.trim() && uploadedFiles.length === 0) || isLoading || (user && user.messagesUsed >= user.messageLimit)}
               className={`p-3 rounded-lg transition-all duration-200 disabled:opacity-50 ${
                 isDarkMode 
                   ? 'hover:bg-white/5 text-white/80 hover:text-white' 
@@ -997,19 +1007,33 @@ const ChatInterface = () => {
             </button>
           </div>
           
-          {user && user.messagesUsed >= user.messageLimit * 0.8 && (
-            <div className={`mt-3 p-3 rounded-lg border ${
-              isDarkMode 
-                ? 'bg-yellow-600/20 border-yellow-600/30 text-yellow-300' 
-                : 'bg-yellow-50 border-yellow-200 text-yellow-700'
-            }`}>
+          {user && user.messagesUsed >= user.messageLimit && (
+            <div className="mt-3 p-3 rounded-lg border bg-white border-gray-300 text-black">
+              <p className="text-sm font-medium">
+                נגמרו לכם הטוקנים ({user.messagesUsed.toLocaleString()}/{user.messageLimit.toLocaleString()} נשלחו).
+                {user.registrationDate && (
+                  <span className="block mt-1">
+                    נרשמתם ב-{new Date(user.registrationDate).toLocaleDateString('he-IL')} - טוקנים מתחדשים בתחילת החודש הבא.
+                  </span>
+                )}
+                <Button
+                  variant="link"
+                  className="p-0 mr-1 underline text-black"
+                  onClick={() => setShowPlanUpgrade(true)}
+                >
+                  שדרגו לטוקנים ללא הגבלה
+                </Button>
+              </p>
+            </div>
+          )}
+          
+          {user && user.messagesUsed >= user.messageLimit * 0.8 && user.messagesUsed < user.messageLimit && (
+            <div className="mt-3 p-3 rounded-lg border bg-white border-gray-300 text-black">
               <p className="text-sm">
                 נגמרים לכם הטוקנים ({user.messagesUsed.toLocaleString()}/{user.messageLimit.toLocaleString()} נשלחו). 
                 <Button
                   variant="link"
-                  className={`p-0 mr-1 underline ${
-                    isDarkMode ? 'text-yellow-300' : 'text-yellow-700'
-                  }`}
+                  className="p-0 mr-1 underline text-black"
                   onClick={() => setShowPlanUpgrade(true)}
                 >
                   שדרגו לטוקנים ללא הגבלה

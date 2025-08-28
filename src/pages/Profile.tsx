@@ -12,6 +12,7 @@ interface User {
   plan: 'free' | 'pro' | 'enterprise';
   messagesUsed: number;
   messageLimit: number;
+  registrationDate?: string;
 }
 
 const Profile = () => {
