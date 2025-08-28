@@ -52,24 +52,24 @@ const packages: Package[] = [
     name: 'חבילה חינם',
     price: 0,
     messageLimit: 50,
-    features: ['50 הודעות חינם', 'תמיכה בסיסית', 'גישה לכל התכונות הבסיסיות'],
+    features: ['50 טוקנים חינם', 'תמיכה בסיסית', 'גישה לכל התכונות הבסיסיות'],
     type: 'free'
   },
   {
     id: '2',
-    name: 'חבילה מקצועית',
-    price: 29,
-    messageLimit: 500,
-    features: ['500 הודעות', 'תמיכה מועדפת', 'גישה מוקדמת לתכונות', 'ייצוא שיחות', 'אולוית עדיפות'],
+    name: 'חבילה בסיסית',
+    price: 15,
+    messageLimit: 300000,
+    features: ['300,000 טוקנים', 'תמיכה מועדפת', 'גישה מוקדמת לתכונות', 'ייצוא שיחות', 'אולוית עדיפות'],
     type: 'pro',
     popular: true
   },
   {
     id: '3',
-    name: 'חבילה ארגונית',
-    price: 99,
-    messageLimit: 2000,
-    features: ['2000 הודעות', 'תמיכה 24/7', 'ניהול צוות', 'דוחות מתקדמים', 'אינטגרציות מותאמות אישית', 'נהל מרובה'],
+    name: 'חבילה מתקדמת',
+    price: 25,
+    messageLimit: 600000,
+    features: ['600,000 טוקנים', 'תמיכה 24/7', 'ניהול צוות', 'דוחות מתקדמים', 'אינטגרציות מותאמות אישית', 'נהל מרובה'],
     type: 'enterprise'
   }
 ];
@@ -94,7 +94,9 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
           phone: user.phone || '',
           currentPlan: user.plan,
           messagesUsed: user.messagesUsed,
-          messageLimit: user.messageLimit
+          messageLimit: user.messageLimit,
+          tokensUsed: user.messagesUsed, // backward compatibility
+          tokenLimit: user.messageLimit  // backward compatibility
         },
         package: {
           id: packageData.id,
@@ -102,6 +104,7 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
           price: packageData.price,
           type: packageData.type,
           messageLimit: packageData.messageLimit,
+          tokenLimit: packageData.messageLimit, // same value for now
           features: packageData.features
         },
         paymentId: paymentId,
@@ -285,7 +288,7 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
                 <div>
                   <div className="font-medium">החבילה הנוכחית שלך</div>
                   <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {user.messagesUsed}/{user.messageLimit} הודעות בשימוש
+                    {user.messagesUsed.toLocaleString()}/{user.messageLimit.toLocaleString()} טוקנים בשימוש
                   </div>
                 </div>
               </div>
@@ -334,7 +337,7 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
                       )}
                     </div>
                     <div className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {pkg.messageLimit} הודעות
+                      {pkg.messageLimit.toLocaleString()} טוקנים
                     </div>
                   </div>
 
@@ -398,7 +401,7 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
               <div className="flex items-center space-x-2 space-x-reverse">
                 <Check className="w-4 h-4 text-green-400" />
-                <span>יותר הודעות לשימוש</span>
+                <span>יותר טוקנים לשימוש</span>
               </div>
               <div className="flex items-center space-x-2 space-x-reverse">
                 <Check className="w-4 h-4 text-green-400" />

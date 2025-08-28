@@ -344,7 +344,7 @@ const ChatInterface = () => {
   const sendMessage = async () => {
     if ((!inputValue.trim() && uploadedFiles.length === 0) || !user || isLoading) return;
 
-    // Check message limits
+    // Check token limits  
     if (user.messagesUsed >= user.messageLimit) {
       setShowPlanUpgrade(true);
       return;
@@ -737,7 +737,7 @@ const ChatInterface = () => {
                   {user.category}
                 </Badge>
                 <div className={`text-xs ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
-                  {user.messagesUsed}/{user.messageLimit} הודעות נשלחו
+                  {user.messagesUsed.toLocaleString()}/{user.messageLimit.toLocaleString()} טוקנים נשלחו
                 </div>
               </div>
             )}
@@ -1004,7 +1004,7 @@ const ChatInterface = () => {
                 : 'bg-yellow-50 border-yellow-200 text-yellow-700'
             }`}>
               <p className="text-sm">
-                נגמרות לכם ההודעות ({user.messagesUsed}/{user.messageLimit} נשלחו). 
+                נגמרים לכם הטוקנים ({user.messagesUsed.toLocaleString()}/{user.messageLimit.toLocaleString()} נשלחו). 
                 <Button
                   variant="link"
                   className={`p-0 mr-1 underline ${
@@ -1012,7 +1012,7 @@ const ChatInterface = () => {
                   }`}
                   onClick={() => setShowPlanUpgrade(true)}
                 >
-                  שדרגו להודעות ללא הגבלה
+                  שדרגו לטוקנים ללא הגבלה
                 </Button>
               </p>
             </div>

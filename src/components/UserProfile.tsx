@@ -288,7 +288,7 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                       {getPlanName(user.plan)}
                     </Badge>
                     <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {user.messagesUsed}/{user.messageLimit} הודעות
+                      {user.messagesUsed.toLocaleString()}/{user.messageLimit.toLocaleString()} טוקנים
                     </span>
                   </div>
                   <Button
@@ -495,9 +495,9 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                   ? 'bg-gray-800/50 border-gray-700' 
                   : 'bg-gray-50 border-gray-200'
               }`}>
-                <div className="text-2xl font-bold text-green-400">{user.messagesUsed}</div>
+                <div className="text-2xl font-bold text-green-400">{user.messagesUsed.toLocaleString()}</div>
                 <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  הודעות נשלחו
+                  טוקנים נשלחו
                 </div>
               </div>
 
@@ -510,7 +510,7 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                   {Math.round(((user.messageLimit - user.messagesUsed) / user.messageLimit) * 100)}%
                 </div>
                 <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  הודעות נותרו
+                  טוקנים נותרו
                 </div>
               </div>
             </div>
