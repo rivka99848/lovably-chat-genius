@@ -480,30 +480,42 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     const trimmed = text.trim();
     const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?[^/]*)?$/i;
     
+    console.log('🔍 Checking if URL is image:', trimmed);
+    
     // First try to fix the URL and then check if it's valid
     const fixedUrl = fixImageUrl(trimmed);
+    console.log('🔧 Fixed URL:', fixedUrl);
     
     // Check if fixed URL is valid and has image extension
     try {
       const url = new URL(fixedUrl);
-      return imageExtensions.test(url.pathname);
-    } catch {
+      const isImage = imageExtensions.test(url.pathname);
+      console.log('✅ URL is valid, is image:', isImage, 'pathname:', url.pathname);
+      return isImage;
+    } catch (error) {
+      console.log('❌ URL constructor failed:', error);
+      
       // If URL constructor still fails, check for image extension patterns anywhere in the text
       if (imageExtensions.test(trimmed)) {
+        console.log('✅ Found image extension in text');
         return true;
       }
       
-      // Check for malformed URLs with image extensions
+      // Check for malformed URLs with image extensions - more specific pattern
       const malformedImagePattern = /https?[:\/]*[^\s]*\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i;
       if (malformedImagePattern.test(trimmed)) {
+        console.log('✅ Found malformed image URL pattern');
         return true;
       }
       
-      // Special case: check if it contains "files" and image extension (common pattern)
-      if (trimmed.includes('files') && imageExtensions.test(trimmed) && /^https?[:\//]/.test(trimmed)) {
+      // Enhanced pattern for URLs like files.domain.com/files/filename.png
+      const enhancedPattern = /https?[:\/]*[a-zA-Z0-9.-]+[\/][^\s]*\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i;
+      if (enhancedPattern.test(trimmed)) {
+        console.log('✅ Found enhanced image URL pattern');
         return true;
       }
       
+      console.log('❌ No image pattern found');
       return false;
     }
   };
@@ -549,19 +561,31 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       // Check if line is an image URL (entire line or just contains URL)
       if (isImageUrl(trimmedLine)) {
         const fixedUrl = fixImageUrl(trimmedLine);
+        console.log('📸 Rendering image:', fixedUrl);
         return (
           <div key={lineIndex} className="mb-4">
             <img 
               src={fixedUrl} 
               alt="תמונה מהבוט"
-              className="max-w-full h-auto rounded-lg shadow-md"
+              className="max-w-full h-auto rounded-lg shadow-md border border-gray-200 dark:border-gray-700"
               style={{ maxHeight: '400px' }}
+              onLoad={() => {
+                console.log('✅ Image loaded successfully:', fixedUrl);
+              }}
               onError={(e) => {
-                // If image fails to load, show the URL as text instead
+                console.log('❌ Image failed to load:', fixedUrl);
+                // If image fails to load, show the URL as a clickable link instead
                 const target = e.target as HTMLImageElement;
                 const parent = target.parentElement;
                 if (parent) {
-                  parent.innerHTML = `<span class="text-blue-500 underline">${trimmedLine}</span>`;
+                  parent.innerHTML = `
+                    <div class="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/20">
+                      <p class="text-sm text-red-600 dark:text-red-400 mb-2">לא ניתן לטעון את התמונה (שגיאת SSL/CORS)</p>
+                      <a href="${fixedUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 underline break-all">
+                        ${trimmedLine}
+                      </a>
+                    </div>
+                  `;
                 }
               }}
             />
@@ -569,9 +593,12 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         );
       }
       
-      // Check if line contains an image URL within text
-      const imageUrlPattern = /(https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|svg|bmp|ico))/gi;
+      // Check if line contains an image URL within text - enhanced pattern
+      const imageUrlPattern = /(https?[:\/]*[^\s]+\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?[^\s]*)?)/gi;
       const matches = trimmedLine.match(imageUrlPattern);
+      
+      console.log('🔍 Checking for image URLs in line:', trimmedLine);
+      console.log('📝 Matches found:', matches);
       
       if (matches && matches.length > 0) {
         // Replace each image URL with an img tag
@@ -584,13 +611,24 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                   <img 
                     src={fixedUrl} 
                     alt="תמונה מהבוט"
-                    className="max-w-full h-auto rounded-lg shadow-md"
+                    className="max-w-full h-auto rounded-lg shadow-md border border-gray-200 dark:border-gray-700"
                     style={{ maxHeight: '400px' }}
+                    onLoad={() => {
+                      console.log('✅ Inline image loaded successfully:', fixedUrl);
+                    }}
                     onError={(e) => {
+                      console.log('❌ Inline image failed to load:', fixedUrl);
                       const target = e.target as HTMLImageElement;
                       const parent = target.parentElement;
                       if (parent) {
-                        parent.innerHTML = `<span class="text-blue-500 underline">${url}</span>`;
+                        parent.innerHTML = `
+                          <div class="p-3 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/20">
+                            <p class="text-sm text-red-600 dark:text-red-400 mb-1">שגיאה בטעינת תמונה</p>
+                            <a href="${fixedUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 underline text-sm break-all">
+                              ${url}
+                            </a>
+                          </div>
+                        `;
                       }
                     }}
                   />
