@@ -363,7 +363,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       .replace(/[\u201C\u201D\u2018\u2019]/g, '"')
       .replace(/[\u2013\u2014]/g, '-')
       .replace(/[\u00A0]/g, ' ')
-      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'-]/g, '')
+      .replace(/[^\w\s\u0590-\u05FF\u200E\u200F.,;:!?()[\]{}"'/%-]/g, '')
       .replace(/\s+$/gm, '')
       .replace(/^\s*[\r\n]+|[\r\n]+\s*$/g, '')
       .replace(/[\r\n]{3,}/g, '\n\n')
