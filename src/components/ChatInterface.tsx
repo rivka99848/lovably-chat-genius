@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
+import { getToken, setToken, clearToken, fetchWithAuth, extractToken } from '@/lib/auth';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -159,6 +160,13 @@ const ChatInterface = () => {
             userData = responseText;
           }
           
+          // חלץ טוקן אם קיים
+          const token = extractToken(userData);
+          if (token) {
+            setToken(token);
+            console.log('JWT token saved after registration');
+          }
+          
           // אם זה true - המשתמש נרשם בהצלחה
           if (userData === true || (typeof userData === 'object' && userData.success)) {
             const newUser: User = {
@@ -210,6 +218,13 @@ const ChatInterface = () => {
             userData = JSON.parse(responseText);
           } catch {
             userData = responseText;
+          }
+          
+          // חלץ טוקן אם קיים
+          const token = extractToken(userData);
+          if (token) {
+            setToken(token);
+            console.log('JWT token saved after login');
           }
           
           // אם זה true או array עם success: true - המשתמש התחבר בהצלחה
@@ -388,6 +403,12 @@ const ChatInterface = () => {
     formData.append('timestamp', new Date().toISOString());
     formData.append('sessionId', currentSessionId);
     
+    // Add JWT token to form data
+    const token = getToken();
+    if (token) {
+      formData.append('token', token);
+    }
+    
     // Add files to form data with detected format
     uploadedFiles.forEach((file, index) => {
       const detectedFormat = detectFileType(file);
@@ -435,7 +456,7 @@ const ChatInterface = () => {
 
     try {
       console.log('Sending request to chatbot webhook:', CHATBOT_WEBHOOK_URL, 'with sessionId:', currentSessionId);
-      const response = await fetch(CHATBOT_WEBHOOK_URL, {
+      const response = await fetchWithAuth(CHATBOT_WEBHOOK_URL, {
         method: 'POST',
         body: formData
       });
@@ -454,6 +475,13 @@ const ChatInterface = () => {
         } catch (parseError) {
           console.log('Response is not JSON, using as plain text:', responseText);
           data = { message: responseText };
+        }
+        
+        // Check for updated token in response
+        const newToken = extractToken(data);
+        if (newToken) {
+          setToken(newToken);
+          console.log('JWT token updated from bot response');
         }
         
         // Handle server response - if it's true, process the message, otherwise just show the message
@@ -617,11 +645,12 @@ const ChatInterface = () => {
   const handleLogout = () => {
     console.log('Logout clicked');
     
-    // Clear user data
+    // Clear user data and JWT token
     setUser(null);
     localStorage.removeItem('lovable_user');
     localStorage.removeItem('lovable_chat_history');
     localStorage.removeItem('lovable_session_id');
+    clearToken(); // Clear JWT token
     
     // Clear messages
     setMessages([]);

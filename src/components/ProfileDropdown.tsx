@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Settings, CreditCard, LogOut, User } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { clearToken } from '@/lib/auth';
 import ContactForm from './ContactForm';
 
 interface User {
@@ -51,6 +52,13 @@ const ProfileDropdown = ({ user }: ProfileDropdownProps) => {
 
   const handleLogout = () => {
     console.log('Logout clicked');
+    
+    // Clear JWT token and user data
+    clearToken();
+    localStorage.removeItem('lovable_user');
+    localStorage.removeItem('lovable_chat_history');
+    localStorage.removeItem('lovable_session_id');
+    
     toast({
       title: "התנתקת בהצלחה",
       description: "מעבירים אותך לדף ההתחברות"
