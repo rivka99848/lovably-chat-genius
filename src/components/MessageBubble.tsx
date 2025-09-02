@@ -29,30 +29,14 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     });
   };
 
-  const downloadImage = async (imageUrl: string) => {
-    try {
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `image_${Date.now()}.${blob.type.split('/')[1] || 'png'}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      toast({
-        title: "הורד בהצלחה!",
-        description: "התמונה נשמרה למחשב.",
-      });
-    } catch (error) {
-      toast({
-        title: "שגיאה בהורדה",
-        description: "לא ניתן להוריד את התמונה.",
-        variant: "destructive"
-      });
-    }
+  const downloadImage = (imageUrl: string) => {
+    // Open image in new window to allow manual download (bypasses CORS issues)
+    window.open(imageUrl, '_blank');
+    
+    toast({
+      title: "תמונה נפתחה!",
+      description: "התמונה נפתחה בחלון חדש - לחץ ימין ובחר 'שמירה בשם' כדי להוריד.",
+    });
   };
 
   // Function to detect if text is Hebrew
