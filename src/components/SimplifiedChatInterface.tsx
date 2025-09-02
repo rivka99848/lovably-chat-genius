@@ -232,6 +232,11 @@ const SimplifiedChatInterface = () => {
   const sendMessage = async () => {
     if (!inputValue.trim() || !user || isLoading) return;
 
+    // Ensure we have a session ID - create one if empty
+    if (!currentSessionId) {
+      createNewSessionId();
+    }
+
     // Check token limits  
     if (user.messagesUsed >= user.messageLimit) {
       toast({

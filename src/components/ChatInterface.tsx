@@ -414,6 +414,11 @@ const ChatInterface = () => {
   const sendMessage = async () => {
     if ((!inputValue.trim() && uploadedFiles.length === 0) || !user || isLoading) return;
 
+    // Ensure we have a session ID - create one if empty
+    if (!currentSessionId) {
+      createNewSessionId();
+    }
+
     // Check token limits  
     if (user.messagesUsed >= user.messageLimit) {
       toast({
