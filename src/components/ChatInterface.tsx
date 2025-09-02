@@ -57,7 +57,7 @@ const ChatInterface = () => {
 
   // Updated webhook URLs - separate for login and chatbot
   const LOGIN_WEBHOOK_URL = 'https://n8n.smartbiz.org.il/webhook/login';
-  const CHATBOT_WEBHOOK_URL = 'https://n8n.smartbiz.org.il/webhook/chatbot';
+  const CHATBOT_WEBHOOK_URL = 'https://n8n.chatnaki.co.il/webhook/chatbot';
 
   // Generate or get session ID
   const getSessionId = () => {
