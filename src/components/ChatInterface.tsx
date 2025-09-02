@@ -425,9 +425,13 @@ const ChatInterface = () => {
       return;
     }
 
+    // Create user message display content
+    const displayContent = inputValue || 
+                          (uploadedFiles.length > 0 ? `הועלה קובץ: ${uploadedFiles.map(f => f.name).join(', ')}` : '');
+
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputValue || (uploadedFiles.length > 0 ? `הועלו ${uploadedFiles.length} קבצים` : ''),
+      content: displayContent,
       isUser: true,
       timestamp: new Date(),
       category: user.category
@@ -439,6 +443,10 @@ const ChatInterface = () => {
     
     console.log('Preparing to send message with session ID:', currentSessionId);
     
+    // Get session title from existing conversation or create from message
+    const sessionTitle = savedConversations.find(conv => conv.session_id === currentSessionId)?.title || 
+                         inputValue.slice(0, 50) + (inputValue.length > 50 ? '...' : '') || 'שיחה חדשה';
+
     // Prepare form data for file upload with all user details and session ID
     const formData = new FormData();
     formData.append('userId', user.id);
@@ -449,8 +457,9 @@ const ChatInterface = () => {
     formData.append('userMessagesUsed', user.messagesUsed.toString());
     formData.append('userMessageLimit', user.messageLimit.toString());
     formData.append('message', inputValue);
+    formData.append('messagePosition', (messages.length + 1).toString());
+    formData.append('sessionTitle', sessionTitle);
     formData.append('category', user.category);
-    formData.append('chatHistory', JSON.stringify(messages.slice(-10)));
     formData.append('timestamp', new Date().toISOString());
     formData.append('sessionId', currentSessionId);
     formData.append('clientId', getOrCreateClientId());
@@ -461,36 +470,12 @@ const ChatInterface = () => {
       formData.append('token', token);
     }
     
-    // Add files to form data with detected format
-    uploadedFiles.forEach((file, index) => {
-      const detectedFormat = detectFileType(file);
-      
-      console.log(`File ${index}:`, {
-        originalName: file.name,
-        originalType: file.type,
-        detectedFormat: detectedFormat
+    // Add files to form data 
+    if (uploadedFiles.length > 0) {
+      uploadedFiles.forEach((file, index) => {
+        formData.append('file', file);
       });
-      
-      // Create corrected filename with proper extension
-      const originalName = file.name;
-      const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-      const correctedFileName = `${nameWithoutExt}.${detectedFormat}`;
-      
-      // Create new file with corrected name and MIME type
-      const correctedMimeType = detectedFormat === 'mp3' ? 'audio/mpeg' : 
-                               detectedFormat === 'mp4' ? 'video/mp4' : file.type;
-      const correctedFile = new File([file], correctedFileName, { type: correctedMimeType });
-      
-      console.log(`Corrected file ${index}:`, {
-        correctedFileName: correctedFileName,
-        correctedMimeType: correctedMimeType,
-        finalFormat: detectedFormat
-      });
-      
-      formData.append(`file_${index}`, correctedFile);
-      formData.append(`file_${index}_format`, detectedFormat);
-      formData.append(`file_${index}_name`, correctedFileName);
-    });
+    }
 
     // Log all form data for debugging
     console.log('Form data being sent:');

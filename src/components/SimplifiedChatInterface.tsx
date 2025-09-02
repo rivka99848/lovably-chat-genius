@@ -282,6 +282,20 @@ const SimplifiedChatInterface = () => {
         setSavedConversations(conversations);
       }
 
+      // Get session title from existing conversation or create from message
+      const sessionTitle = savedConversations.find(conv => conv.session_id === currentSessionId)?.title || 
+                           userMessage.content.slice(0, 50) + (userMessage.content.length > 50 ? '...' : '') || 'שיחה חדשה';
+
+      // Note: In real implementation, would send request with these parameters:
+      // - userId: user.id
+      // - userEmail: user.email  
+      // - message: inputValue (clean text only)
+      // - messagePosition: messages.length + 1
+      // - sessionTitle: sessionTitle
+      // - sessionId: currentSessionId
+      // - clientId: getOrCreateClientId()
+      // - file: uploadedFiles (if any)
+
       // Simple mock AI response for now
       setTimeout(() => {
         const aiMessage: Message = {
