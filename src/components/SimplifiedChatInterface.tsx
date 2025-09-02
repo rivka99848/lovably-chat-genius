@@ -6,21 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { 
-  createChatSession, 
-  getChatSessions, 
-  updateChatSessionLastMessage, 
-  deleteChatSession,
-  type ChatSession 
-} from '@/lib/supabase';
-import {
-  getCurrentUser,
-  signUpUser,
-  signInUser,
-  signOutUser,
-  incrementMessageUsage
-} from '@/lib/auth-supabase';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +36,14 @@ interface User {
   registrationDate?: string;
 }
 
+interface ChatSession {
+  id: string;
+  session_id: string;
+  title: string;
+  created_at: string;
+  last_message_at: string;
+}
+
 const SimplifiedChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -63,38 +56,44 @@ const SimplifiedChatInterface = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [savedConversations, setSavedConversations] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
-  const [sessionCreated, setSessionCreated] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // Updated webhook URL for chatbot
+  // Updated webhook URLs
   const CHATBOT_WEBHOOK_URL = 'https://n8n.chatnaki.co.il/webhook/chatbot';
+  const LOGIN_WEBHOOK_URL = 'https://n8n.smartbiz.org.il/webhook/login';
 
   // Create new session ID
   const createNewSessionId = () => {
     const sessionId = crypto.randomUUID();
     setCurrentSessionId(sessionId);
-    setSessionCreated(false);
     console.log('Generated new session ID:', sessionId);
     return sessionId;
   };
 
   // Initialize auth state
   useEffect(() => {
-    const initializeAuth = async () => {
+    const initializeAuth = () => {
       setAuthLoading(true);
       
-      // Check for existing session
-      const currentUser = await getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-        loadChatHistory();
-        loadSavedConversations(currentUser.id);
-        createNewSessionId();
-        setShowAuth(false);
+      // Check for existing session in localStorage
+      const savedUser = localStorage.getItem('lovable_user');
+      if (savedUser) {
+        try {
+          const currentUser = JSON.parse(savedUser);
+          setUser(currentUser);
+          loadChatHistory();
+          loadSavedConversations(currentUser.id);
+          createNewSessionId();
+          setShowAuth(false);
+        } catch (error) {
+          console.error('Error parsing saved user:', error);
+          localStorage.removeItem('lovable_user');
+          setShowAuth(true);
+        }
       } else {
         setShowAuth(true);
       }
@@ -104,39 +103,11 @@ const SimplifiedChatInterface = () => {
 
     initializeAuth();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        const currentUser = await getCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-          localStorage.setItem('lovable_user', JSON.stringify(currentUser));
-          loadSavedConversations(currentUser.id);
-          createNewSessionId();
-          setShowAuth(false);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setMessages([]);
-        setSavedConversations([]);
-        localStorage.removeItem('lovable_user');
-        // Clear all session-specific chat histories
-        Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('lovable_chat_history:')) {
-            localStorage.removeItem(key);
-          }
-        });
-        setShowAuth(true);
-      }
-    });
-
     // Load theme preference
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
       setIsDarkMode(savedTheme === 'dark');
     }
-
-    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -168,51 +139,62 @@ const SimplifiedChatInterface = () => {
     localStorage.setItem(`lovable_chat_history:${sessionKey}`, JSON.stringify(newMessages));
   };
 
-  const loadSavedConversations = async (userId: string) => {
+  const loadSavedConversations = (userId: string) => {
     try {
-      const sessions = await getChatSessions(userId);
-      setSavedConversations(sessions);
+      const savedSessions = localStorage.getItem(`lovable_conversations:${userId}`);
+      if (savedSessions) {
+        const sessions = JSON.parse(savedSessions);
+        setSavedConversations(sessions);
+      } else {
+        setSavedConversations([]);
+      }
     } catch (error) {
       console.error('Error loading saved conversations:', error);
+      setSavedConversations([]);
     }
   };
 
   const authenticateUser = async (email: string, name: string, category: string, isSignUp: boolean, password?: string) => {
     try {
-      if (isSignUp) {
-        const { user: newUser, error } = await signUpUser(email, password!, name, category);
+      const response = await fetch(LOGIN_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          name,
+          category,
+          isSignUp
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'שגיאה בהתחברות');
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.user) {
+        setUser(data.user);
+        localStorage.setItem('lovable_user', JSON.stringify(data.user));
+        localStorage.setItem('lovable_token', data.token || '');
+        setShowAuth(false);
         
-        if (error) {
-          throw new Error(error);
-        }
+        toast({
+          title: "ברוכים הבאים!",
+          description: isSignUp 
+            ? `נרשמתם בהצלחה כמומחה ב${category}.`
+            : `התחברתם בהצלחה כמומחה ב${data.user.category}.`
+        });
         
-        if (newUser) {
-          setUser(newUser);
-          localStorage.setItem('lovable_user', JSON.stringify(newUser));
-          setShowAuth(false);
-          
-          toast({
-            title: "ברוכים הבאים!",
-            description: `נרשמתם בהצלחה כמומחה ב${category}.`
-          });
-        }
+        // Load conversations for this user
+        loadSavedConversations(data.user.id);
+        createNewSessionId();
       } else {
-        const { user: existingUser, error } = await signInUser(email, password!);
-        
-        if (error) {
-          throw new Error(error);
-        }
-        
-        if (existingUser) {
-          setUser(existingUser);
-          localStorage.setItem('lovable_user', JSON.stringify(existingUser));
-          setShowAuth(false);
-          
-          toast({
-            title: "ברוכים הבאים!",
-            description: `התחברתם בהצלחה כמומחה ב${existingUser.category}.`
-          });
-        }
+        throw new Error(data.message || 'שגיאה בהתחברות');
       }
     } catch (error) {
       console.error('Auth error:', error);
@@ -220,21 +202,28 @@ const SimplifiedChatInterface = () => {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     try {
-      const { error } = await signOutUser();
-      if (error) {
-        toast({
-          title: "שגיאה",
-          description: error,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "התנתקתם בהצלחה",
-          description: "להתראות!"
-        });
-      }
+      // Clear all user data from localStorage
+      setUser(null);
+      setMessages([]);
+      setSavedConversations([]);
+      localStorage.removeItem('lovable_user');
+      localStorage.removeItem('lovable_token');
+      
+      // Clear all session-specific chat histories
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('lovable_chat_history:') || key.startsWith('lovable_conversations:')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      setShowAuth(true);
+      
+      toast({
+        title: "התנתקתם בהצלחה",
+        description: "להתראות!"
+      });
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -272,26 +261,29 @@ const SimplifiedChatInterface = () => {
     setIsLoading(true);
 
     try {
-      // Create session in Supabase on first message
-      if (!sessionCreated && currentSessionId) {
-        try {
-          const sessionTitle = userMessage.content.slice(0, 50) + (userMessage.content.length > 50 ? '...' : '');
-          await createChatSession(user.id, currentSessionId, sessionTitle);
-          setSessionCreated(true);
-          // Refresh conversations list
-          loadSavedConversations(user.id);
-        } catch (error) {
-          console.error('Error creating chat session:', error);
-          toast({
-            title: "שגיאה",
-            description: "לא ניתן ליצור שיחה חדשה. נסו שוב.",
-            variant: "destructive"
-          });
-        }
+      // Create session in localStorage on first message
+      if (currentSessionId && messages.length === 0) {
+        const sessionTitle = userMessage.content.slice(0, 50) + (userMessage.content.length > 50 ? '...' : '');
+        const newSession: ChatSession = {
+          id: currentSessionId,
+          session_id: currentSessionId,
+          title: sessionTitle,
+          created_at: new Date().toISOString(),
+          last_message_at: new Date().toISOString()
+        };
+        
+        // Save to conversations list
+        const existingConversations = localStorage.getItem(`lovable_conversations:${user.id}`);
+        const conversations = existingConversations ? JSON.parse(existingConversations) : [];
+        conversations.unshift(newSession);
+        localStorage.setItem(`lovable_conversations:${user.id}`, JSON.stringify(conversations));
+        
+        // Update local state
+        setSavedConversations(conversations);
       }
 
       // Simple mock AI response for now
-      setTimeout(async () => {
+      setTimeout(() => {
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           content: `קיבלתי את השאלה שלך: "${userMessage.content}". זהו מענה דמה. בקרוב אשלב עם המערכת המלאה.`,
@@ -304,23 +296,25 @@ const SimplifiedChatInterface = () => {
         setMessages(finalMessages);
         saveChatHistory(finalMessages);
         
-        // Update session last message time and refresh conversations
-        if (currentSessionId && sessionCreated) {
-          try {
-            await updateChatSessionLastMessage(currentSessionId);
-            loadSavedConversations(user.id);
-          } catch (error) {
-            console.error('Error updating session:', error);
+        // Update session last message time in localStorage
+        if (currentSessionId) {
+          const existingConversations = localStorage.getItem(`lovable_conversations:${user.id}`);
+          if (existingConversations) {
+            const conversations = JSON.parse(existingConversations);
+            const updatedConversations = conversations.map((conv: ChatSession) => 
+              conv.session_id === currentSessionId 
+                ? { ...conv, last_message_at: new Date().toISOString() }
+                : conv
+            );
+            localStorage.setItem(`lovable_conversations:${user.id}`, JSON.stringify(updatedConversations));
+            setSavedConversations(updatedConversations);
           }
         }
         
-        // Increment message usage
-        incrementMessageUsage(user.id).then(() => {
-          // Update user state with new message count
-          const updatedUser = { ...user, messagesUsed: user.messagesUsed + 1 };
-          setUser(updatedUser);
-          localStorage.setItem('lovable_user', JSON.stringify(updatedUser));
-        });
+        // Update user message count
+        const updatedUser = { ...user, messagesUsed: user.messagesUsed + 1 };
+        setUser(updatedUser);
+        localStorage.setItem('lovable_user', JSON.stringify(updatedUser));
 
         setIsLoading(false);
       }, 1500);
@@ -361,22 +355,27 @@ const SimplifiedChatInterface = () => {
 
   const handleSelectConversation = (conversation: ChatSession) => {
     setCurrentSessionId(conversation.session_id);
-    setSessionCreated(true);
     loadChatHistory(conversation.session_id);
   };
 
-  const handleDeleteConversation = async (conversation: ChatSession, e: React.MouseEvent) => {
+  const handleDeleteConversation = (conversation: ChatSession, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
     
     try {
-      await deleteChatSession(conversation.session_id);
-      
-      // Remove from localStorage
+      // Remove from localStorage chat history
       localStorage.removeItem(`lovable_chat_history:${conversation.session_id}`);
       
-      // Refresh conversations list
+      // Remove from conversations list
       if (user) {
-        loadSavedConversations(user.id);
+        const existingConversations = localStorage.getItem(`lovable_conversations:${user.id}`);
+        if (existingConversations) {
+          const conversations = JSON.parse(existingConversations);
+          const updatedConversations = conversations.filter((conv: ChatSession) => 
+            conv.session_id !== conversation.session_id
+          );
+          localStorage.setItem(`lovable_conversations:${user.id}`, JSON.stringify(updatedConversations));
+          setSavedConversations(updatedConversations);
+        }
       }
       
       // If this was the current session, start a new one
