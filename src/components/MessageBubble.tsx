@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Copy, Code, User, Bot, Eye } from 'lucide-react';
+import { Copy, Code, User, Bot, Eye, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import CodePreview from './CodePreview';
 import CodeBlock from './CodeBlock';
@@ -27,6 +27,32 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       title: "הועתק!",
       description: "התוכן הועתק ללוח הכתיבה.",
     });
+  };
+
+  const downloadImage = async (imageUrl: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `image_${Date.now()}.${blob.type.split('/')[1] || 'png'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "הורד בהצלחה!",
+        description: "התמונה נשמרה למחשב.",
+      });
+    } catch (error) {
+      toast({
+        title: "שגיאה בהורדה",
+        description: "לא ניתן להוריד את התמונה.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Function to detect if text is Hebrew
@@ -563,7 +589,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
         const fixedUrl = fixImageUrl(trimmedLine);
         console.log('📸 Rendering image:', fixedUrl);
         return (
-          <div key={lineIndex} className="mb-4">
+          <div key={lineIndex} className="mb-4 relative group">
             <img 
               src={fixedUrl} 
               alt="תמונה מהבוט"
@@ -589,6 +615,17 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                 }
               }}
             />
+            <button
+              onClick={() => downloadImage(fixedUrl)}
+              className={`absolute top-2 right-2 p-2 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 ${
+                isDarkMode 
+                  ? 'bg-black/70 text-white hover:bg-black/90' 
+                  : 'bg-white/80 text-gray-700 hover:bg-white/90'
+              } shadow-lg`}
+              title="הורד תמונה"
+            >
+              <Download className="w-4 h-4" />
+            </button>
           </div>
         );
       }
@@ -607,7 +644,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
             {matches.map((url, urlIndex) => {
               const fixedUrl = fixImageUrl(url);
               return (
-                <div key={urlIndex} className="mb-2">
+                <div key={urlIndex} className="mb-2 relative group">
                   <img 
                     src={fixedUrl} 
                     alt="תמונה מהבוט"
@@ -632,6 +669,17 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                       }
                     }}
                   />
+                  <button
+                    onClick={() => downloadImage(fixedUrl)}
+                    className={`absolute top-2 right-2 p-2 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 ${
+                      isDarkMode 
+                        ? 'bg-black/70 text-white hover:bg-black/90' 
+                        : 'bg-white/80 text-gray-700 hover:bg-white/90'
+                    } shadow-lg`}
+                    title="הורד תמונה"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
                 </div>
               );
             })}
