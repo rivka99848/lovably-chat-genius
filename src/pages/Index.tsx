@@ -1,12 +1,11 @@
 
 import React from 'react';
-import SimplifiedChatInterface from '@/components/SimplifiedChatInterface';
+import ChatInterface from '@/components/ChatInterface';
 
 const Index = () => {
-  // Replace old ChatInterface with SimplifiedChatInterface
   return (
     <div className="h-screen overflow-hidden">
-      <SimplifiedChatInterface />
+      <ChatInterface />
     </div>
   );
 };
