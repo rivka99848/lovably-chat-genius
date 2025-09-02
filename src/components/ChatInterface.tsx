@@ -456,7 +456,7 @@ const ChatInterface = () => {
 
     try {
       console.log('Sending request to chatbot webhook:', CHATBOT_WEBHOOK_URL, 'with sessionId:', currentSessionId);
-      const response = await fetchWithAuth(CHATBOT_WEBHOOK_URL, {
+      const response = await fetch(CHATBOT_WEBHOOK_URL, {
         method: 'POST',
         body: formData
       });
@@ -569,7 +569,7 @@ const ChatInterface = () => {
         
         toast({
           title: "שגיאת שרת",
-          description: `השרת החזיר שגיאה: ${response.status}`,
+          description: `שגיאה ${response.status}: ${errorText?.slice(0, 180) || response.statusText}`,
           variant: "destructive"
         });
       }
