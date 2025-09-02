@@ -488,10 +488,7 @@ const SimplifiedChatInterface = () => {
             messages.map((message) => (
               <MessageBubble
                 key={message.id}
-                message={message.content}
-                isUser={message.isUser}
-                timestamp={message.timestamp}
-                category={message.category}
+                message={message}
                 isDarkMode={isDarkMode}
               />
             ))
