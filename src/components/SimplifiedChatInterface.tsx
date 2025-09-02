@@ -63,6 +63,7 @@ const SimplifiedChatInterface = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [savedConversations, setSavedConversations] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
+  const [sessionCreated, setSessionCreated] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +77,7 @@ const SimplifiedChatInterface = () => {
   const createNewSessionId = () => {
     const sessionId = crypto.randomUUID();
     setCurrentSessionId(sessionId);
+    setSessionCreated(false);
     console.log('Generated new session ID:', sessionId);
     return sessionId;
   };
@@ -118,7 +120,12 @@ const SimplifiedChatInterface = () => {
         setMessages([]);
         setSavedConversations([]);
         localStorage.removeItem('lovable_user');
-        localStorage.removeItem('lovable_chat_history');
+        // Clear all session-specific chat histories
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('lovable_chat_history:')) {
+            localStorage.removeItem(key);
+          }
+        });
         setShowAuth(true);
       }
     });
@@ -144,15 +151,21 @@ const SimplifiedChatInterface = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const loadChatHistory = () => {
-    const savedMessages = localStorage.getItem('lovable_chat_history');
+  const loadChatHistory = (sessionId?: string) => {
+    const sessionKey = sessionId || currentSessionId;
+    if (!sessionKey) return;
+    
+    const savedMessages = localStorage.getItem(`lovable_chat_history:${sessionKey}`);
     if (savedMessages) {
       setMessages(JSON.parse(savedMessages));
     }
   };
 
-  const saveChatHistory = (newMessages: Message[]) => {
-    localStorage.setItem('lovable_chat_history', JSON.stringify(newMessages));
+  const saveChatHistory = (newMessages: Message[], sessionId?: string) => {
+    const sessionKey = sessionId || currentSessionId;
+    if (!sessionKey) return;
+    
+    localStorage.setItem(`lovable_chat_history:${sessionKey}`, JSON.stringify(newMessages));
   };
 
   const loadSavedConversations = async (userId: string) => {
@@ -259,8 +272,26 @@ const SimplifiedChatInterface = () => {
     setIsLoading(true);
 
     try {
+      // Create session in Supabase on first message
+      if (!sessionCreated && currentSessionId) {
+        try {
+          const sessionTitle = userMessage.content.slice(0, 50) + (userMessage.content.length > 50 ? '...' : '');
+          await createChatSession(user.id, currentSessionId, sessionTitle);
+          setSessionCreated(true);
+          // Refresh conversations list
+          loadSavedConversations(user.id);
+        } catch (error) {
+          console.error('Error creating chat session:', error);
+          toast({
+            title: "שגיאה",
+            description: "לא ניתן ליצור שיחה חדשה. נסו שוב.",
+            variant: "destructive"
+          });
+        }
+      }
+
       // Simple mock AI response for now
-      setTimeout(() => {
+      setTimeout(async () => {
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           content: `קיבלתי את השאלה שלך: "${userMessage.content}". זהו מענה דמה. בקרוב אשלב עם המערכת המלאה.`,
@@ -273,9 +304,14 @@ const SimplifiedChatInterface = () => {
         setMessages(finalMessages);
         saveChatHistory(finalMessages);
         
-        // Update session last message time
-        if (currentSessionId) {
-          updateChatSessionLastMessage(currentSessionId);
+        // Update session last message time and refresh conversations
+        if (currentSessionId && sessionCreated) {
+          try {
+            await updateChatSessionLastMessage(currentSessionId);
+            loadSavedConversations(user.id);
+          } catch (error) {
+            console.error('Error updating session:', error);
+          }
         }
         
         // Increment message usage
@@ -316,8 +352,50 @@ const SimplifiedChatInterface = () => {
 
   const handleNewChat = () => {
     setMessages([]);
-    saveChatHistory([]);
     createNewSessionId();
+    // Focus input after creating new chat
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  };
+
+  const handleSelectConversation = (conversation: ChatSession) => {
+    setCurrentSessionId(conversation.session_id);
+    setSessionCreated(true);
+    loadChatHistory(conversation.session_id);
+  };
+
+  const handleDeleteConversation = async (conversation: ChatSession, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    
+    try {
+      await deleteChatSession(conversation.session_id);
+      
+      // Remove from localStorage
+      localStorage.removeItem(`lovable_chat_history:${conversation.session_id}`);
+      
+      // Refresh conversations list
+      if (user) {
+        loadSavedConversations(user.id);
+      }
+      
+      // If this was the current session, start a new one
+      if (conversation.session_id === currentSessionId) {
+        handleNewChat();
+      }
+      
+      toast({
+        title: "שיחה נמחקה",
+        description: "השיחה נמחקה בהצלחה"
+      });
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן למחוק את השיחה",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -376,14 +454,25 @@ const SimplifiedChatInterface = () => {
             {savedConversations.map((conversation) => (
               <Card 
                 key={conversation.id}
-                className="p-3 cursor-pointer hover:bg-sidebar-accent/50 transition-colors premium-dark-surface border-sidebar-border"
+                onClick={() => handleSelectConversation(conversation)}
+                className={`p-3 cursor-pointer hover:bg-sidebar-accent/50 transition-colors premium-dark-surface border-sidebar-border relative group ${
+                  conversation.session_id === currentSessionId ? 'ring-2 ring-primary' : ''
+                }`}
               >
-                <div className="text-sm font-medium text-sidebar-foreground truncate">
+                <div className="text-sm font-medium text-sidebar-foreground truncate pr-8">
                   {conversation.title}
                 </div>
                 <div className="text-xs text-sidebar-foreground/70 mt-1">
                   {new Date(conversation.last_message_at).toLocaleDateString('he-IL')}
                 </div>
+                <Button
+                  onClick={(e) => handleDeleteConversation(conversation, e)}
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-2 right-2 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
               </Card>
             ))}
           </div>
