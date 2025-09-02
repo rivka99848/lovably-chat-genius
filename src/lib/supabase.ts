@@ -1,10 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+// Re-export the main Supabase client
+export { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/integrations/supabase/client'
 
-// Update your Supabase project URL and anon key here
-const supabaseUrl = 'https://your-project-ref.supabase.co'
-const supabaseAnonKey = 'your-anon-key'
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+import type { Database } from '@/integrations/supabase/types'
 
 // Chat Session interface
 export interface ChatSession {
@@ -17,10 +15,53 @@ export interface ChatSession {
   updated_at: string
 }
 
-// Create chat sessions table (this should be run once in Supabase)
-export const createChatSessionsTable = async () => {
-  const { data, error } = await supabase.rpc('create_chat_sessions_table')
-  return { data, error }
+// Profile interface
+export interface Profile {
+  id: string
+  user_id: string
+  name: string
+  category: string
+  plan: 'free' | 'pro' | 'enterprise'
+  messages_used: number
+  message_limit: number
+  created_at: string
+  updated_at: string
+}
+
+// Get user profile
+export const getUserProfile = async (userId: string): Promise<Profile | null> => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .single()
+
+  if (error) {
+    console.error('Error fetching user profile:', error)
+    return null
+  }
+
+  return data as Profile
+}
+
+// Create or update user profile
+export const upsertUserProfile = async (userId: string, profileData: Partial<Omit<Profile, 'user_id'>>): Promise<Profile | null> => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .upsert({
+      user_id: userId,
+      name: 'משתמש חדש', // default name if not provided
+      ...profileData,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error upserting user profile:', error)
+    return null
+  }
+
+  return data as Profile
 }
 
 // Create a new chat session
