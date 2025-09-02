@@ -7,6 +7,13 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { getToken, setToken, clearToken, fetchWithAuth, extractToken } from '@/lib/auth';
+import { 
+  createChatSession, 
+  getChatSessions, 
+  updateChatSessionLastMessage, 
+  deleteChatSession,
+  type ChatSession 
+} from '@/lib/supabase';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,8 +55,9 @@ const ChatInterface = () => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [savedConversations, setSavedConversations] = useState<any[]>([]);
-  const [viewingConversation, setViewingConversation] = useState<any>(null);
+  const [savedConversations, setSavedConversations] = useState<ChatSession[]>([]);
+  const [viewingConversation, setViewingConversation] = useState<ChatSession | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,16 +67,11 @@ const ChatInterface = () => {
   const LOGIN_WEBHOOK_URL = 'https://n8n.smartbiz.org.il/webhook/login';
   const CHATBOT_WEBHOOK_URL = 'https://n8n.chatnaki.co.il/webhook/chatbot';
 
-  // Generate or get session ID
-  const getSessionId = () => {
-    let sessionId = localStorage.getItem('lovable_session_id');
-    if (!sessionId) {
-      sessionId = crypto.randomUUID();
-      localStorage.setItem('lovable_session_id', sessionId);
-      console.log('Generated new session ID:', sessionId);
-    } else {
-      console.log('Using existing session ID:', sessionId);
-    }
+  // Create new session ID
+  const createNewSessionId = () => {
+    const sessionId = crypto.randomUUID();
+    setCurrentSessionId(sessionId);
+    console.log('Generated new session ID:', sessionId);
     return sessionId;
   };
 
@@ -80,6 +83,8 @@ const ChatInterface = () => {
       setUser(userData);
       loadChatHistory();
       loadSavedConversations(userData.id);
+      // Create new session for current conversation
+      createNewSessionId();
     } else {
       setShowAuth(true);
     }
@@ -122,10 +127,17 @@ const ChatInterface = () => {
     localStorage.setItem('lovable_chat_history', JSON.stringify(newMessages));
   };
 
-  const loadSavedConversations = (userId: string) => {
-    const saved = localStorage.getItem(`lovable_conversations_${userId}`);
-    if (saved) {
-      setSavedConversations(JSON.parse(saved));
+  const loadSavedConversations = async (userId: string) => {
+    try {
+      const sessions = await getChatSessions(userId);
+      setSavedConversations(sessions);
+    } catch (error) {
+      console.error('Error loading saved conversations:', error);
+      // Fallback to localStorage
+      const saved = localStorage.getItem(`lovable_conversations_${userId}`);
+      if (saved) {
+        setSavedConversations(JSON.parse(saved));
+      }
     }
   };
 
@@ -328,35 +340,46 @@ const ChatInterface = () => {
     return words.slice(0, 3).join(' ') || 'שיחה חדשה';
   };
 
-  const saveCurrentConversation = () => {
-    if (messages.length === 0 || !user) return;
+  const saveCurrentConversation = async () => {
+    if (messages.length === 0 || !user || !currentSessionId) return;
     
-    const conversationId = Date.now().toString();
     const title = generateChatTitle(messages[0]?.content || 'שיחה חדשה');
     
-    const conversation = {
-      id: conversationId,
-      title,
-      messages,
-      date: new Date(),
-      category: user.category
-    };
-    
-    const existing = localStorage.getItem(`lovable_conversations_${user.id}`);
-    const conversations = existing ? JSON.parse(existing) : [];
-    conversations.unshift(conversation);
-    
-    // Keep only last 10 conversations
-    if (conversations.length > 10) {
-      conversations.splice(10);
+    try {
+      await createChatSession(user.id, currentSessionId, title);
+      
+      // Also save to localStorage as backup
+      const conversation = {
+        id: Date.now().toString(),
+        title,
+        messages,
+        date: new Date(),
+        category: user.category
+      };
+      
+      const existing = localStorage.getItem(`lovable_conversations_${user.id}`);
+      const conversations = existing ? JSON.parse(existing) : [];
+      conversations.unshift(conversation);
+      
+      // Keep only last 10 conversations
+      if (conversations.length > 10) {
+        conversations.splice(10);
+      }
+      
+      localStorage.setItem(`lovable_conversations_${user.id}`, JSON.stringify(conversations));
+      
+      toast({
+        title: "השיחה נשמרה",
+        description: "השיחה נשמרה בחשבון שלכם"
+      });
+    } catch (error) {
+      console.error('Error saving conversation:', error);
+      toast({
+        title: "שגיאה בשמירה",
+        description: "לא ניתן לשמור את השיחה",
+        variant: "destructive"
+      });
     }
-    
-    localStorage.setItem(`lovable_conversations_${user.id}`, JSON.stringify(conversations));
-    
-    toast({
-      title: "השיחה נשמרה",
-      description: "השיחה נשמרה בחשבון שלכם"
-    });
   };
 
   const sendMessage = async () => {
@@ -385,7 +408,6 @@ const ChatInterface = () => {
     setMessages(newMessages);
     saveChatHistory(newMessages);
     
-    const currentSessionId = getSessionId();
     console.log('Preparing to send message with session ID:', currentSessionId);
     
     // Prepare form data for file upload with all user details and session ID
@@ -551,6 +573,11 @@ const ChatInterface = () => {
         setMessages(updatedMessages);
         saveChatHistory(updatedMessages);
 
+        // Update session last message time in Supabase
+        if (currentSessionId) {
+          updateChatSessionLastMessage(currentSessionId);
+        }
+
         // Update message count only if we should process the message
         if (shouldProcessMessage) {
           const updatedUser = { ...user, messagesUsed: user.messagesUsed + 1 };
@@ -585,10 +612,30 @@ const ChatInterface = () => {
     }
   };
 
-  const loadConversation = (conversation: any) => {
-    setMessages(conversation.messages);
+  const loadConversation = (conversation: ChatSession) => {
+    // For now, load from localStorage backup since we're not storing message content in Supabase
+    const saved = localStorage.getItem(`lovable_conversations_${user?.id}`);
+    if (saved) {
+      const conversations = JSON.parse(saved);
+      const localConv = conversations.find((c: any) => c.title === conversation.title);
+      if (localConv) {
+        setMessages(localConv.messages);
+        setViewingConversation(conversation);
+        saveChatHistory(localConv.messages);
+        setCurrentSessionId(conversation.session_id);
+        
+        toast({
+          title: "שיחה נטענה",
+          description: `נטענה השיחה: ${conversation.title}`
+        });
+        return;
+      }
+    }
+    
+    // If not found in localStorage, create empty conversation
+    setMessages([]);
     setViewingConversation(conversation);
-    saveChatHistory(conversation.messages);
+    setCurrentSessionId(conversation.session_id);
     
     toast({
       title: "שיחה נטענה",
@@ -606,10 +653,10 @@ const ChatInterface = () => {
     });
   };
 
-  const startNewConversation = () => {
+  const startNewConversation = async () => {
     // Save current conversation before starting new one
     if (messages.length > 0 && !viewingConversation) {
-      saveCurrentConversation();
+      await saveCurrentConversation();
       // Reload saved conversations to show the updated list
       if (user) {
         loadSavedConversations(user.id);
@@ -618,7 +665,9 @@ const ChatInterface = () => {
     
     setMessages([]);
     setViewingConversation(null);
-    // Don't remove chat history - keep all conversations saved
+    // Create new session ID for new conversation
+    createNewSessionId();
+    
     toast({
       title: "שיחה חדשה",
       description: "התחלנו שיחה חדשה. השיחה הקודמת נשמרה."
@@ -649,7 +698,7 @@ const ChatInterface = () => {
     setUser(null);
     localStorage.removeItem('lovable_user');
     localStorage.removeItem('lovable_chat_history');
-    localStorage.removeItem('lovable_session_id');
+    setCurrentSessionId('');
     clearToken(); // Clear JWT token
     
     // Clear messages
@@ -843,7 +892,7 @@ const ChatInterface = () => {
                     {viewingConversation.title}
                   </div>
                   <div className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
-                    {viewingConversation.messages.length} הודעות
+                    שיחה פתוחה
                   </div>
                 </Card>
               )}
@@ -851,10 +900,10 @@ const ChatInterface = () => {
               {/* Saved conversations */}
               {savedConversations.map((conversation, index) => (
                 <Card 
-                  key={conversation.id} 
+                  key={conversation.session_id} 
                   onClick={() => loadConversation(conversation)}
                   className={`p-3 cursor-pointer transition-colors ${
-                    viewingConversation?.id === conversation.id 
+                    viewingConversation?.session_id === conversation.session_id 
                       ? (isDarkMode 
                           ? 'bg-purple-600/20 border-purple-600/30' 
                           : 'bg-purple-50 border-purple-200') 
@@ -867,8 +916,8 @@ const ChatInterface = () => {
                     {conversation.title}
                   </div>
                   <div className={`text-xs mt-1 flex justify-between ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
-                    <span>{conversation.messages.length} הודעות</span>
-                    <span>{new Date(conversation.date).toLocaleDateString('he-IL')}</span>
+                    <span>שיחה משומרת</span>
+                    <span>{new Date(conversation.last_message_at).toLocaleDateString('he-IL')}</span>
                   </div>
                 </Card>
               ))}
