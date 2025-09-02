@@ -67,12 +67,35 @@ const ChatInterface = () => {
   const LOGIN_WEBHOOK_URL = 'https://n8n.smartbiz.org.il/webhook/login';
   const CHATBOT_WEBHOOK_URL = 'https://n8n.chatnaki.co.il/webhook/chatbot';
 
-  // Create new session ID
+  // Generate persistent client ID (once per browser)
+  const getOrCreateClientId = () => {
+    let clientId = localStorage.getItem('lovable_client_id');
+    if (!clientId) {
+      clientId = crypto.randomUUID();
+      localStorage.setItem('lovable_client_id', clientId);
+      console.log('Generated new client ID:', clientId);
+    }
+    return clientId;
+  };
+
+  // Create new session ID and persist it
   const createNewSessionId = () => {
     const sessionId = crypto.randomUUID();
     setCurrentSessionId(sessionId);
+    localStorage.setItem('lovable_current_session_id', sessionId);
     console.log('Generated new session ID:', sessionId);
     return sessionId;
+  };
+
+  // Restore session ID from localStorage
+  const restoreSessionId = () => {
+    const savedSessionId = localStorage.getItem('lovable_current_session_id');
+    if (savedSessionId) {
+      setCurrentSessionId(savedSessionId);
+      console.log('Restored session ID:', savedSessionId);
+      return savedSessionId;
+    }
+    return createNewSessionId();
   };
 
   useEffect(() => {
@@ -83,8 +106,8 @@ const ChatInterface = () => {
       setUser(userData);
       loadChatHistory();
       loadSavedConversations(userData.id);
-      // Create new session for current conversation
-      createNewSessionId();
+      // Restore existing session ID or create new one
+      restoreSessionId();
     } else {
       setShowAuth(true);
     }
@@ -129,15 +152,14 @@ const ChatInterface = () => {
 
   const loadSavedConversations = async (userId: string) => {
     try {
-      const sessions = await getChatSessions(userId);
-      setSavedConversations(sessions);
-    } catch (error) {
-      console.error('Error loading saved conversations:', error);
-      // Fallback to localStorage
+      // Use localStorage as primary storage since Supabase RLS fails
       const saved = localStorage.getItem(`lovable_conversations_${userId}`);
       if (saved) {
-        setSavedConversations(JSON.parse(saved));
+        const conversations = JSON.parse(saved);
+        setSavedConversations(conversations);
       }
+    } catch (error) {
+      console.error('Error loading saved conversations:', error);
     }
   };
 
@@ -346,27 +368,34 @@ const ChatInterface = () => {
     const title = generateChatTitle(messages[0]?.content || 'שיחה חדשה');
     
     try {
-      await createChatSession(user.id, currentSessionId, title);
-      
-      // Also save to localStorage as backup
-      const conversation = {
-        id: Date.now().toString(),
+      // Save to localStorage with consistent structure using session_id
+      const conversation: ChatSession = {
+        id: crypto.randomUUID(), // Generate ID for localStorage compatibility
+        session_id: currentSessionId,
+        user_id: user.id,
         title,
-        messages,
-        date: new Date(),
-        category: user.category
+        last_message_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
       
+      // Save conversation metadata
       const existing = localStorage.getItem(`lovable_conversations_${user.id}`);
       const conversations = existing ? JSON.parse(existing) : [];
-      conversations.unshift(conversation);
+      
+      // Remove existing conversation with same session_id
+      const filteredConversations = conversations.filter((c: ChatSession) => c.session_id !== currentSessionId);
+      filteredConversations.unshift(conversation);
       
       // Keep only last 10 conversations
-      if (conversations.length > 10) {
-        conversations.splice(10);
+      if (filteredConversations.length > 10) {
+        filteredConversations.splice(10);
       }
       
-      localStorage.setItem(`lovable_conversations_${user.id}`, JSON.stringify(conversations));
+      localStorage.setItem(`lovable_conversations_${user.id}`, JSON.stringify(filteredConversations));
+      
+      // Save messages separately by session_id
+      localStorage.setItem(`lovable_messages_${currentSessionId}`, JSON.stringify(messages));
       
       toast({
         title: "השיחה נשמרה",
@@ -424,6 +453,7 @@ const ChatInterface = () => {
     formData.append('chatHistory', JSON.stringify(messages.slice(-10)));
     formData.append('timestamp', new Date().toISOString());
     formData.append('sessionId', currentSessionId);
+    formData.append('clientId', getOrCreateClientId());
     
     // Add JWT token to form data
     const token = getToken();
@@ -573,9 +603,22 @@ const ChatInterface = () => {
         setMessages(updatedMessages);
         saveChatHistory(updatedMessages);
 
-        // Update session last message time in Supabase
-        if (currentSessionId) {
-          updateChatSessionLastMessage(currentSessionId);
+        // Update session last message time in localStorage
+        if (currentSessionId && user) {
+          try {
+            const existing = localStorage.getItem(`lovable_conversations_${user.id}`);
+            if (existing) {
+              const conversations = JSON.parse(existing);
+              const updated = conversations.map((conv: ChatSession) => 
+                conv.session_id === currentSessionId 
+                  ? { ...conv, last_message_at: new Date().toISOString() }
+                  : conv
+              );
+              localStorage.setItem(`lovable_conversations_${user.id}`, JSON.stringify(updated));
+            }
+          } catch (error) {
+            console.error('Error updating session timestamp:', error);
+          }
         }
 
         // Update message count only if we should process the message
@@ -613,39 +656,57 @@ const ChatInterface = () => {
   };
 
   const loadConversation = (conversation: ChatSession) => {
-    // For now, load from localStorage backup since we're not storing message content in Supabase
-    const saved = localStorage.getItem(`lovable_conversations_${user?.id}`);
-    if (saved) {
-      const conversations = JSON.parse(saved);
-      const localConv = conversations.find((c: any) => c.title === conversation.title);
-      if (localConv) {
-        setMessages(localConv.messages);
-        setViewingConversation(conversation);
-        saveChatHistory(localConv.messages);
-        setCurrentSessionId(conversation.session_id);
-        
-        toast({
-          title: "שיחה נטענה",
-          description: `נטענה השיחה: ${conversation.title}`
-        });
-        return;
+    try {
+      // Load messages by session_id
+      const savedMessages = localStorage.getItem(`lovable_messages_${conversation.session_id}`);
+      if (savedMessages) {
+        const messages = JSON.parse(savedMessages);
+        setMessages(messages);
+        saveChatHistory(messages);
+      } else {
+        // Fallback: try to find in old format
+        const saved = localStorage.getItem(`lovable_conversations_${user?.id}`);
+        if (saved) {
+          const conversations = JSON.parse(saved);
+          const localConv = conversations.find((c: any) => c.session_id === conversation.session_id || c.title === conversation.title);
+          if (localConv && localConv.messages) {
+            setMessages(localConv.messages);
+            saveChatHistory(localConv.messages);
+            // Migrate to new format
+            localStorage.setItem(`lovable_messages_${conversation.session_id}`, JSON.stringify(localConv.messages));
+          } else {
+            setMessages([]);
+          }
+        } else {
+          setMessages([]);
+        }
       }
+      
+      setViewingConversation(conversation);
+      setCurrentSessionId(conversation.session_id);
+      localStorage.setItem('lovable_current_session_id', conversation.session_id);
+      
+      toast({
+        title: "שיחה נטענה",
+        description: `נטענה השיחה: ${conversation.title}`
+      });
+    } catch (error) {
+      console.error('Error loading conversation:', error);
+      setMessages([]);
+      setViewingConversation(conversation);
+      setCurrentSessionId(conversation.session_id);
+      
+      toast({
+        title: "שיחה נטענה",
+        description: `נטענה השיחה: ${conversation.title}`
+      });
     }
-    
-    // If not found in localStorage, create empty conversation
-    setMessages([]);
-    setViewingConversation(conversation);
-    setCurrentSessionId(conversation.session_id);
-    
-    toast({
-      title: "שיחה נטענה",
-      description: `נטענה השיחה: ${conversation.title}`
-    });
   };
 
   const returnToCurrentConversation = () => {
     setViewingConversation(null);
     loadChatHistory();
+    restoreSessionId();
     
     toast({
       title: "חזרה לשיחה נוכחית",
@@ -665,6 +726,7 @@ const ChatInterface = () => {
     
     setMessages([]);
     setViewingConversation(null);
+    saveChatHistory([]);
     // Create new session ID for new conversation
     createNewSessionId();
     
@@ -698,6 +760,7 @@ const ChatInterface = () => {
     setUser(null);
     localStorage.removeItem('lovable_user');
     localStorage.removeItem('lovable_chat_history');
+    localStorage.removeItem('lovable_current_session_id');
     setCurrentSessionId('');
     clearToken(); // Clear JWT token
     
