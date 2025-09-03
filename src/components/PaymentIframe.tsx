@@ -3,7 +3,6 @@ import { X, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 interface Package {
   id: string;
@@ -44,59 +43,6 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
 }) => {
   const [iframeUrl, setIframeUrl] = useState<string>('');
 
-  const generateEventId = () => {
-    return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  };
-
-  const sendPaymentSuccessWebhook = async (transactionId: string) => {
-    const webhookData = {
-      event: "subscription.created",
-      event_id: transactionId,
-      timestamp: new Date().toISOString(),
-      subscription: {
-        id: transactionId,
-        amount: packageData.price * 100, // convert to agorot
-        currency: "ILS",
-        status: "active",
-        method: "credit_card",
-        billing_cycle: "monthly",
-        start_date: new Date().toISOString(),
-        next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-      },
-      customer: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        phone: user.phone || "",
-        category: user.category
-      },
-      plan_change: {
-        previous_plan: user.plan,
-        new_plan: packageData.type,
-        previous_limit: user.messageLimit,
-        new_limit: packageData.messageLimit,
-        change_type: "upgrade",
-        immediate: true
-      },
-      source: "chat_naki_app"
-    };
-
-    try {
-      const { data, error } = await supabase.functions.invoke('forward-payment', {
-        body: webhookData,
-      });
-      if (error) throw error;
-      console.log('Webhook relayed via edge function:', data);
-    } catch (error) {
-      console.error('Error sending payment success webhook via edge function:', error);
-      toast({
-        title: 'שגיאה בשליחת וובהוק',
-        description: 'ננסה שוב מאוחר יותר. התשלום עצמו נקלט.',
-        variant: 'destructive'
-      });
-    }
-  };
-
   const PostNedarim = (data: any) => {
     const iframe = document.getElementById('NedarimFrame') as HTMLIFrameElement;
     if (iframe && iframe.contentWindow) {
@@ -135,6 +81,16 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
           console.log('TransactionId received from Nedarim:', transactionId);
           handlePaymentSuccess(transactionId);
         }
+        break;
+
+      case 'Error':
+        console.error('Nedarim error:', event.data.Value);
+        toast({
+          title: "שגיאה בתשלום",
+          description: event.data.Value?.message || "שגיאה לא ידועה",
+          variant: "destructive"
+        });
+        onClose();
         break;
     }
   };
@@ -208,26 +164,32 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
   };
 
   const handlePaymentSuccess = async (transactionId?: string) => {
-    const finalTransactionId = transactionId || generateEventId();
-    console.log('Processing payment success with TransactionId:', finalTransactionId);
+    console.log('Processing payment success with TransactionId:', transactionId);
     
-    // Update user data
+    // Update user data for immediate UI feedback
     const updatedUser = {
       ...user,
       plan: packageData.type,
       messageLimit: packageData.messageLimit
     };
 
-    // Send success webhook with real TransactionId
-    await sendPaymentSuccessWebhook(finalTransactionId);
-
-    // Call parent success handler
+    // Call parent success handler for immediate UI update
     onPaymentSuccess(updatedUser);
 
     toast({
-      title: "המנוי אושר!",
-      description: `מנוי ${packageData.name} הופעל בהצלחה - חיוב חודשי של ₪${packageData.price}`
+      title: "התשלום אושר!",
+      description: `מנוי ${packageData.name} בעיבוד - תקבל אישור סופי במייל`,
+      duration: 5000
     });
+
+    // Show additional info toast
+    setTimeout(() => {
+      toast({
+        title: "📧 בקרוב במייל",
+        description: "אישור התשלום והפעלת המנוי יישלחו אליך במייל תוך מספר דקות",
+        duration: 8000
+      });
+    }, 2000);
 
     onClose();
   };
