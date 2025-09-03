@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
@@ -138,13 +138,35 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
     }
   };
 
+  const handleCancelTransaction = () => {
+    const confirmed = window.confirm("האם אתה בטוח שברצונך לבטל את העסקה?");
+    if (confirmed) {
+      toast({
+        title: "העסקה בוטלה",
+        description: "חזרה לבחירת החבילות"
+      });
+      onClose();
+    }
+  };
+
+  const handleChangePackage = () => {
+    const confirmed = window.confirm("האם אתה בטוח שברצונך לשנות חבילה? התקדמות התשלום תאבד.");
+    if (confirmed) {
+      toast({
+        title: "מעבר לבחירת חבילה",
+        description: "חזרה לבחירת חבילות"
+      });
+      onClose();
+    }
+  };
+
   const handlePayButtonClick = () => {
-    PostNedarim({
+    const requestData = {
       'Name': 'FinishTransaction2',
       'Value': {
         'Mosad': '2813479',
         'ApiValid': '7jZ+r+ukMw',
-        'PaymentType': '1', // Credit card
+        'PaymentType': 'HK', // הוראת קבע
         'Currency': '1', // ILS
         'Zeout': '',
         'FirstName': user.name,
@@ -154,7 +176,7 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
         'Phone': user.phone || '',
         'Mail': user.email,
         'Amount': packageData.price.toString(),
-        'Tashlumim': '12', // 12 monthly payments for subscription
+        'Tashlumim': '', // ריק עבור הוראת קבע
         'Groupe': '',
         'Comment': `תשלום עבור ${packageData.name}`,
         'Param1': packageData.name,
@@ -164,7 +186,15 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
         'CallBackMailError': '',
         'Tokef': ''
       }
+    };
+    
+    console.log('Sending payment request to Nedarim:', {
+      PaymentType: requestData.Value.PaymentType,
+      Tashlumim: requestData.Value.Tashlumim,
+      Amount: requestData.Value.Amount
     });
+    
+    PostNedarim(requestData);
   };
 
   const handlePaymentSuccess = async (transactionId?: string) => {
@@ -263,14 +293,25 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
               <p className="text-sm text-muted-foreground">מערכת תשלומים</p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="h-8 w-8 p-0 hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCancelTransaction}
+              className="h-8 px-3 text-xs hover:bg-destructive/10 hover:text-destructive"
+            >
+              <ArrowLeft className="h-3 w-3 ml-1" />
+              ביטול עסקה
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-8 w-8 p-0 hover:bg-muted"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Payment details */}
@@ -283,6 +324,17 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
               <span className="text-3xl font-bold text-primary">₪{packageData.price}</span>
               <span className="text-sm text-muted-foreground">לחודש</span>
             </div>
+            
+            {/* Change package button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleChangePackage}
+              className="text-xs hover:bg-accent/10 hover:text-accent border-accent/30"
+            >
+              <RefreshCw className="h-3 w-3 ml-1" />
+              שנה חבילה
+            </Button>
           </div>
         </div>
 
