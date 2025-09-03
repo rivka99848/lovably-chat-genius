@@ -116,9 +116,8 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
     };
 
     try {
-      await fetch('https://n8n.chatnaki.co.il/webhook/8736bd97-e422-4fa1-88b7-40822154f84b', {
+      await fetch('https://n8n.chatnaki.co.il/webhook/f7386e64-b5f4-485b-9de4-7798794f9c72', {
         method: 'POST',
-        mode: 'no-cors',
         headers: {
           'Content-Type': 'application/json',
         },

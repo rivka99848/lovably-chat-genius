@@ -182,6 +182,9 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
         'Comment': `תשלום עבור ${packageData.name}`,
         'Param1': packageData.name,
         'Param2': user.id,
+        'Param3': user.name,
+        'Param4': user.email,
+        'Param5': user.category,
         'ForceUpdateMatching': '1',
         'CallBack': 'https://n8n.chatnaki.co.il/webhook/f7386e64-b5f4-485b-9de4-7798794f9c72',
         'CallBackMailError': '',
@@ -192,7 +195,13 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
     console.log('Sending payment request to Nedarim:', {
       PaymentType: requestData.Value.PaymentType,
       Tashlumim: requestData.Value.Tashlumim,
-      Amount: requestData.Value.Amount
+      Amount: requestData.Value.Amount,
+      CallBack: requestData.Value.CallBack,
+      Param1: requestData.Value.Param1,
+      Param2: requestData.Value.Param2,
+      Param3: requestData.Value.Param3,
+      Param4: requestData.Value.Param4,
+      Param5: requestData.Value.Param5
     });
     
     PostNedarim(requestData);
