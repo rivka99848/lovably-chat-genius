@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 
 interface Package {
@@ -211,46 +211,84 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`max-w-4xl max-h-[90vh] p-0 ${
+      <DialogContent className={`max-w-md max-h-[90vh] p-0 ${
         isDarkMode 
-          ? 'bg-gray-900 border-gray-700' 
-          : 'bg-white border-gray-200'
+          ? 'bg-card border-border' 
+          : 'bg-card border-border'
       }`} dir="rtl">
-        <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="text-xl font-bold flex items-center justify-between">
-            <span>תשלום עבור {packageData.name}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-8 w-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
-        </DialogHeader>
+        {/* Header with logo and close button */}
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            {/* Logo placeholder - will be replaced with actual logo */}
+            <div className="w-10 h-10 bg-gradient-to-r from-primary to-accent rounded-lg flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-lg">C</span>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">ChatNaki</h2>
+              <p className="text-sm text-muted-foreground">מערכת תשלומים</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="h-8 w-8 p-0 hover:bg-muted"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
 
-        <div className="px-6 pb-6 space-y-4">
+        {/* Payment details */}
+        <div className="p-6 border-b border-border bg-muted/20">
+          <div className="text-center">
+            <h3 className="text-xl font-bold text-foreground mb-2">
+              {packageData.name}
+            </h3>
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <span className="text-3xl font-bold text-primary">₪{packageData.price}</span>
+              <span className="text-sm text-muted-foreground">חד פעמי</span>
+            </div>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <div className="flex justify-between">
+                <span>הודעות בחבילה:</span>
+                <span className="font-medium text-foreground">{packageData.messageLimit}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>מידה למשתמש:</span>
+                <span className="font-medium text-foreground">{user.name}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Payment iframe */}
+        <div className="p-4 space-y-4">
           {iframeUrl && (
             <>
-              <div className="relative">
+              <div className="relative bg-card rounded-lg border border-border overflow-hidden">
                 <iframe
                   id="NedarimFrame"
                   src={iframeUrl}
-                  className="w-full h-[300px] border border-gray-300 rounded-lg"
+                  className="w-full h-[320px] border-0"
                   title="Nedarim Payment Frame"
                   onLoad={handleIframeLoad}
                 />
               </div>
               
-              <div className="flex justify-center pt-4">
+              <div className="flex justify-center pt-2">
                 <Button
                   onClick={handlePayButtonClick}
-                  className="bg-info hover:bg-info/90 text-white px-8 py-2"
+                  className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground font-medium py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
                   size="lg"
                 >
-                  ביצוע תשלום ₪{packageData.price}
+                  <span className="flex items-center gap-2">
+                    💳 ביצוע תשלום ₪{packageData.price}
+                  </span>
                 </Button>
+              </div>
+              
+              <div className="text-center text-xs text-muted-foreground mt-4">
+                🔒 תשלום מאובטח באמצעות נדרים פלוס
               </div>
             </>
           )}
