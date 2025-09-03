@@ -243,31 +243,28 @@ const ChatInterface = () => {
           })
         });
 
-        // Always read the response body (even on errors) to surface server messages
-        const loginText = await loginResponse.text();
-        console.log('Login response:', loginText);
-
-        let userData: any;
-        try {
-          userData = JSON.parse(loginText);
-        } catch {
-          userData = loginText;
-        }
-
-        // Extract and persist JWT token if present
-        const token = extractToken(userData);
-        if (token) {
-          setToken(token);
-          console.log('JWT token saved after login');
-        }
-
         if (loginResponse.ok) {
-          // Success path
-          if (
-            userData === true ||
-            (typeof userData === 'object' && userData.success) ||
-            (Array.isArray(userData) && userData.length > 0 && userData[0].success)
-          ) {
+          const responseText = await loginResponse.text();
+          console.log('Login response:', responseText);
+          
+          let userData;
+          try {
+            userData = JSON.parse(responseText);
+          } catch {
+            userData = responseText;
+          }
+          
+          // חלץ טוקן אם קיים
+          const token = extractToken(userData);
+          if (token) {
+            setToken(token);
+            console.log('JWT token saved after login');
+          }
+          
+          // אם זה true או array עם success: true - המשתמש התחבר בהצלחה
+          if (userData === true || 
+              (typeof userData === 'object' && userData.success) ||
+              (Array.isArray(userData) && userData.length > 0 && userData[0].success)) {
             const existingUser: User = {
               id: userData.id || userId,
               email,
@@ -278,28 +275,22 @@ const ChatInterface = () => {
               messageLimit: userData.messageLimit || 50,
               registrationDate: userData.registrationDate || new Date().toISOString()
             };
-
+            
             setUser(existingUser);
             localStorage.setItem('lovable_user', JSON.stringify(existingUser));
             setShowAuth(false);
-
+            
             toast({
               title: "ברוכים הבאים!",
               description: `התחברתם בהצלחה כמומחה ב${existingUser.category}.`
             });
           } else {
+            // אם זה לא true - הצג את ההודעה שהשרת החזיר
             const errorMessage = typeof userData === 'string' ? userData : 'שגיאה בהתחברות';
             throw new Error(errorMessage);
           }
         } else {
-          // Error path - show server-provided error when available
-          const errorMessage =
-            (typeof userData === 'object' && (userData.message || userData.error || userData.detail))
-              ? (userData.message || userData.error || userData.detail)
-              : (typeof userData === 'string' && userData.trim().length > 0)
-                ? userData
-                : 'שגיאה בהתחברות';
-          throw new Error(errorMessage);
+          throw new Error('שגיאה בהתחברות. אנא נסו שוב.');
         }
       }
     } catch (error) {

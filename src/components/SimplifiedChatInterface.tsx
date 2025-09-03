@@ -170,57 +170,31 @@ const SimplifiedChatInterface = () => {
         })
       });
 
-      // Always read body (also on errors) and parse safely
-      const raw = await response.text();
-      let data: any;
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        data = raw;
-      }
-
       if (!response.ok) {
-        const msg =
-          (typeof data === 'object' && (data.message || data.error || data.detail))
-            ? (data.message || data.error || data.detail)
-            : (typeof data === 'string' && data.trim().length > 0)
-              ? data
-              : 'שגיאה בהתחברות';
-        throw new Error(msg);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'שגיאה בהתחברות');
       }
 
-      if (data && (data.success || data.user)) {
-        if (data.token) {
-          localStorage.setItem('lovable_token', data.token);
-        }
-        const loggedInUser = data.user || {
-          id: data.id,
-          email,
-          name: data.name || name,
-          category: data.category || category,
-          plan: data.plan || 'free',
-          messagesUsed: data.messagesUsed || 0,
-          messageLimit: data.messageLimit || 50,
-          registrationDate: data.registrationDate || new Date().toISOString()
-        };
-
-        setUser(loggedInUser);
-        localStorage.setItem('lovable_user', JSON.stringify(loggedInUser));
+      const data = await response.json();
+      
+      if (data.success && data.user) {
+        setUser(data.user);
+        localStorage.setItem('lovable_user', JSON.stringify(data.user));
+        localStorage.setItem('lovable_token', data.token || '');
         setShowAuth(false);
-
+        
         toast({
-          title: 'ברוכים הבאים!',
-          description: isSignUp
-            ? `נרשמתם בהצלחה כמומחה ב${loggedInUser.category}.`
-            : `התחברתם בהצלחה כמומחה ב${loggedInUser.category}.`
+          title: "ברוכים הבאים!",
+          description: isSignUp 
+            ? `נרשמתם בהצלחה כמומחה ב${category}.`
+            : `התחברתם בהצלחה כמומחה ב${data.user.category}.`
         });
-
+        
         // Load conversations for this user
-        loadSavedConversations(loggedInUser.id);
+        loadSavedConversations(data.user.id);
         createNewSessionId();
       } else {
-        const msg = (typeof data === 'object' && (data.message || data.error)) ? (data.message || data.error) : 'שגיאה בהתחברות';
-        throw new Error(msg);
+        throw new Error(data.message || 'שגיאה בהתחברות');
       }
     } catch (error) {
       console.error('Auth error:', error);
