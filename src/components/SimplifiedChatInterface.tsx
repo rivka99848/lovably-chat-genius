@@ -64,7 +64,7 @@ const SimplifiedChatInterface = () => {
 
   // Updated webhook URLs
   const CHATBOT_WEBHOOK_URL = 'https://n8n.chatnaki.co.il/webhook/chatbot';
-  const LOGIN_WEBHOOK_URL = 'https://n8n.smartbiz.org.il/webhook/login';
+  const LOGIN_WEBHOOK_URL = 'https://n8n.chatnaki.co.il/webhook/login';
 
   // Create new session ID
   const createNewSessionId = () => {
