@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
+import PaymentIframe from './PaymentIframe';
 
 interface Package {
   id: string;
@@ -75,172 +76,84 @@ const packages: Package[] = [
 ];
 
 const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isDarkMode }) => {
-  const [pendingPayments, setPendingPayments] = useState<Set<string>>(new Set());
+  const [paymentIframeOpen, setPaymentIframeOpen] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
 
-  const handlePayment = async (packageData: Package) => {
+  const generateEventId = () => {
+    return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  const handleUpgrade = (packageData: Package) => {
+    setSelectedPackage(packageData);
+    setPaymentIframeOpen(true);
+  };
+
+  const handleDowngradeOrCancel = async (packageData: Package) => {
+    const eventId = generateEventId();
+    const isDowngrade = packageData.price < packages.find(p => p.type === user.plan)?.price!;
+    
+    const webhookData = {
+      event: isDowngrade ? "subscription.downgraded" : "subscription.cancelled",
+      event_id: eventId,
+      timestamp: new Date().toISOString(),
+      customer: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone || "",
+        category: user.category
+      },
+      plan_change: {
+        previous_plan: user.plan,
+        new_plan: packageData.type,
+        previous_limit: user.messageLimit,
+        new_limit: packageData.messageLimit,
+        change_type: isDowngrade ? "downgrade" : "cancellation",
+        immediate: true,
+        reason: "user_initiated"
+      },
+      source: "chat_naki_app"
+    };
+
     try {
-      // Create pending payment ID
-      const paymentId = Date.now().toString();
-      setPendingPayments(prev => new Set([...prev, paymentId]));
-
-      // Send webhook to n8n with customer and package data
-      const webhookUrl = 'https://n8n.chatnaki.co.il/webhook/ec08226c-892c-48e2-b5e1-25fe521d186f';
-      
-      const webhookData = {
-        customer: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          phone: user.phone || '',
-          currentPlan: user.plan,
-          messagesUsed: user.messagesUsed,
-          messageLimit: user.messageLimit,
-          tokensUsed: user.messagesUsed, // backward compatibility
-          tokenLimit: user.messageLimit  // backward compatibility
-        },
-        package: {
-          id: packageData.id,
-          name: packageData.name,
-          price: packageData.price,
-          type: packageData.type,
-          messageLimit: packageData.messageLimit,
-          tokenLimit: packageData.messageLimit, // same value for now
-          features: packageData.features
-        },
-        paymentId: paymentId,
-        timestamp: new Date().toISOString()
-      };
-
-      toast({
-        title: "שולח פרטי תשלום",
-        description: "מכין דף תשלום מותאם אישית..."
-      });
-
-      const response = await fetch(webhookUrl, {
+      await fetch('https://n8n.chatnaki.co.il/webhook/8736bd97-e422-4fa1-88b7-40822154f84b', {
         method: 'POST',
+        mode: 'no-cors',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(webhookData)
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
+      console.log('Cancellation/downgrade webhook sent:', webhookData);
       
-      // Expecting iframe URL in the response
-      if (result.paymentIframe) {
-        // Open payment iframe in a popup
-        const popupFeatures = 'width=800,height=700,scrollbars=yes,resizable=yes,centerscreen=yes,location=no,menubar=no,toolbar=no,status=no';
-        window.open(result.paymentIframe, 'paymentPopup', popupFeatures);
-        
-        toast({
-          title: "מעבר לתשלום",
-          description: "מועבר לדף התשלום המותאם..."
-        });
-
-        // Check payment status periodically
-        checkPaymentStatus(paymentId, packageData);
-      } else {
-        throw new Error('לא התקבל קישור לדף התשלום');
-      }
+      // Update user locally
+      const updatedUser = {
+        ...user,
+        plan: packageData.type,
+        messageLimit: packageData.messageLimit
+      };
       
-    } catch (error) {
-      console.error('Error sending webhook:', error);
-      const currentPaymentId = Date.now().toString(); // fallback ID
-      setPendingPayments(prev => {
-        const newSet = new Set(prev);
-        // Remove any pending payment ID
-        prev.forEach(id => newSet.delete(id));
-        return newSet;
-      });
+      onUpdateUser(updatedUser);
       
       toast({
+        title: "החבילה שונתה",
+        description: `עברת ל${packageData.name}`
+      });
+      
+      onClose();
+    } catch (error) {
+      console.error('Error sending webhook:', error);
+      toast({
         title: "שגיאה",
-        description: "נכשל בעיבוד התשלום. אנא נסה שוב.",
+        description: "נכשלה עדכון החבילה. אנא נסה שוב.",
         variant: "destructive"
       });
     }
   };
 
-  const checkPaymentStatus = async (paymentId: string, packageData: Package) => {
-    const maxAttempts = 10;
-    let attempts = 0;
-    
-    const intervalId = setInterval(async () => {
-      attempts++;
-      
-      try {
-        const response = await fetch('https://n8n.smartbiz.org.il/webhook/payment-status', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            paymentId: paymentId,
-            userId: user.id
-          })
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          
-          if (result.status === 'completed') {
-            // Payment successful - update user plan
-            const updatedUser = {
-              ...user,
-              plan: packageData.type,
-              messageLimit: packageData.messageLimit,
-              messagesUsed: user.messagesUsed
-            };
-            
-            setPendingPayments(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(paymentId);
-              return newSet;
-            });
-            
-            onUpdateUser(updatedUser);
-            
-            toast({
-              title: "התשלום אושר!",
-              description: `החבילה ${packageData.name} הופעלה בהצלחה`
-            });
-            
-            onClose();
-            clearInterval(intervalId);
-          } else if (result.status === 'failed') {
-            // Payment failed
-            setPendingPayments(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(paymentId);
-              return newSet;
-            });
-            
-            toast({
-              title: "התשלום נכשל",
-              description: "אנא נסה שוב או פנה לתמיכה",
-              variant: "destructive"
-            });
-            
-            clearInterval(intervalId);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking payment status:', error);
-      }
-      
-      if (attempts >= maxAttempts) {
-        clearInterval(intervalId);
-        setPendingPayments(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(paymentId);
-          return newSet;
-        });
-      }
-    }, 5000); // Check every 5 seconds
+  const handlePaymentSuccess = (updatedUser: User) => {
+    onUpdateUser(updatedUser);
   };
 
   const getPlanColor = (plan: string) => {
@@ -356,34 +269,21 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
                     <Button disabled className="w-full" variant="outline">
                       החבילה הנוכחית
                     </Button>
-                  ) : pkg.price === 0 ? (
+                  ) : pkg.price === 0 || pkg.price < packages.find(p => p.type === user.plan)?.price! ? (
                     <Button 
                       variant="outline" 
                       className="w-full"
-                      onClick={() => {
-                        const updatedUser = {
-                          ...user,
-                          plan: pkg.type,
-                          messageLimit: pkg.messageLimit
-                        };
-                        onUpdateUser(updatedUser);
-                        toast({
-                          title: "החבילה שונתה",
-                          description: "עברת לחבילה החינם"
-                        });
-                        onClose();
-                      }}
+                      onClick={() => handleDowngradeOrCancel(pkg)}
                     >
-                      עבור לחבילה
+                      {pkg.price === 0 ? 'עבור לחבילה' : 'שנמך לחבילה'}
                     </Button>
                   ) : (
                     <Button
-                      onClick={() => handlePayment(pkg)}
+                      onClick={() => handleUpgrade(pkg)}
                       className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-                      disabled={pendingPayments.size > 0}
                     >
                       <CreditCard className="w-4 h-4 ml-2" />
-                      {pendingPayments.size > 0 ? 'מעבד תשלום...' : 'שדרג עכשיו'}
+                      שדרג עכשיו
                     </Button>
                   )}
                 </Card>
@@ -419,6 +319,20 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
           </div>
         </div>
       </DialogContent>
+
+      {selectedPackage && (
+        <PaymentIframe
+          isOpen={paymentIframeOpen}
+          onClose={() => {
+            setPaymentIframeOpen(false);
+            setSelectedPackage(null);
+          }}
+          user={user}
+          packageData={selectedPackage}
+          onPaymentSuccess={handlePaymentSuccess}
+          isDarkMode={isDarkMode}
+        />
+      )}
     </Dialog>
   );
 };
