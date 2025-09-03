@@ -94,19 +94,23 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
   };
 
   const constructNedarimUrl = () => {
-    const params = new URLSearchParams({
-      amount: (packageData.price * 100).toString(), // Convert to agorot
+    // Build Nedarim payment URL with proper format
+    const baseUrl = 'https://secure.nedarimplus.com/api/payment';
+    const params = {
+      amount: packageData.price.toString(), // Keep in shekels for Nedarim
       currency: 'ILS',
+      product_name: packageData.name,
       customer_name: user.name,
       customer_email: user.email,
       customer_phone: user.phone || '',
-      item_name: packageData.name,
-      transaction_id: `txn_${Date.now()}_${user.id}`,
-      return_url: window.location.origin,
-      cancel_url: window.location.origin
-    });
+      order_id: `order_${Date.now()}_${user.id}`,
+      success_url: `${window.location.origin}/?payment=success`,
+      cancel_url: `${window.location.origin}/?payment=cancel`,
+      callback_url: 'https://n8n.chatnaki.co.il/webhook/f7386e64-b5f4-485b-9de4-7798794f9c72'
+    };
     
-    return `https://secure.nedarimplus.com/payment/?${params.toString()}`;
+    const searchParams = new URLSearchParams(params);
+    return `${baseUrl}?${searchParams.toString()}`;
   };
 
   const handlePaymentSuccess = async () => {
