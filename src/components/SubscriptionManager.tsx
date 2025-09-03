@@ -8,7 +8,6 @@ import {
   Calendar, 
   CreditCard, 
   AlertTriangle,
-  ArrowRight,
   CheckCircle
 } from 'lucide-react';
 
@@ -67,6 +66,10 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
     return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
 
+  const generateTransactionId = () => {
+    return `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+  };
+
   const getPlanName = (plan: string) => {
     switch (plan) {
       case 'free': return 'חינמי';
@@ -87,20 +90,39 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
 
   const getPlanPrice = (plan: string) => {
     switch (plan) {
-      case 'בסיס': return '₪15';
-      case 'מתקדם': return '₪25';
+      case 'pro': return '₪25';
+      case 'enterprise': return '₪50';
       default: return 'חינמי';
+    }
+  };
+
+  const sendWebhook = async (data: any) => {
+    try {
+      await fetch('https://n8n.chatnaki.co.il/webhook/8736bd97-e422-4fa1-88b7-40822154f84b', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    } catch (error) {
+      console.error("Error sending webhook:", error);
+      toast({
+        title: "שגיאה",
+        description: "אירעה שגיאה בשליחת המידע לשרת. נסה שוב מאוחר יותר.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleCancelSubscription = async () => {
     setIsLoading(true);
     const eventId = generateEventId();
-    
+    const transactionId = generateTransactionId();
+
     const webhookData = {
       event: "subscription.cancelled",
       event_id: eventId,
       timestamp: new Date().toISOString(),
+      transactionId,
       customer: {
         id: user.id,
         email: user.email,
@@ -120,41 +142,65 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
       source: "subscription_manager"
     };
 
-    try {
-      await fetch('https://n8n.chatnaki.co.il/webhook/8736bd97-e422-4fa1-88b7-40822154f84b', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(webhookData)
-      });
+    await sendWebhook(webhookData);
 
-      // Update user locally
-      const updatedUser = {
-        ...user,
-        plan: 'free' as const,
-        messageLimit: 50
-      };
-      
-      onUpdateUser(updatedUser);
-      
-      toast({
-        title: "החבילה בוטלה",
-        description: "החבילה שלך תבוטל בסוף התקופה הנוכחית. עד אז תוכל להמשיך להשתמש בשירות הבלתי מוגבל.",
-      });
-      
-      setShowCancelConfirm(false);
-      
-    } catch (error) {
-      console.error('Error cancelling subscription:', error);
-      toast({
-        title: "שגיאה",
-        description: "אירעה שגיאה בביטול החבילה. נסה שוב מאוחר יותר.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    onUpdateUser({
+      ...user,
+      plan: "free",
+      messageLimit: 50
+    });
+
+    toast({
+      title: "החבילה בוטלה",
+      description: "החבילה שלך תבוטל בסוף התקופה הנוכחית.",
+    });
+
+    setShowCancelConfirm(false);
+    setIsLoading(false);
+  };
+
+  const handleChangePlan = async (newPlan: 'free' | 'pro' | 'enterprise', newLimit: number) => {
+    setIsLoading(true);
+    const eventId = generateEventId();
+    const transactionId = generateTransactionId();
+
+    const webhookData = {
+      event: "subscription.changed",
+      event_id: eventId,
+      timestamp: new Date().toISOString(),
+      transactionId,
+      customer: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: (user as any).phone || "",
+        category: user.category
+      },
+      plan_change: {
+        previous_plan: user.plan,
+        new_plan: newPlan,
+        previous_limit: user.messageLimit,
+        new_limit: newLimit,
+        change_type: "plan_update",
+        immediate: true
+      },
+      source: "subscription_manager"
+    };
+
+    await sendWebhook(webhookData);
+
+    onUpdateUser({
+      ...user,
+      plan: newPlan,
+      messageLimit: newLimit
+    });
+
+    toast({
+      title: "התוכנית עודכנה בהצלחה",
+      description: `המנוי שלך שודרג ל-${getPlanName(newPlan)}.`,
+    });
+
+    setIsLoading(false);
   };
 
   const getUsagePercentage = () => {
@@ -179,8 +225,8 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
           </Button>
         </div>
 
+        {/* Current Plan */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Current Plan */}
           <div className="lg:col-span-2">
             <Card className={`p-6 ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="flex items-center justify-between mb-4">
@@ -229,6 +275,7 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
                   </div>
                 </div>
 
+                {/* Cancel subscription */}
                 {user.plan !== 'free' && (
                   <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between">
@@ -276,6 +323,28 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
                     </div>
                   </div>
                 )}
+
+                {/* Change plan (דוגמה - את יכולה לעצב אחרת) */}
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <p className={`font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    שינוי תוכנית:
+                  </p>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => handleChangePlan('pro', 300000)} 
+                      disabled={isLoading}
+                    >
+                      Pro
+                    </Button>
+                    <Button 
+                      onClick={() => handleChangePlan('enterprise', -1)} 
+                      disabled={isLoading}
+                    >
+                      Enterprise
+                    </Button>
+                  </div>
+                </div>
+
               </div>
             </Card>
           </div>
