@@ -210,11 +210,40 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
   const handleIframeLoad = () => {
     console.log('StartNedarim');
     PostNedarim({ 'Name': 'GetHeight' });
+    
+    // Inject CSS for blue borders on input fields
+    setTimeout(() => {
+      PostNedarim({
+        'Name': 'InjectCSS',
+        'Value': `
+          input[type="text"], 
+          input[type="email"], 
+          input[type="tel"], 
+          input[type="number"],
+          select,
+          textarea {
+            border: 2px solid #3b82f6 !important;
+            border-radius: 6px !important;
+            transition: border-color 0.2s ease !important;
+          }
+          input[type="text"]:focus, 
+          input[type="email"]:focus, 
+          input[type="tel"]:focus, 
+          input[type="number"]:focus,
+          select:focus,
+          textarea:focus {
+            border-color: #1d4ed8 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+            outline: none !important;
+          }
+        `
+      });
+    }, 1000);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`max-w-md max-h-[90vh] p-0 ${
+      <DialogContent className={`max-w-sm overflow-y-auto p-0 ${
         isDarkMode 
           ? 'bg-card border-border' 
           : 'bg-card border-border'
@@ -265,14 +294,14 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
         </div>
 
         {/* Payment iframe */}
-        <div className="p-4 space-y-4">
+        <div className="p-3 space-y-3">
           {iframeUrl && (
             <>
-              <div className="relative bg-card rounded-lg border border-border overflow-hidden">
+              <div className="relative bg-background rounded-lg border-2 border-primary/20 overflow-hidden shadow-sm">
                 <iframe
                   id="NedarimFrame"
                   src={iframeUrl}
-                  className="w-full h-[320px] border-0"
+                  className="w-full h-[380px] border-0"
                   title="Nedarim Payment Frame"
                   onLoad={handleIframeLoad}
                 />
