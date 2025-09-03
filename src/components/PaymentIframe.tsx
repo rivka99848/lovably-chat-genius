@@ -93,24 +93,73 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
     }
   };
 
-  const constructNedarimUrl = () => {
-    // Build Nedarim payment URL with proper format
-    const baseUrl = 'https://secure.nedarimplus.com/api/payment';
-    const params = {
-      amount: packageData.price.toString(), // Keep in shekels for Nedarim
-      currency: 'ILS',
-      product_name: packageData.name,
-      customer_name: user.name,
-      customer_email: user.email,
-      customer_phone: user.phone || '',
-      order_id: `order_${Date.now()}_${user.id}`,
-      success_url: `${window.location.origin}/?payment=success`,
-      cancel_url: `${window.location.origin}/?payment=cancel`,
-      callback_url: 'https://n8n.chatnaki.co.il/webhook/f7386e64-b5f4-485b-9de4-7798794f9c72'
-    };
+  const PostNedarim = (data: any) => {
+    const iframe = document.getElementById('NedarimFrame') as HTMLIFrameElement;
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage(data, "*");
+    }
+  };
+
+  const ReadPostMessage = (event: MessageEvent) => {
+    // Security: Only accept messages from Nedarim domain
+    if (event.origin !== 'https://matara.pro') {
+      return;
+    }
+
+    console.log('Nedarim message:', event.data);
     
-    const searchParams = new URLSearchParams(params);
-    return `${baseUrl}?${searchParams.toString()}`;
+    switch (event.data.Name) {
+      case 'Height':
+        // Set iframe height dynamically
+        const iframe = document.getElementById('NedarimFrame') as HTMLIFrameElement;
+        if (iframe) {
+          iframe.style.height = (parseInt(event.data.Value) + 15) + "px";
+        }
+        break;
+
+      case 'TransactionResponse':
+        console.log('Transaction response:', event.data.Value);
+        if (event.data.Value.Status === 'Error') {
+          toast({
+            title: "התשלום נכשל",
+            description: event.data.Value.Message || "אנא נסה שוב או פנה לתמיכה",
+            variant: "destructive"
+          });
+          onClose();
+        } else {
+          handlePaymentSuccess();
+        }
+        break;
+    }
+  };
+
+  const handlePayButtonClick = () => {
+    PostNedarim({
+      'Name': 'FinishTransaction2',
+      'Value': {
+        'Mosad': '2813479',
+        'ApiValid': '7jZ+r+ukMw',
+        'PaymentType': '1', // Credit card
+        'Currency': '1', // ILS
+        'Zeout': '',
+        'FirstName': user.name,
+        'LastName': '',
+        'Street': '',
+        'City': '',
+        'Phone': user.phone || '',
+        'Mail': user.email,
+        'Amount': packageData.price.toString(),
+        'Tashlumim': '1',
+        'Groupe': '',
+        'Comment': `תשלום עבור ${packageData.name}`,
+        'Param1': packageData.name,
+        'Param2': user.id,
+        'ForceUpdateMatching': '1',
+        'CallBack': 'https://n8n.chatnaki.co.il/webhook/f7386e64-b5f4-485b-9de4-7798794f9c72',
+        'CallBackMailError': '',
+        'Tokef': ''
+      }
+    });
   };
 
   const handlePaymentSuccess = async () => {
@@ -139,48 +188,26 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
 
   // Listen for messages from iframe (Nedarim response)
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Security: Only accept messages from Nedarim domain
-      if (event.origin !== 'https://secure.nedarimplus.com' && 
-          event.origin !== 'https://nedarimplus.com') {
-        return;
-      }
-
-      try {
-        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        
-        if (data.type === 'TransactionResponse') {
-          if (data.status === 'success' || data.status === 'approved') {
-            handlePaymentSuccess();
-          } else if (data.status === 'failed' || data.status === 'error') {
-            toast({
-              title: "התשלום נכשל",
-              description: data.message || "אנא נסה שוב או פנה לתמיכה",
-              variant: "destructive"
-            });
-            onClose();
-          }
-        }
-      } catch (error) {
-        console.error('Error parsing message from iframe:', error);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    window.addEventListener('message', ReadPostMessage);
+    return () => window.removeEventListener('message', ReadPostMessage);
   }, [user, packageData, onPaymentSuccess, onClose]);
 
-  // Set iframe URL when component opens
+  // Initialize iframe when component opens
   useEffect(() => {
     if (isOpen) {
-      const url = constructNedarimUrl();
-      setIframeUrl(url);
+      setIframeUrl('https://matara.pro/nedarimplus/iframe?language=he');
       toast({
         title: "מעבר לתשלום",
         description: "מועבר לדף התשלום..."
       });
     }
   }, [isOpen]);
+
+  // Setup iframe onload handler
+  const handleIframeLoad = () => {
+    console.log('StartNedarim');
+    PostNedarim({ 'Name': 'GetHeight' });
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -203,16 +230,29 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 space-y-4">
           {iframeUrl && (
-            <div className="relative">
-              <iframe
-                src={iframeUrl}
-                className="w-full h-[600px] border-0 rounded-lg"
-                title="Payment Frame"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-top-navigation"
-              />
-            </div>
+            <>
+              <div className="relative">
+                <iframe
+                  id="NedarimFrame"
+                  src={iframeUrl}
+                  className="w-full h-[300px] border border-gray-300 rounded-lg"
+                  title="Nedarim Payment Frame"
+                  onLoad={handleIframeLoad}
+                />
+              </div>
+              
+              <div className="flex justify-center pt-4">
+                <Button
+                  onClick={handlePayButtonClick}
+                  className="bg-info hover:bg-info/90 text-white px-8 py-2"
+                  size="lg"
+                >
+                  ביצוע תשלום ₪{packageData.price}
+                </Button>
+              </div>
+            </>
           )}
         </div>
       </DialogContent>
