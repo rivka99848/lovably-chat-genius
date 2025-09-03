@@ -42,7 +42,6 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
   isDarkMode
 }) => {
   const [iframeUrl, setIframeUrl] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
 
   const generateEventId = () => {
     return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -94,72 +93,20 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
     }
   };
 
-  const initializePayment = async () => {
-    setIsLoading(true);
-    try {
-      // Send request to get iframe URL (existing n8n webhook)
-      const webhookUrl = 'https://n8n.chatnaki.co.il/webhook/ec08226c-892c-48e2-b5e1-25fe521d186f';
-      
-      const requestData = {
-        customer: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          phone: user.phone || '',
-          currentPlan: user.plan,
-          messagesUsed: user.messagesUsed,
-          messageLimit: user.messageLimit,
-          tokensUsed: user.messagesUsed,
-          tokenLimit: user.messageLimit
-        },
-        package: {
-          id: packageData.id,
-          name: packageData.name,
-          price: packageData.price,
-          type: packageData.type,
-          messageLimit: packageData.messageLimit,
-          tokenLimit: packageData.messageLimit,
-          features: packageData.features
-        },
-        paymentId: Date.now().toString(),
-        timestamp: new Date().toISOString()
-      };
-
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.paymentIframe) {
-        setIframeUrl(result.paymentIframe);
-        toast({
-          title: "מעבר לתשלום",
-          description: "מועבר לדף התשלום..."
-        });
-      } else {
-        throw new Error('לא התקבל קישור לדף התשלום');
-      }
-      
-    } catch (error) {
-      console.error('Error initializing payment:', error);
-      toast({
-        title: "שגיאה",
-        description: "נכשל בעיבוד התשלום. אנא נסה שוב.",
-        variant: "destructive"
-      });
-      onClose();
-    } finally {
-      setIsLoading(false);
-    }
+  const constructNedarimUrl = () => {
+    const params = new URLSearchParams({
+      amount: (packageData.price * 100).toString(), // Convert to agorot
+      currency: 'ILS',
+      customer_name: user.name,
+      customer_email: user.email,
+      customer_phone: user.phone || '',
+      item_name: packageData.name,
+      transaction_id: `txn_${Date.now()}_${user.id}`,
+      return_url: window.location.origin,
+      cancel_url: window.location.origin
+    });
+    
+    return `https://secure.nedarimplus.com/payment/?${params.toString()}`;
   };
 
   const handlePaymentSuccess = async () => {
@@ -219,10 +166,15 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
     return () => window.removeEventListener('message', handleMessage);
   }, [user, packageData, onPaymentSuccess, onClose]);
 
-  // Initialize payment when component opens
+  // Set iframe URL when component opens
   useEffect(() => {
     if (isOpen) {
-      initializePayment();
+      const url = constructNedarimUrl();
+      setIframeUrl(url);
+      toast({
+        title: "מעבר לתשלום",
+        description: "מועבר לדף התשלום..."
+      });
     }
   }, [isOpen]);
 
@@ -248,12 +200,7 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
         </DialogHeader>
 
         <div className="px-6 pb-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <span className="mr-4">טוען את דף התשלום...</span>
-            </div>
-          ) : iframeUrl ? (
+          {iframeUrl && (
             <div className="relative">
               <iframe
                 src={iframeUrl}
@@ -261,15 +208,6 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
                 title="Payment Frame"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-top-navigation"
               />
-            </div>
-          ) : (
-            <div className="flex items-center justify-center py-20">
-              <div className="text-center">
-                <div className="text-red-500 text-lg mb-2">שגיאה בטעינת דף התשלום</div>
-                <Button onClick={initializePayment} variant="outline">
-                  נסה שוב
-                </Button>
-              </div>
             </div>
           )}
         </div>
