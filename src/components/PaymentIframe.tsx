@@ -47,13 +47,13 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
     return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
 
-  const sendPaymentSuccessWebhook = async (eventId: string) => {
+  const sendPaymentSuccessWebhook = async (transactionId: string) => {
     const webhookData = {
       event: "subscription.created",
-      event_id: eventId,
+      event_id: transactionId,
       timestamp: new Date().toISOString(),
       subscription: {
-        id: `sub_${Date.now()}`,
+        id: transactionId,
         amount: packageData.price * 100, // convert to agorot
         currency: "ILS",
         status: "active",
@@ -130,7 +130,9 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
           });
           onClose();
         } else {
-          handlePaymentSuccess();
+          const transactionId = event.data.Value.TransactionId;
+          console.log('TransactionId received from Nedarim:', transactionId);
+          handlePaymentSuccess(transactionId);
         }
         break;
     }
@@ -165,8 +167,9 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
     });
   };
 
-  const handlePaymentSuccess = async () => {
-    const eventId = generateEventId();
+  const handlePaymentSuccess = async (transactionId?: string) => {
+    const finalTransactionId = transactionId || generateEventId();
+    console.log('Processing payment success with TransactionId:', finalTransactionId);
     
     // Update user data
     const updatedUser = {
@@ -175,8 +178,8 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
       messageLimit: packageData.messageLimit
     };
 
-    // Send success webhook
-    await sendPaymentSuccessWebhook(eventId);
+    // Send success webhook with real TransactionId
+    await sendPaymentSuccessWebhook(finalTransactionId);
 
     // Call parent success handler
     onPaymentSuccess(updatedUser);
@@ -243,7 +246,7 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`max-w-md overflow-y-auto p-0 ${
+      <DialogContent className={`max-w-md max-h-[70vh] overflow-y-auto p-0 ${
         isDarkMode 
           ? 'bg-card border-border' 
           : 'bg-card border-border'
@@ -284,14 +287,14 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
         </div>
 
         {/* Payment iframe */}
-        <div className="p-3 space-y-3">
+        <div className="p-3 space-y-3 overflow-y-auto max-h-[50vh]">
           {iframeUrl && (
             <>
               <div className="relative bg-background rounded-lg border-2 border-primary/20 overflow-hidden shadow-sm">
                 <iframe
                   id="NedarimFrame"
                   src={iframeUrl}
-                  className="w-full h-[380px] border-0"
+                  className="w-full min-h-[350px] border-0"
                   title="Nedarim Payment Frame"
                   onLoad={handleIframeLoad}
                 />
