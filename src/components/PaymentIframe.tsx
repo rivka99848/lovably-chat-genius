@@ -49,15 +49,18 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
 
   const sendPaymentSuccessWebhook = async (eventId: string) => {
     const webhookData = {
-      event: "payment.succeeded",
+      event: "subscription.created",
       event_id: eventId,
       timestamp: new Date().toISOString(),
-      transaction: {
-        id: `txn_${Date.now()}`,
+      subscription: {
+        id: `sub_${Date.now()}`,
         amount: packageData.price * 100, // convert to agorot
         currency: "ILS",
-        status: "completed",
-        method: "credit_card"
+        status: "active",
+        method: "credit_card",
+        billing_cycle: "monthly",
+        start_date: new Date().toISOString(),
+        next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
       },
       customer: {
         id: user.id,
@@ -149,7 +152,7 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
         'Phone': user.phone || '',
         'Mail': user.email,
         'Amount': packageData.price.toString(),
-        'Tashlumim': '1',
+        'Tashlumim': '12', // 12 monthly payments for subscription
         'Groupe': '',
         'Comment': `תשלום עבור ${packageData.name}`,
         'Param1': packageData.name,
@@ -179,8 +182,8 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
     onPaymentSuccess(updatedUser);
 
     toast({
-      title: "התשלום אושר!",
-      description: `החבילה ${packageData.name} הופעלה בהצלחה`
+      title: "המנוי אושר!",
+      description: `מנוי ${packageData.name} הופעל בהצלחה - חיוב חודשי של ₪${packageData.price}`
     });
 
     onClose();
@@ -246,7 +249,7 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
             </h3>
             <div className="flex items-center justify-center gap-2 mb-4">
               <span className="text-3xl font-bold text-primary">₪{packageData.price}</span>
-              <span className="text-sm text-muted-foreground">חד פעמי</span>
+              <span className="text-sm text-muted-foreground">לחודש</span>
             </div>
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex justify-between">
@@ -282,7 +285,7 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
                   size="lg"
                 >
                   <span className="flex items-center gap-2">
-                    💳 ביצוע תשלום ₪{packageData.price}
+                    💳 הרשמה למנוי ₪{packageData.price}/חודש
                   </span>
                 </Button>
               </div>
