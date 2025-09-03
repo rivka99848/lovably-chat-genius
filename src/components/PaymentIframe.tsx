@@ -243,7 +243,7 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`max-w-sm overflow-y-auto p-0 ${
+      <DialogContent className={`max-w-md overflow-y-auto p-0 ${
         isDarkMode 
           ? 'bg-card border-border' 
           : 'bg-card border-border'
@@ -279,16 +279,6 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
             <div className="flex items-center justify-center gap-2 mb-4">
               <span className="text-3xl font-bold text-primary">₪{packageData.price}</span>
               <span className="text-sm text-muted-foreground">לחודש</span>
-            </div>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <div className="flex justify-between">
-                <span>הודעות בחבילה:</span>
-                <span className="font-medium text-foreground">{packageData.messageLimit}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>מידה למשתמש:</span>
-                <span className="font-medium text-foreground">{user.name}</span>
-              </div>
             </div>
           </div>
         </div>
