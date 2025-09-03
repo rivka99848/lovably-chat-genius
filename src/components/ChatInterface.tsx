@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun, LogOut, CreditCard, Menu, X } from 'lucide-react';
+import { Send, Plus, User, Settings, Crown, Upload, Moon, Sun, LogOut, CreditCard, Menu, X, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -738,6 +738,11 @@ const ChatInterface = () => {
     navigate('/profile');
   };
 
+  const handleSubscriptionClick = () => {
+    console.log('Subscription clicked');
+    navigate('/subscription');
+  };
+
   const handleUpgradeClick = () => {
     console.log('Upgrade clicked');
     setShowPlanUpgrade(true);
@@ -849,6 +854,10 @@ const ChatInterface = () => {
                     <DropdownMenuItem onClick={handleSettingsClick} dir="rtl">
                       <Settings className="ml-2 h-4 w-4" />
                       הגדרות
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleSubscriptionClick} dir="rtl">
+                      <FileText className="ml-2 h-4 w-4" />
+                      ניהול מנוי
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleUpgradeClick} dir="rtl">
                       <CreditCard className="ml-2 h-4 w-4" />

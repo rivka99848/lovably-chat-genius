@@ -149,69 +149,6 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
     });
   };
 
-  const generateEventId = () => {
-    return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  };
-
-  const handleCancelPlan = async () => {
-    const eventId = generateEventId();
-    
-    const webhookData = {
-      event: "subscription.cancelled",
-      event_id: eventId,
-      timestamp: new Date().toISOString(),
-      customer: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        phone: (user as any).phone || "",
-        category: user.category
-      },
-      plan_change: {
-        previous_plan: user.plan,
-        new_plan: "free",
-        previous_limit: user.messageLimit,
-        new_limit: 50,
-        change_type: "cancellation",
-        immediate: true,
-        reason: "user_initiated"
-      },
-      source: "chat_naki_app"
-    };
-
-    try {
-      await fetch('https://n8n.chatnaki.co.il/webhook/f7386e64-b5f4-485b-9de4-7798794f9c72', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(webhookData)
-      });
-
-      // Update user locally
-      const updatedUser = {
-        ...user,
-        plan: 'free' as const,
-        messageLimit: 50
-      };
-      
-      onUpdateUser(updatedUser);
-      
-      toast({
-        title: "החבילה בוטלה",
-        description: "החבילה שלך בוטלה בהצלחה. עברת לחבילה החינמית.",
-      });
-      
-    } catch (error) {
-      console.error('Error cancelling plan:', error);
-      toast({
-        title: "שגיאה",
-        description: "אירעה שגיאה בביטול החבילה. נסה שוב מאוחר יותר.",
-        variant: "destructive"
-      });
-    }
-  };
-
   const getPlanColor = (plan: string) => {
     switch (plan) {
       case 'pro': return 'bg-blue-600/20 text-blue-400 border-blue-600/30';
@@ -354,27 +291,15 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                       {user.messagesUsed.toLocaleString()}/{user.messageLimit.toLocaleString()} טוקנים
                     </span>
                   </div>
-                  <div className="flex gap-2">
-                    {user.plan !== 'free' && (
-                      <Button
-                        onClick={handleCancelPlan}
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 border-red-600/30 hover:bg-red-600/10"
-                      >
-                        ביטול חבילה
-                      </Button>
-                    )}
-                    <Button
-                      onClick={() => setShowUpgrade(true)}
-                      variant="outline"
-                      size="sm"
-                      className="bg-gradient-to-r from-green-600/20 to-blue-600/20 hover:from-green-600/30 hover:to-blue-600/30 border-green-600/30"
-                    >
-                      <Crown className="w-3 h-3 ml-1" />
-                      שינוי חבילה
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() => setShowUpgrade(true)}
+                    variant="outline"
+                    size="sm"
+                    className="bg-gradient-to-r from-green-600/20 to-blue-600/20 hover:from-green-600/30 hover:to-blue-600/30 border-green-600/30"
+                  >
+                    <Crown className="w-3 h-3 ml-1" />
+                    שינוי חבילה
+                  </Button>
                 </div>
               </div>
             </div>
