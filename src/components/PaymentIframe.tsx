@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, RefreshCw } from 'lucide-react';
+import { X, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
@@ -318,7 +318,7 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
                 <iframe
                   id="NedarimFrame"
                   src={iframeUrl}
-                  className="w-full h-[400px] border-0"
+                  className="w-full min-h-[350px] border-0"
                   title="Nedarim Payment Frame"
                   onLoad={handleIframeLoad}
                 />
