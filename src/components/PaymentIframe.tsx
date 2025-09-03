@@ -3,6 +3,7 @@ import { X, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Package {
   id: string;
@@ -81,18 +82,18 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
     };
 
     try {
-      await fetch('https://n8n.chatnaki.co.il/webhook/f7386e64-b5f4-485b-9de4-7798794f9c72', {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(webhookData)
+      const { data, error } = await supabase.functions.invoke('forward-payment', {
+        body: webhookData,
       });
-
-      console.log('Payment success webhook sent:', webhookData);
+      if (error) throw error;
+      console.log('Webhook relayed via edge function:', data);
     } catch (error) {
-      console.error('Error sending payment success webhook:', error);
+      console.error('Error sending payment success webhook via edge function:', error);
+      toast({
+        title: 'שגיאה בשליחת וובהוק',
+        description: 'ננסה שוב מאוחר יותר. התשלום עצמו נקלט.',
+        variant: 'destructive'
+      });
     }
   };
 
