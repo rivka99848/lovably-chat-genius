@@ -22,6 +22,9 @@ interface User {
   plan: 'free' | 'pro' | 'enterprise';
   messagesUsed: number;
   messageLimit: number;
+  subscriptionStatus?: 'free' | 'active' | 'cancel_pending' | 'expired';
+  subscriptionStartDate?: Date;
+  subscriptionEndDate?: Date;
 }
 
 interface PaymentIframeProps {
@@ -142,7 +145,7 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
         'Param4': user.email,
         'Param5': user.category,
         'ForceUpdateMatching': '1',
-        'CallBack': 'https://n8n.chatnaki.co.il/webhook/f7386e64-b5f4-485b-9de4-7798794f9c72',
+        'CallBack': 'https://n8n.chatnaki.co.il/webhook/8736bd97-e422-4fa1-88b7-40822154f84b',
         'CallBackMailError': '',
         'Tokef': ''
       }
@@ -170,8 +173,14 @@ const PaymentIframe: React.FC<PaymentIframeProps> = ({
     const updatedUser = {
       ...user,
       plan: packageData.type,
-      messageLimit: packageData.messageLimit
+      messageLimit: packageData.messageLimit,
+      subscriptionStatus: 'active' as const,
+      subscriptionStartDate: new Date(),
+      subscriptionEndDate: null
     };
+
+    // Update localStorage with subscription details
+    localStorage.setItem('lovable_user', JSON.stringify(updatedUser));
 
     // Call parent success handler for immediate UI update
     onPaymentSuccess(updatedUser);

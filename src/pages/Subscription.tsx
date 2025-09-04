@@ -12,6 +12,9 @@ interface User {
   messageLimit: number;
   messagesUsed: number;
   registrationDate: Date;
+  subscriptionStatus?: 'free' | 'active' | 'cancel_pending' | 'expired';
+  subscriptionStartDate?: Date;
+  subscriptionEndDate?: Date;
 }
 
 const Subscription = () => {

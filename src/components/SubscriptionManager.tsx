@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,9 @@ interface User {
   messageLimit: number;
   messagesUsed: number;
   registrationDate: Date;
+  subscriptionStatus?: 'free' | 'active' | 'cancel_pending' | 'expired';
+  subscriptionStartDate?: Date;
+  subscriptionEndDate?: Date;
 }
 
 interface Payment {
@@ -42,6 +45,64 @@ interface Props {
 const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  // Check for expired subscriptions and auto-downgrade
+  useEffect(() => {
+    const checkSubscriptionExpiry = () => {
+      if (user.subscriptionStatus === 'cancel_pending' && user.subscriptionEndDate) {
+        const now = new Date();
+        const endDate = new Date(user.subscriptionEndDate);
+        
+        if (now > endDate) {
+          // Subscription has expired, downgrade to free
+          const updatedUser = {
+            ...user,
+            plan: 'free' as const,
+            messageLimit: 50,
+            subscriptionStatus: 'expired' as const
+          };
+          
+          onUpdateUser(updatedUser);
+          
+          toast({
+            title: "המנוי הסתיים",
+            description: "החבילה שלך הועברה לחבילה החינמית",
+          });
+          
+          // Optional: Send webhook about expired subscription
+          const webhookData = {
+            event: "subscription.expired",
+            timestamp: new Date().toISOString(),
+            customer: {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              category: user.category
+            },
+            plan_change: {
+              previous_plan: user.plan,
+              new_plan: "free",
+              expired_at: new Date().toISOString()
+            }
+          };
+          
+          fetch('https://n8n.chatnaki.co.il/webhook/8736bd97-e422-4fa1-88b7-40822154f84b', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(webhookData)
+          }).catch(error => console.error('Failed to send expiry webhook:', error));
+        }
+      }
+    };
+
+    // Check on mount
+    checkSubscriptionExpiry();
+    
+    // Check every minute
+    const interval = setInterval(checkSubscriptionExpiry, 60000);
+    
+    return () => clearInterval(interval);
+  }, [user, onUpdateUser]);
 
   // Mock payments data - replace with real data from your backend
   const payments: Payment[] = [
@@ -97,8 +158,12 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
     setIsLoading(true);
     const eventId = generateEventId();
     
+    // Calculate month end date
+    const now = new Date();
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
     const webhookData = {
-      event: "subscription.cancelled",
+      event: "subscription.cancellation_requested",
       event_id: eventId,
       timestamp: new Date().toISOString(),
       customer: {
@@ -109,10 +174,10 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
         category: user.category
       },
       plan_change: {
-        previous_plan: user.plan,
-        new_plan: "free",
-        previous_limit: user.messageLimit,
-        new_limit: 50,
+        current_plan: user.plan,
+        current_limit: user.messageLimit,
+        requested_at: new Date().toISOString(),
+        effective_date: monthEnd.toISOString(),
         change_type: "cancellation",
         immediate: false,
         reason: "user_initiated"
@@ -121,7 +186,7 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
     };
 
     try {
-      await fetch('https://n8n.chatnaki.co.il/webhook/f7386e64-b5f4-485b-9de4-7798794f9c72', {
+      await fetch('https://n8n.chatnaki.co.il/webhook/8736bd97-e422-4fa1-88b7-40822154f84b', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,18 +194,18 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
         body: JSON.stringify(webhookData)
       });
 
-      // Update user locally
+      // Update user locally - don't change plan yet, just set cancellation status
       const updatedUser = {
         ...user,
-        plan: 'free' as const,
-        messageLimit: 50
+        subscriptionStatus: 'cancel_pending' as const,
+        subscriptionEndDate: monthEnd
       };
       
       onUpdateUser(updatedUser);
       
       toast({
-        title: "החבילה בוטלה",
-        description: "החבילה שלך תבוטל בסוף התקופה הנוכחית. עד אז תוכל להמשיך להשתמש בשירות הבלתי מוגבל.",
+        title: "בקשת ביטול נשלחה",
+        description: `החבילה שלך תבוטל ב-${monthEnd.toLocaleDateString('he-IL')}. עד אז תוכל להמשיך להשתמש בשירות הבלתי מוגבל.`,
       });
       
       setShowCancelConfirm(false);
@@ -231,49 +296,65 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
 
                 {user.plan !== 'free' && (
                   <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                          רוצה לבטל את המנוי?
-                        </p>
-                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                          המנוי יישאר פעיל עד סוף התקופה הנוכחית
-                        </p>
-                      </div>
-                      {!showCancelConfirm ? (
-                        <Button
-                          onClick={() => setShowCancelConfirm(true)}
-                          variant="outline"
-                          className="text-red-600 border-red-600/30 hover:bg-red-600/10"
-                        >
-                          <AlertTriangle className="w-4 h-4 ml-1" />
-                          ביטול מנוי
-                        </Button>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => setShowCancelConfirm(false)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            ביטול
-                          </Button>
-                          <Button
-                            onClick={handleCancelSubscription}
-                            disabled={isLoading}
-                            variant="destructive"
-                            size="sm"
-                          >
-                            {isLoading ? (
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-1" />
-                            ) : (
-                              <CheckCircle className="w-4 h-4 ml-1" />
-                            )}
-                            אישור ביטול
-                          </Button>
+                    {user.subscriptionStatus === 'cancel_pending' ? (
+                      <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                        <div className="flex items-center">
+                          <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 ml-2" />
+                          <div>
+                            <p className={`font-medium text-yellow-800 dark:text-yellow-200`}>
+                              ביטול מנוי מתוכנן
+                            </p>
+                            <p className={`text-sm text-yellow-700 dark:text-yellow-300`}>
+                              המנוי יבוטל ב-{user.subscriptionEndDate ? new Date(user.subscriptionEndDate).toLocaleDateString('he-IL') : 'תאריך לא ידוע'}
+                            </p>
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            רוצה לבטל את המנוי?
+                          </p>
+                          <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                            המנוי יישאר פעיל עד סוף התקופה הנוכחית
+                          </p>
+                        </div>
+                        {!showCancelConfirm ? (
+                          <Button
+                            onClick={() => setShowCancelConfirm(true)}
+                            variant="outline"
+                            className="text-red-600 border-red-600/30 hover:bg-red-600/10"
+                          >
+                            <AlertTriangle className="w-4 h-4 ml-1" />
+                            ביטול מנוי
+                          </Button>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => setShowCancelConfirm(false)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              ביטול
+                            </Button>
+                            <Button
+                              onClick={handleCancelSubscription}
+                              disabled={isLoading}
+                              variant="destructive"
+                              size="sm"
+                            >
+                              {isLoading ? (
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-1" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4 ml-1" />
+                              )}
+                              אישור ביטול
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
