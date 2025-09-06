@@ -152,7 +152,11 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
     });
   };
 
-  const getPlanColor = (plan: string) => {
+  const getPlanColor = (plan: string, subscriptionStatus?: string) => {
+    if (subscriptionStatus === 'cancel_pending') {
+      return 'bg-orange-600/20 text-orange-400 border-orange-600/30';
+    }
+    
     switch (plan) {
       case 'pro': return 'bg-blue-600/20 text-blue-400 border-blue-600/30';
       case 'enterprise': return 'bg-purple-600/20 text-purple-400 border-purple-600/30';
@@ -160,12 +164,19 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
     }
   };
 
-  const getPlanName = (plan: string) => {
+  const getPlanName = (plan: string, subscriptionStatus?: string) => {
+    let baseName = '';
     switch (plan) {
-      case 'pro': return 'מקצועי';
-      case 'enterprise': return 'ארגוני';
-      default: return 'חינם';
+      case 'pro': baseName = 'מקצועי'; break;
+      case 'enterprise': baseName = 'ארגוני'; break;
+      default: baseName = 'חינם';
     }
+    
+    if (subscriptionStatus === 'cancel_pending') {
+      return `${baseName} (בביטול)`;
+    }
+    
+    return baseName;
   };
 
   return (
@@ -286,9 +297,9 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                 </Label>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2 space-x-reverse">
-                    <Badge className={getPlanColor(user.plan)}>
+                    <Badge className={getPlanColor(user.plan, user.subscriptionStatus)}>
                       <Crown className="w-3 h-3 ml-1" />
-                      {getPlanName(user.plan)}
+                      {getPlanName(user.plan, user.subscriptionStatus)}
                     </Badge>
                     <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                       {user.messagesUsed.toLocaleString()}/{user.messageLimit.toLocaleString()} טוקנים

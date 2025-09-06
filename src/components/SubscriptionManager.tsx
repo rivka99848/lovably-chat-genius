@@ -128,21 +128,32 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
     return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
 
-  const getPlanName = (plan: string) => {
+  const getPlanName = (plan: string, subscriptionStatus?: string) => {
+    let baseName = '';
     switch (plan) {
-      case 'free': return 'חינמי';
-      case 'pro': return 'Pro';
-      case 'enterprise': return 'Enterprise';
-      default: return 'לא ידוע';
+      case 'free': baseName = 'חינמי'; break;
+      case 'pro': baseName = 'Pro'; break;
+      case 'enterprise': baseName = 'Enterprise'; break;
+      default: baseName = 'לא ידוע';
     }
+    
+    if (subscriptionStatus === 'cancel_pending') {
+      return `${baseName} (בביטול)`;
+    }
+    
+    return baseName;
   };
 
-  const getPlanColor = (plan: string) => {
+  const getPlanColor = (plan: string, subscriptionStatus?: string) => {
+    if (subscriptionStatus === 'cancel_pending') {
+      return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+    }
+    
     switch (plan) {
-      case 'free': return 'bg-gray-100 text-gray-800';
-      case 'pro': return 'bg-blue-100 text-blue-800';
-      case 'enterprise': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'free': return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+      case 'pro': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'enterprise': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
   };
 
@@ -253,8 +264,8 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
                   <Crown className="w-5 h-5 ml-2 text-yellow-500" />
                   התוכנית הנוכחית
                 </h2>
-                <Badge className={getPlanColor(user.plan)}>
-                  {getPlanName(user.plan)}
+                <Badge className={getPlanColor(user.plan, user.subscriptionStatus)}>
+                  {getPlanName(user.plan, user.subscriptionStatus)}
                 </Badge>
               </div>
 
