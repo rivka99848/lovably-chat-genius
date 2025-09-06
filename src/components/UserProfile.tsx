@@ -55,6 +55,9 @@ interface User {
   messagesUsed: number;
   messageLimit: number;
   payments?: Payment[];
+  subscriptionStatus?: 'free' | 'active' | 'cancel_pending' | 'expired';
+  subscriptionStartDate?: Date;
+  subscriptionEndDate?: Date;
 }
 
 interface Props {

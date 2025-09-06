@@ -13,6 +13,9 @@ interface User {
   messagesUsed: number;
   messageLimit: number;
   registrationDate?: string;
+  subscriptionStatus?: 'free' | 'active' | 'cancel_pending' | 'expired';
+  subscriptionStartDate?: Date;
+  subscriptionEndDate?: Date;
 }
 
 const Profile = () => {
