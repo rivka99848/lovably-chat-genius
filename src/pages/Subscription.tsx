@@ -11,7 +11,7 @@ interface User {
   plan: 'free' | 'pro' | 'enterprise';
   messageLimit: number;
   messagesUsed: number;
-  registrationDate: Date;
+  registrationDate?: string;
   subscriptionStatus?: 'free' | 'active' | 'cancel_pending' | 'expired';
   subscriptionStartDate?: Date;
   subscriptionEndDate?: Date;
@@ -29,7 +29,7 @@ const Subscription = () => {
       const parsedUser = JSON.parse(storedUser);
       setUser({
         ...parsedUser,
-        registrationDate: new Date(parsedUser.registrationDate || Date.now())
+        registrationDate: parsedUser.registrationDate || new Date().toISOString()
       });
     } else {
       // Redirect to login if no user

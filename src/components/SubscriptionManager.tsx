@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { refreshUserData } from '@/lib/subscription-utils';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +10,8 @@ import {
   CreditCard, 
   AlertTriangle,
   ArrowRight,
-  CheckCircle
+  CheckCircle,
+  RefreshCw
 } from 'lucide-react';
 
 interface User {
@@ -20,7 +22,7 @@ interface User {
   plan: 'free' | 'pro' | 'enterprise';
   messageLimit: number;
   messagesUsed: number;
-  registrationDate: Date;
+  registrationDate?: string;
   subscriptionStatus?: 'free' | 'active' | 'cancel_pending' | 'expired';
   subscriptionStartDate?: Date;
   subscriptionEndDate?: Date;
@@ -45,6 +47,29 @@ interface Props {
 const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const handleRefreshData = async () => {
+    setIsLoading(true);
+    try {
+      const refreshedUser = await refreshUserData(user.id);
+      if (refreshedUser) {
+        onUpdateUser(refreshedUser);
+        toast({
+          title: "הנתונים עודכנו",
+          description: "סטטוס המנוי והטוקנים עודכנו מהשרת"
+        });
+      }
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את הנתונים",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Check for expired subscriptions and auto-downgrade
   useEffect(() => {
@@ -104,25 +129,8 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
     return () => clearInterval(interval);
   }, [user, onUpdateUser]);
 
-  // Mock payments data - replace with real data from your backend
-  const payments: Payment[] = [
-    {
-      id: '1',
-      amount: 99,
-      date: new Date('2024-01-15'),
-      packageName: 'חבילת Pro',
-      status: 'completed',
-      transactionId: 'TXN_123456789'
-    },
-    {
-      id: '2', 
-      amount: 99,
-      date: new Date('2024-02-15'),
-      packageName: 'חבילת Pro',
-      status: 'completed',
-      transactionId: 'TXN_987654321'
-    }
-  ];
+  // Empty payments array - will be implemented with real data later
+  const payments: Payment[] = [];
 
   const generateEventId = () => {
     return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -159,20 +167,16 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
 
   const getPlanPrice = (plan: string) => {
     switch (plan) {
-      case 'pro': return '₪99';
-      case 'enterprise': return '₪199';
-      default: return 'חינמי';
+      case 'pro': return '₪15/חודש';
+      case 'enterprise': return '₪25/חודש'; 
+      default: return 'חינם';
     }
   };
 
   const handleCancelSubscription = async () => {
     setIsLoading(true);
+    
     const eventId = generateEventId();
-    
-    // Calculate month end date
-    const now = new Date();
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    
     const webhookData = {
       event: "subscription.cancellation_requested",
       event_id: eventId,
@@ -181,51 +185,49 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
         id: user.id,
         email: user.email,
         name: user.name,
-        phone: (user as any).phone || "",
         category: user.category
       },
-      plan_change: {
+      subscription_details: {
         current_plan: user.plan,
         current_limit: user.messageLimit,
-        requested_at: new Date().toISOString(),
-        effective_date: monthEnd.toISOString(),
-        change_type: "cancellation",
-        immediate: false,
-        reason: "user_initiated"
+        cancellation_type: "user_requested",
+        immediate: false
       },
-      source: "subscription_manager"
+      source: "chat_naki_app"
     };
 
     try {
       await fetch('https://n8n.chatnaki.co.il/webhook/8736bd97-e422-4fa1-88b7-40822154f84b', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(webhookData)
       });
 
-      // Update user locally - don't change plan yet, just set cancellation status
+      console.log('Cancellation webhook sent:', webhookData);
+      
+      // Set subscription to cancel_pending with end date
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 1);
+      
       const updatedUser = {
         ...user,
         subscriptionStatus: 'cancel_pending' as const,
-        subscriptionEndDate: monthEnd
+        subscriptionEndDate: endDate
       };
       
       onUpdateUser(updatedUser);
       
       toast({
         title: "בקשת ביטול נשלחה",
-        description: `החבילה שלך תבוטל ב-${monthEnd.toLocaleDateString('he-IL')}. עד אז תוכל להמשיך להשתמש בשירות הבלתי מוגבל.`,
+        description: `המנוי יישאר פעיל עד ${endDate.toLocaleDateString('he-IL')}`,
       });
       
       setShowCancelConfirm(false);
-      
     } catch (error) {
-      console.error('Error cancelling subscription:', error);
+      console.error('Error sending cancellation webhook:', error);
       toast({
-        title: "שגיאה",
-        description: "אירעה שגיאה בביטול החבילה. נסה שוב מאוחר יותר.",
+        title: "שגיאה בביטול המנוי",
+        description: "נסה שוב מאוחר יותר",
         variant: "destructive"
       });
     } finally {
@@ -234,230 +236,172 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
   };
 
   const getUsagePercentage = () => {
-    return Math.round((user.messagesUsed / user.messageLimit) * 100);
+    if (user.messageLimit === -1) return 0; // Unlimited
+    return Math.min((user.messagesUsed / user.messageLimit) * 100, 100);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
+    <div className={`min-h-screen p-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`} dir="rtl">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <h1 className={`text-3xl font-bold flex items-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              <Crown className="w-8 h-8 ml-3 text-yellow-500" />
               ניהול מנוי
             </h1>
-            <p className={`text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              נהל את המנוי שלך והיסטוריית התשלומים
-            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshData}
+                disabled={isLoading}
+              >
+                <RefreshCw className={`w-4 h-4 ml-1 ${isLoading ? 'animate-spin' : ''}`} />
+                רענן נתונים
+              </Button>
+              <Button variant="outline" onClick={onClose}>
+                <ArrowRight className="w-4 h-4 ml-1" />
+                חזרה
+              </Button>
+            </div>
           </div>
-          <Button onClick={onClose} variant="outline">
-            חזרה
-          </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Current Plan */}
-          <div className="lg:col-span-2">
-            <Card className={`p-6 ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className={`text-xl font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  <Crown className="w-5 h-5 ml-2 text-yellow-500" />
-                  התוכנית הנוכחית
-                </h2>
-                <Badge className={getPlanColor(user.plan, user.subscriptionStatus)}>
-                  {getPlanName(user.plan, user.subscriptionStatus)}
-                </Badge>
+        {/* Current Subscription */}
+        <Card className={`p-6 mb-6 ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <h2 className={`text-xl font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <Crown className="w-5 h-5 ml-2 text-yellow-500" />
+                התוכנית הנוכחית
+              </h2>
+              <Badge className={getPlanColor(user.plan, user.subscriptionStatus)}>
+                {getPlanName(user.plan, user.subscriptionStatus)}
+              </Badge>
+            </div>
+
+            <div className="text-left">
+              <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                {getPlanPrice(user.plan)}
               </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    מחיר חודשי:
-                  </span>
-                  <span className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {getPlanPrice(user.plan)}
-                  </span>
+              {user.subscriptionStatus === 'cancel_pending' && user.subscriptionEndDate && (
+                <div className="text-sm text-orange-600 mt-1">
+                  מסתיים ב-{new Date(user.subscriptionEndDate).toLocaleDateString('he-IL')}
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    מגבלת טוקנים:
-                  </span>
-                  <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {user.messageLimit === -1 ? 'ללא הגבלה' : user.messageLimit.toLocaleString()}
-                  </span>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      שימוש נוכחי:
-                    </span>
-                    <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {user.messagesUsed.toLocaleString()} ({getUsagePercentage()}%)
-                    </span>
-                  </div>
-                  <div className={`w-full bg-gray-200 rounded-full h-2 ${isDarkMode ? 'bg-gray-700' : ''}`}>
-                    <div 
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(getUsagePercentage(), 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {user.plan !== 'free' && (
-                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                    {user.subscriptionStatus === 'cancel_pending' ? (
-                      <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                        <div className="flex items-center">
-                          <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 ml-2" />
-                          <div>
-                            <p className={`font-medium text-yellow-800 dark:text-yellow-200`}>
-                              ביטול מנוי מתוכנן
-                            </p>
-                            <p className={`text-sm text-yellow-700 dark:text-yellow-300`}>
-                              המנוי יבוטל ב-{user.subscriptionEndDate ? new Date(user.subscriptionEndDate).toLocaleDateString('he-IL') : 'תאריך לא ידוע'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            רוצה לבטל את המנוי?
-                          </p>
-                          <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                            המנוי יישאר פעיל עד סוף התקופה הנוכחית
-                          </p>
-                        </div>
-                        {!showCancelConfirm ? (
-                          <Button
-                            onClick={() => setShowCancelConfirm(true)}
-                            variant="outline"
-                            className="text-red-600 border-red-600/30 hover:bg-red-600/10"
-                          >
-                            <AlertTriangle className="w-4 h-4 ml-1" />
-                            ביטול מנוי
-                          </Button>
-                        ) : (
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => setShowCancelConfirm(false)}
-                              variant="outline"
-                              size="sm"
-                            >
-                              ביטול
-                            </Button>
-                            <Button
-                              onClick={handleCancelSubscription}
-                              disabled={isLoading}
-                              variant="destructive"
-                              size="sm"
-                            >
-                              {isLoading ? (
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-1" />
-                              ) : (
-                                <CheckCircle className="w-4 h-4 ml-1" />
-                              )}
-                              אישור ביטול
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </Card>
+              )}
+            </div>
           </div>
 
-          {/* Quick Stats */}
-          <div className="space-y-4">
-            <Card className={`p-4 ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-500">{user.messagesUsed.toLocaleString()}</div>
-                <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  טוקנים נשלחו
-                </div>
-              </div>
-            </Card>
+          {/* Usage Progress */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                שימוש בטוקנים
+              </span>
+              <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                {user.messagesUsed.toLocaleString()} / {user.messageLimit === -1 ? '∞' : user.messageLimit.toLocaleString()}
+              </span>
+            </div>
             
-            <Card className={`p-4 ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-500">
-                  {user.messageLimit === -1 ? '∞' : Math.max(0, user.messageLimit - user.messagesUsed).toLocaleString()}
-                </div>
+            <div className={`w-full bg-gray-200 rounded-full h-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
+              <div 
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  getUsagePercentage() > 90 ? 'bg-red-500' : 
+                  getUsagePercentage() > 70 ? 'bg-orange-500' : 'bg-green-500'
+                }`}
+                style={{ width: `${user.messageLimit === -1 ? 10 : getUsagePercentage()}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Subscription Actions */}
+          {user.plan !== 'free' && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+              <div className="flex items-center justify-between">
                 <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  טוקנים נותרו
+                  {user.subscriptionStatus === 'cancel_pending' 
+                    ? 'המנוי מתוכנן להסתיים בתאריך המצוין למעלה'
+                    : 'רוצה לבטל את המנוי? המנוי יישאר פעיל עד סוף התקופה הנוכחית'
+                  }
+                </div>
+                <div className="flex gap-2">
+                  {!showCancelConfirm ? (
+                    user.subscriptionStatus !== 'cancel_pending' && (
+                      <Button
+                        onClick={() => setShowCancelConfirm(true)}
+                        variant="outline"
+                        size="sm"
+                        className="text-orange-600 hover:text-orange-700 border-orange-300 hover:border-orange-400"
+                      >
+                        <AlertTriangle className="w-4 h-4 ml-1" />
+                        ביטול מנוי
+                      </Button>
+                    )
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => setShowCancelConfirm(false)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        ביטול
+                      </Button>
+                      <Button
+                        onClick={handleCancelSubscription}
+                        disabled={isLoading}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        {isLoading ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-1" />
+                        ) : (
+                          <CheckCircle className="w-4 h-4 ml-1" />
+                        )}
+                        אישור ביטול
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
-            </Card>
-          </div>
+            </div>
+          )}
+        </Card>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <Card className={`p-4 text-center ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              {user.messagesUsed.toLocaleString()}
+            </div>
+            <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              טוקנים שנשלחו
+            </div>
+          </Card>
+          
+          <Card className={`p-4 text-center ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              {user.messageLimit === -1 ? '∞' : Math.max(0, user.messageLimit - user.messagesUsed).toLocaleString()}
+            </div>
+            <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              טוקנים נותרו
+            </div>
+          </Card>
         </div>
 
         {/* Payment History */}
-        <Card className={`mt-6 p-6 ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <Card className={`p-6 ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
           <h2 className={`text-xl font-semibold flex items-center mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
             <CreditCard className="w-5 h-5 ml-2" />
             היסטוריית תשלומים
           </h2>
 
-          {payments.length > 0 ? (
-            <div className="space-y-3">
-              {payments.map((payment) => (
-                <div 
-                  key={payment.id} 
-                  className={`p-4 rounded-lg border flex items-center justify-between ${
-                    isDarkMode 
-                      ? 'bg-gray-800/30 border-gray-700' 
-                      : 'bg-gray-50 border-gray-200'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3 space-x-reverse">
-                    <div className={`p-2 rounded-full ${
-                      payment.status === 'completed' 
-                        ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                        : payment.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400'
-                        : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                    }`}>
-                      <CheckCircle className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {payment.packageName}
-                      </div>
-                      <div className={`text-sm flex items-center space-x-2 space-x-reverse ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        <Calendar className="w-3 h-3" />
-                        <span>{payment.date.toLocaleDateString('he-IL')}</span>
-                        {payment.transactionId && (
-                          <>
-                            <span>•</span>
-                            <span>מזהה: {payment.transactionId}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-left">
-                    <div className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      ₪{payment.amount}
-                    </div>
-                    <Badge variant={payment.status === 'completed' ? 'default' : 'secondary'}>
-                      {payment.status === 'completed' ? 'הושלם' : 
-                       payment.status === 'pending' ? 'ממתין' : 'נכשל'}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>אין תשלומים עדיין</p>
-            </div>
-          )}
+          <div className="text-center py-8">
+            <CreditCard className={`w-12 h-12 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+            <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              היסטוריית התשלומים תהיה זמינה בקרוב
+            </p>
+          </div>
         </Card>
       </div>
     </div>

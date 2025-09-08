@@ -42,6 +42,9 @@ interface User {
   plan: 'free' | 'pro' | 'enterprise';
   messagesUsed: number;
   messageLimit: number;
+  subscriptionStatus?: 'free' | 'active' | 'cancel_pending' | 'expired';
+  subscriptionStartDate?: Date;
+  subscriptionEndDate?: Date;
   registrationDate?: string;
 }
 

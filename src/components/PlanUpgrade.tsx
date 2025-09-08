@@ -36,6 +36,9 @@ interface User {
   plan: 'free' | 'pro' | 'enterprise';
   messagesUsed: number;
   messageLimit: number;
+  subscriptionStatus?: 'free' | 'active' | 'cancel_pending' | 'expired';
+  subscriptionStartDate?: Date;
+  subscriptionEndDate?: Date;
   payments?: Payment[];
 }
 
@@ -90,10 +93,12 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
 
   const handleDowngradeOrCancel = async (packageData: Package) => {
     const eventId = generateEventId();
-    const isDowngrade = packageData.price < packages.find(p => p.type === user.plan)?.price!;
+    const currentPackage = packages.find(p => p.type === user.plan);
+    const isDowngrade = packageData.price < (currentPackage?.price || 0);
+    const isCancellation = packageData.type === 'free' && user.plan !== 'free';
     
     const webhookData = {
-      event: isDowngrade ? "subscription.downgraded" : "subscription.cancelled",
+      event: isCancellation ? "subscription.cancelled" : "subscription.downgraded",
       event_id: eventId,
       timestamp: new Date().toISOString(),
       customer: {
@@ -108,8 +113,8 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
         new_plan: packageData.type,
         previous_limit: user.messageLimit,
         new_limit: packageData.messageLimit,
-        change_type: isDowngrade ? "downgrade" : "cancellation",
-        immediate: true,
+        change_type: isCancellation ? "cancellation" : "downgrade",
+        immediate: !isCancellation,
         reason: "user_initiated"
       },
       source: "chat_naki_app"
@@ -126,20 +131,39 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
 
       console.log('Cancellation/downgrade webhook sent:', webhookData);
       
-      // Update user locally
-      const updatedUser = {
-        ...user,
-        plan: packageData.type,
-        messageLimit: packageData.messageLimit
-      };
+      let updatedUser;
+      
+      if (isCancellation) {
+        // For cancellation, keep current plan but mark as cancel_pending
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + 1); // Cancel at end of current billing period
+        
+        updatedUser = {
+          ...user,
+          subscriptionStatus: 'cancel_pending' as const,
+          subscriptionEndDate: endDate
+        };
+        
+        toast({
+          title: "המנוי בוטל",
+          description: `המנוי יישאר פעיל עד ${endDate.toLocaleDateString('he-IL')}. לאחר מכן תועבר לתוכנית החינמית.`
+        });
+      } else {
+        // For immediate downgrade
+        updatedUser = {
+          ...user,
+          plan: packageData.type,
+          messageLimit: packageData.messageLimit,
+          subscriptionStatus: packageData.type === 'free' ? 'free' : 'active'
+        };
+        
+        toast({
+          title: "החבילה שונתה",
+          description: `עברת ל${packageData.name}`
+        });
+      }
       
       onUpdateUser(updatedUser);
-      
-      toast({
-        title: "החבילה שונתה",
-        description: `עברת ל${packageData.name}`
-      });
-      
       onClose();
     } catch (error) {
       console.error('Error sending webhook:', error);
