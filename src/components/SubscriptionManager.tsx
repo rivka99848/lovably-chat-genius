@@ -51,12 +51,19 @@ const SubscriptionManager: React.FC<Props> = ({ user, onUpdateUser, isDarkMode, 
   const handleRefreshData = async () => {
     setIsLoading(true);
     try {
-      const refreshedUser = await refreshUserData(user.id);
+      const { forceRefreshUserData } = await import('@/lib/subscription-utils');
+      const refreshedUser = await forceRefreshUserData(user.id);
       if (refreshedUser) {
         onUpdateUser(refreshedUser);
         toast({
           title: "הנתונים עודכנו",
           description: "סטטוס המנוי והטוקנים עודכנו מהשרת"
+        });
+      } else {
+        toast({
+          title: "לא ניתן לעדכן",
+          description: "לא נמצאו נתונים בשרת",
+          variant: "destructive"
         });
       }
     } catch (error) {

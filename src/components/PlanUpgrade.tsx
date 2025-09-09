@@ -292,13 +292,25 @@ const PlanUpgrade: React.FC<Props> = ({ isOpen, onClose, user, onUpdateUser, isD
                     <Button disabled className="w-full" variant="outline">
                       החבילה הנוכחית
                     </Button>
-                  ) : pkg.price === 0 || pkg.price < packages.find(p => p.type === user.plan)?.price! ? (
+                  ) : pkg.price === 0 ? (
+                    <Button 
+                      variant="destructive" 
+                      className="w-full"
+                      onClick={() => {
+                        if (window.confirm(`האם אתה בטוח שברצונך לבטל את המנוי? המנוי יישאר פעיל עד סוף התקופה הנוכחית ולאחר מכן תועבר לתוכנית החינמית.`)) {
+                          handleDowngradeOrCancel(pkg);
+                        }
+                      }}
+                    >
+                      בטל מנוי ועבור לחינמי
+                    </Button>
+                  ) : pkg.price < packages.find(p => p.type === user.plan)?.price! ? (
                     <Button 
                       variant="outline" 
                       className="w-full"
                       onClick={() => handleDowngradeOrCancel(pkg)}
                     >
-                      {pkg.price === 0 ? 'עבור לחבילה' : 'שנמך לחבילה'}
+                      שנמך לחבילה
                     </Button>
                   ) : (
                     <Button

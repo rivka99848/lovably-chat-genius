@@ -84,7 +84,7 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
   const [autoSave, setAutoSave] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
-  const [payments, setPayments] = useState<Payment[]>(user.payments || []);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   React.useEffect(() => {
@@ -455,7 +455,7 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
               היסטוריית תשלומים
             </h2>
 
-            {payments.length > 0 ? (
+            {payments && payments.length > 0 ? (
               <div className="space-y-3 max-h-64 overflow-y-auto">
                 {payments.map((payment) => (
                   <div key={payment.id} className={`p-4 rounded-lg border ${
@@ -491,7 +491,8 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
               </div>
             ) : (
               <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                אין תשלומים עדיין
+                <CreditCard className={`w-12 h-12 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+                <p>היסטוריית התשלומים תהיה זמינה בקרוב</p>
               </div>
             )}
           </div>

@@ -93,18 +93,53 @@ export const refreshUserData = async (userId: string): Promise<User | null> => {
     
     let user: User = JSON.parse(savedUser)
     
-    // Check subscription expiry
+    // Check subscription expiry first
     user = checkSubscriptionExpiry(user)
     
-    // Sync with Supabase
+    // Sync with Supabase to get latest data
     user = await syncUserWithSupabase(user)
     
-    // Update localStorage
+    // Update localStorage with synced data
     localStorage.setItem('lovable_user', JSON.stringify(user))
     
     return user
   } catch (error) {
     console.error('Error refreshing user data:', error)
+    return null
+  }
+}
+
+// Force refresh user data and update display
+export const forceRefreshUserData = async (userId: string): Promise<User | null> => {
+  try {
+    const profile = await getUserProfile(userId)
+    if (!profile) return null
+    
+    // Get current user from localStorage to preserve other data
+    const savedUser = localStorage.getItem('lovable_user')
+    if (!savedUser) return null
+    
+    let user: User = JSON.parse(savedUser)
+    
+    // Update with fresh data from database
+    user = {
+      ...user,
+      messagesUsed: profile.messages_used,
+      messageLimit: profile.message_limit,
+      plan: profile.plan,
+      category: profile.category,
+      name: profile.name
+    }
+    
+    // Check expiry after updating with fresh data
+    user = checkSubscriptionExpiry(user)
+    
+    // Save updated user
+    localStorage.setItem('lovable_user', JSON.stringify(user))
+    
+    return user
+  } catch (error) {
+    console.error('Error force refreshing user data:', error)
     return null
   }
 }
