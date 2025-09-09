@@ -144,12 +144,20 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
   };
 
   const loadConversation = (conversation: SavedConversation) => {
-    localStorage.setItem('lovable_chat_history', JSON.stringify(conversation.messages));
-    onClose();
-    toast({
-      title: "השיחה נטענה",
-      description: "השיחה נטענה בהצלחה"
-    });
+    if (conversation.messages && conversation.messages.length > 0) {
+      localStorage.setItem('lovable_chat_history', JSON.stringify(conversation.messages));
+      onClose();
+      toast({
+        title: "השיחה נטענה",
+        description: "השיחה נטענה בהצלחה"
+      });
+    } else {
+      toast({
+        title: "שגיאה",
+        description: "השיחה ריקה או פגומה",
+        variant: "destructive"
+      });
+    }
   };
 
   const getPlanColor = (plan: string, subscriptionStatus?: string) => {
@@ -343,7 +351,7 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
               שיחות שמורות
             </h2>
 
-            {savedConversations.length > 0 ? (
+            {savedConversations && savedConversations.length > 0 ? (
               <div className="space-y-3 max-h-64 overflow-y-auto">
                 {savedConversations.map((conversation) => (
                   <div key={conversation.id} className={`p-4 rounded-lg border flex items-center justify-between ${
@@ -353,9 +361,9 @@ const UserProfile: React.FC<Props> = ({ user, onClose, onUpdateUser, isDarkMode,
                   }`}>
                     <div className="flex-1 cursor-pointer" onClick={() => loadConversation(conversation)}>
                       <div className="font-medium">{conversation.title}</div>
-                      <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {conversation.messages.length} הודעות • {new Date(conversation.date).toLocaleDateString('he-IL')}
-                      </div>
+                       <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                         {conversation.messages?.length || 0} הודעות • {new Date(conversation.date).toLocaleDateString('he-IL')}
+                       </div>
                       <Badge className="text-xs mt-1 bg-green-600/20 text-green-400 border-green-600/30">
                         {conversation.category}
                       </Badge>
