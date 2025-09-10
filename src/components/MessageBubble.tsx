@@ -39,12 +39,39 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
     });
   };
 
-  // Function to detect if text is Hebrew
+  // Improved Hebrew text detection for better mixed content handling
   const isHebrewText = (text: string): boolean => {
     if (!text) return false;
-    const hebrewChars = text.match(/[\u0590-\u05FF]/g) || [];
-    const totalChars = text.replace(/\s/g, '').length;
-    return totalChars > 0 && (hebrewChars.length / totalChars) > 0.3;
+    
+    // Remove numbers, punctuation, and whitespace for better language detection
+    const cleanText = text.replace(/[\d\s\.,;:!?\(\)\[\]{}"'/\-\u2013\u2014]/g, '');
+    if (cleanText.length === 0) return false;
+    
+    const hebrewChars = cleanText.match(/[\u0590-\u05FF]/g) || [];
+    const englishChars = cleanText.match(/[a-zA-Z]/g) || [];
+    const totalLetters = hebrewChars.length + englishChars.length;
+    
+    // If there are no letters, return false
+    if (totalLetters === 0) return false;
+    
+    // If Hebrew is more than 40% of letters, consider it Hebrew
+    return (hebrewChars.length / totalLetters) > 0.4;
+  };
+
+  // Function to detect if entire paragraph/content is primarily Hebrew
+  const isParagraphHebrew = (text: string): boolean => {
+    if (!text) return false;
+    
+    // Split into sentences and check each
+    const sentences = text.split(/[.!?]/).filter(s => s.trim().length > 10);
+    if (sentences.length === 0) return isHebrewText(text);
+    
+    let hebrewSentences = 0;
+    sentences.forEach(sentence => {
+      if (isHebrewText(sentence)) hebrewSentences++;
+    });
+    
+    return hebrewSentences > sentences.length / 2;
   };
 
   // Function to detect if text is code
@@ -436,13 +463,19 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
                   );
                 } else if (segment.type === 'hebrew') {
                   return (
-                    <div key={segIndex} dir="rtl" className="text-right leading-relaxed text-base mb-4">
+                    <div key={segIndex} dir="rtl" className="text-right leading-relaxed text-base mb-4 font-medium">
                       {formatPlainText(segment.content)}
                     </div>
                   );
                 } else {
+                  // For mixed or English content, detect per paragraph
+                  const isContentHebrew = isParagraphHebrew(segment.content);
                   return (
-                    <div key={segIndex} dir="ltr" className="text-left leading-relaxed text-base mb-4">
+                    <div 
+                      key={segIndex} 
+                      dir={isContentHebrew ? 'rtl' : 'ltr'} 
+                      className={`${isContentHebrew ? 'text-right font-medium' : 'text-left'} leading-relaxed text-base mb-4`}
+                    >
                       {formatPlainText(segment.content)}
                     </div>
                   );
@@ -469,13 +502,19 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
           );
         } else if (segment.type === 'hebrew') {
           return (
-            <div key={index} dir="rtl" className="text-right leading-relaxed text-base mb-4">
+            <div key={index} dir="rtl" className="text-right leading-relaxed text-base mb-4 font-medium">
               {formatPlainText(segment.content)}
             </div>
           );
         } else {
+          // For mixed or English content, detect per paragraph
+          const isContentHebrew = isParagraphHebrew(segment.content);
           return (
-            <div key={index} dir="ltr" className="text-left leading-relaxed text-base mb-4">
+            <div 
+              key={index} 
+              dir={isContentHebrew ? 'rtl' : 'ltr'} 
+              className={`${isContentHebrew ? 'text-right font-medium' : 'text-left'} leading-relaxed text-base mb-4`}
+            >
               {formatPlainText(segment.content)}
             </div>
           );
@@ -676,17 +715,35 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       
       if (numberedListMatch) {
         const isHebrewLine = isHebrewText(numberedListMatch[2]);
+        
         return (
-          <div key={lineIndex} className={`mb-3 ${isHebrewLine ? 'text-right' : 'text-left'}`} dir={isHebrewLine ? 'rtl' : 'ltr'}>
-            <div className={`flex items-start gap-3 ${isHebrewLine ? 'flex-row-reverse' : 'flex-row'}`}>
-              <span className={`font-bold text-lg leading-6 ${
-                isDarkMode ? 'text-blue-400' : 'text-blue-600'
-              } flex-shrink-0 min-w-[2rem] ${isHebrewLine ? 'text-right' : 'text-left'}`}>
-                {numberedListMatch[1]}
-              </span>
-              <span className="flex-1 leading-7 text-base">
-                {numberedListMatch[2]}
-              </span>
+          <div key={lineIndex} className={`mb-4 ${isHebrewLine ? 'text-right' : 'text-left'}`}>
+            <div className={`flex items-start gap-4 ${isHebrewLine ? '' : 'flex-row'}`}>
+              {isHebrewLine ? (
+                // Hebrew: Number on the right, text on the left
+                <>
+                  <div className="flex-1 text-right leading-7 text-base pr-2">
+                    {numberedListMatch[2]}
+                  </div>
+                  <div className={`font-semibold text-lg leading-7 ${
+                    isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                  } flex-shrink-0 text-right min-w-[2.5rem]`}>
+                    {numberedListMatch[1]}
+                  </div>
+                </>
+              ) : (
+                // English: Number on the left, text on the right
+                <>
+                  <div className={`font-semibold text-lg leading-7 ${
+                    isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                  } flex-shrink-0 text-left min-w-[2.5rem]`}>
+                    {numberedListMatch[1]}
+                  </div>
+                  <div className="flex-1 text-left leading-7 text-base pl-2">
+                    {numberedListMatch[2]}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         );
@@ -697,17 +754,35 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       
       if (bulletListMatch) {
         const isHebrewLine = isHebrewText(bulletListMatch[2]);
+        
         return (
-          <div key={lineIndex} className={`mb-3 ${isHebrewLine ? 'text-right' : 'text-left'}`} dir={isHebrewLine ? 'rtl' : 'ltr'}>
-            <div className={`flex items-start gap-3 ${isHebrewLine ? 'flex-row-reverse' : 'flex-row'}`}>
-              <span className={`font-bold text-lg leading-6 ${
-                isDarkMode ? 'text-blue-400' : 'text-blue-600'
-              } flex-shrink-0 min-w-[1.5rem] ${isHebrewLine ? 'text-right' : 'text-left'}`}>
-                •
-              </span>
-              <span className="flex-1 leading-7 text-base">
-                {bulletListMatch[2]}
-              </span>
+          <div key={lineIndex} className={`mb-4 ${isHebrewLine ? 'text-right' : 'text-left'}`}>
+            <div className={`flex items-start gap-3 ${isHebrewLine ? '' : 'flex-row'}`}>
+              {isHebrewLine ? (
+                // Hebrew: Bullet on the right, text on the left
+                <>
+                  <div className="flex-1 text-right leading-7 text-base pr-2">
+                    {bulletListMatch[2]}
+                  </div>
+                  <div className={`font-bold text-lg leading-7 ${
+                    isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                  } flex-shrink-0 text-right min-w-[1.5rem]`}>
+                    •
+                  </div>
+                </>
+              ) : (
+                // English: Bullet on the left, text on the right
+                <>
+                  <div className={`font-bold text-lg leading-7 ${
+                    isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                  } flex-shrink-0 text-left min-w-[1.5rem]`}>
+                    •
+                  </div>
+                  <div className="flex-1 text-left leading-7 text-base pl-2">
+                    {bulletListMatch[2]}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         );
@@ -716,8 +791,17 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       // Regular line
       if (!line.trim()) return <br key={lineIndex} />;
       
+      // Detect line direction and apply proper styling
+      const isHebrewLine = isHebrewText(line);
+      
       return (
-        <div key={lineIndex} className="mb-3 leading-7 text-base">
+        <div 
+          key={lineIndex} 
+          className={`mb-4 leading-7 text-base ${
+            isHebrewLine ? 'text-right' : 'text-left'
+          }`}
+          dir={isHebrewLine ? 'rtl' : 'ltr'}
+        >
           {line}
         </div>
       );
