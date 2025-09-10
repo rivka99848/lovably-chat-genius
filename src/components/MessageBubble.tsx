@@ -677,9 +677,38 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       if (numberedListMatch) {
         const isHebrewLine = isHebrewText(numberedListMatch[2]);
         return (
-          <div key={lineIndex} className={`mb-2 flex ${isHebrewLine ? 'flex-row-reverse text-right' : 'flex-row text-left'}`}>
-            <span className={`font-medium min-w-[2rem] ${isHebrewLine ? 'mr-2' : 'ml-2'}`}>{numberedListMatch[1]}</span>
-            <span className="flex-1">{numberedListMatch[2]}</span>
+          <div key={lineIndex} className={`mb-3 ${isHebrewLine ? 'text-right' : 'text-left'}`} dir={isHebrewLine ? 'rtl' : 'ltr'}>
+            <div className={`flex items-start gap-3 ${isHebrewLine ? 'flex-row-reverse' : 'flex-row'}`}>
+              <span className={`font-bold text-lg leading-6 ${
+                isDarkMode ? 'text-blue-400' : 'text-blue-600'
+              } flex-shrink-0 min-w-[2rem] ${isHebrewLine ? 'text-right' : 'text-left'}`}>
+                {numberedListMatch[1]}
+              </span>
+              <span className="flex-1 leading-7 text-base">
+                {numberedListMatch[2]}
+              </span>
+            </div>
+          </div>
+        );
+      }
+      
+      // Check for bullet points (-, *, •)
+      const bulletListMatch = line.match(/^([•\-\*])\s*(.*)$/);
+      
+      if (bulletListMatch) {
+        const isHebrewLine = isHebrewText(bulletListMatch[2]);
+        return (
+          <div key={lineIndex} className={`mb-3 ${isHebrewLine ? 'text-right' : 'text-left'}`} dir={isHebrewLine ? 'rtl' : 'ltr'}>
+            <div className={`flex items-start gap-3 ${isHebrewLine ? 'flex-row-reverse' : 'flex-row'}`}>
+              <span className={`font-bold text-lg leading-6 ${
+                isDarkMode ? 'text-blue-400' : 'text-blue-600'
+              } flex-shrink-0 min-w-[1.5rem] ${isHebrewLine ? 'text-right' : 'text-left'}`}>
+                •
+              </span>
+              <span className="flex-1 leading-7 text-base">
+                {bulletListMatch[2]}
+              </span>
+            </div>
           </div>
         );
       }
@@ -688,7 +717,7 @@ const MessageBubble: React.FC<Props> = ({ message, isDarkMode = true }) => {
       if (!line.trim()) return <br key={lineIndex} />;
       
       return (
-        <div key={lineIndex} className="mb-2">
+        <div key={lineIndex} className="mb-3 leading-7 text-base">
           {line}
         </div>
       );
