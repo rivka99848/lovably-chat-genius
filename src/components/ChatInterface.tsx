@@ -1210,7 +1210,7 @@ const ChatInterface = () => {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
-                <span>Your Name</span>
+                <span>smartbiz</span>
               </a>
             </div>
           </div>
